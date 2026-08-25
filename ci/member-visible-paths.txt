@@ -1,6 +1,7 @@
 # Independent member-visible file census; one tracked path per line.
 PROVENANCE.md
 README.md
+docs/rejection-renderer.md
 editions/maintenance/answers-format.md
 editions/maintenance/fixtures/ridgeline-maintenance-answers.md
 editions/maintenance/library-src/coordinator-scope-playbook.md
@@ -26,3 +27,4 @@ mapping-tables/leasing.md
 mapping-tables/maintenance.md
 mapping-tables/pm-assist.md
 mapping-tables/turnover.md
+setup.py
