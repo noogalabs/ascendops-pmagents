@@ -116,6 +116,75 @@ class ExtensionApplierTests(unittest.TestCase):
                   if row.get("row_type") == "compatibility_guard"]
         self.assertEqual(len(guards), 1)
 
+    def test_named_pointer_k_row_production_path_owner_fallback_and_missing_fallback(self):
+        base = json.loads(engine.SUPPORTED["maintenance-coordinator"]["mapping"].read_text())
+        base["cross_seat"] = {"pointers": [{
+            "value_name": "org_timezone", "owner_seat": "leasing",
+            "owner_question_id": "B8", "holding_question_id": "A3",
+            "owner_value_path": "/answers/B8",
+        }]}
+        base["config_keys"] = [{
+            "path": "/timezone", "value_from": "pointer", "pointer_name": "org_timezone",
+            "fallback": "America/Denver", "value_type": "string", "mode": "replace",
+        }]
+        owner = self.tmp / "leasing"; owner.mkdir()
+        (owner / "seat-config.json").write_text(json.dumps({
+            "seat": "leasing", "answers": {"B8": "America/Chicago"},
+        }))
+        original = engine.SUPPORTED["maintenance-coordinator"]["mapping"]
+        try:
+            mapping = self.tmp / "pointer-mapping.json"; mapping.write_text(json.dumps(base))
+            engine.SUPPORTED["maintenance-coordinator"]["mapping"] = mapping
+            source = self.tmp / "pointer-source"; prepare_raw(source)
+            owner_output = self.tmp / "pointer-owner-output"
+            engine.configure(source, FIXTURE, owner_output, "maintenance-coordinator",
+                             seat_registry={"leasing": owner})
+            self.assertEqual(json.loads((owner_output / "config.json").read_text())["timezone"],
+                             "America/Chicago")
+            owner_manifest = json.loads((owner_output / "seat-config.json").read_text())[
+                "configuration_engine"]["managed_surfaces"]
+            self.assertEqual([row for row in owner_manifest if row.get("question_id") == "pointer:org_timezone"][0]["resolution"],
+                             "owner")
+
+            source = self.tmp / "pointer-fallback-source"; prepare_raw(source)
+            fallback_output = self.tmp / "pointer-fallback-output"
+            engine.configure(source, FIXTURE, fallback_output, "maintenance-coordinator",
+                             seat_registry={})
+            self.assertEqual(json.loads((fallback_output / "config.json").read_text())["timezone"],
+                             "America/Denver")
+            fallback_manifest = json.loads((fallback_output / "seat-config.json").read_text())[
+                "configuration_engine"]["managed_surfaces"]
+            self.assertEqual([row for row in fallback_manifest if row.get("question_id") == "pointer:org_timezone"][0]["resolution"],
+                             "held_fallback")
+
+            del base["config_keys"][0]["fallback"]
+            mapping.write_text(json.dumps(base))
+            source = self.tmp / "pointer-reject-source"; prepare_raw(source)
+            rejected = self.tmp / "pointer-rejected-output"
+            with self.assertRaises(engine.IntakeRejected):
+                engine.configure(source, FIXTURE, rejected, "maintenance-coordinator",
+                                 seat_registry={})
+            self.assertFalse(rejected.exists())
+        finally:
+            engine.SUPPORTED["maintenance-coordinator"]["mapping"] = original
+
+    def test_named_declared_structured_artifact_absent_rejects_atomically(self):
+        mapping = json.loads(engine.SUPPORTED["maintenance-coordinator"]["mapping"].read_text())
+        mapping["structured_answers_file"] = "accounting-config.json"
+        path = self.tmp / "declared-artifact-mapping.json"; path.write_text(json.dumps(mapping))
+        original = engine.SUPPORTED["maintenance-coordinator"]["mapping"]
+        engine.SUPPORTED["maintenance-coordinator"]["mapping"] = path
+        try:
+            source = self.tmp / "declared-artifact-source"; prepare_raw(source)
+            output = self.tmp / "declared-artifact-output"
+            with self.assertRaises(engine.IntakeRejected) as caught:
+                engine.configure(source, FIXTURE, output, "maintenance-coordinator")
+            self.assertIn("declared structured artifact accounting-config.json is absent",
+                          caught.exception.render())
+            self.assertFalse(output.exists())
+        finally:
+            engine.SUPPORTED["maintenance-coordinator"]["mapping"] = original
+
 
 if __name__ == "__main__":
     print("ARMED: schema-v2 timezone sourcing and deterministic extension golden")

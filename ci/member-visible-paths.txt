@@ -10,6 +10,8 @@ editions/maintenance/library-src/maintenance-coordinator-judgment-guide.md
 editions/maintenance/library-src/occupied-unit-maintenance-board.md
 editions/maintenance/library-src/occupied-unit-maintenance-workflow.md
 engine/E2-SCHEMA.md
+engine/E3-EXTENSION-REPORT.md
+engine/E3-SCHEMA.md
 engine/HOW-TO-RUN.md
 engine/MERGE-POLICY.md
 fixtures/ridgeline/accounting-answers.md
