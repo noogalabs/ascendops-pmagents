@@ -36,3 +36,12 @@ delegate to the reviewed engine without changing its output bytes or the sealed
 maintenance configurator. Their review custody is the PMAgents pull request and
 exact-head CI; they do not claim an org-side source hash in the imported-source
 TSV.
+
+## PM-assist edition
+
+The PM-assist edition was assembled from the reviewed property-manager questionnaire,
+the QA-owned PM-assist mapping table, the fictional Ridgeline PM-assist fixture, and
+the reviewed 67-file PM-assist template package dated 2026-08-25. The product copy
+retains no org-private locator. The per-file manifest and TSV bind the imported
+questionnaire, fixture, mapping, and library tree to their product destinations;
+engine and setup changes are product-native and gain custody through exact-head CI.

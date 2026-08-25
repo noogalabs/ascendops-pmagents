@@ -1,0 +1,33 @@
+{
+  "agent_name": "{{agent_name}}",
+  "enabled": true,
+  "startup_delay": 0,
+  "max_session_seconds": 255600,
+  "max_crashes_per_day": 10,
+  "tier": "sonnet",
+  "working_directory": "",
+  "timezone": "",
+  "crons": [
+    {
+      "name": "daily-pulse",
+      "type": "recurring",
+      "interval": "0 7 * * *",
+      "prompt": "Read .claude/skills/daily-pulse/SKILL.md and build today's Daily Pulse. Pull every lane board, recompute every clock, promote overdue promises to the top, and stage the surface message for the Property Manager. Do not send outbound and do not write boards of record while shadow mode is active."
+    },
+    {
+      "name": "monday-board",
+      "type": "recurring",
+      "interval": "0 8 * * 1",
+      "prompt": "Read .claude/skills/monday-board/SKILL.md. Refresh the Monday Board and run the Follow-Through Log sweep: every open promise, its due date, its owner, and anything overdue past the red threshold. Stage the weekly surface for the Property Manager."
+    },
+    {
+      "name": "heartbeat",
+      "type": "recurring",
+      "interval": "4h",
+      "prompt": "Read HEARTBEAT.md and follow its instructions. Update your heartbeat, check inbox, run the alert-rules pass, and work your highest priority item (aging approval, burning clock, staged draft, board reconciliation, or decision-log filing)."
+    }
+  ],
+  "ecosystem": {
+    "local_version_control": { "enabled": true }
+  }
+}

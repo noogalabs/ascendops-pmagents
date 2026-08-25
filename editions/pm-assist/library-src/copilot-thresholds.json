@@ -1,0 +1,78 @@
+{
+  "agent": "{{agent_name}}",
+  "org": "{{org_name}}",
+  "updated_at": "1970-01-01T00:00:00Z",
+  "_note": "Outward-facing MESSAGE CLASSES only. Housing, money, legal, and relationship matters are never-graduates and are deliberately absent from this file \u2014 see GUARDRAILS.md. If such a category ever appears here, that is a defect: remove it and tell the Property Manager. Placeholder sources: {{agent_name}} and {{org_name}} are add-agent/cover-sheet values, not questionnaire answers \u2014 {{org_name}} is the cover sheet's org short-name field.",
+  "categories": {
+    "templated_owner_update": {
+      "status": "locked",
+      "total_decisions": 0,
+      "correct": 0,
+      "accuracy_pct": null,
+      "window": "last_20",
+      "unlocked_at": null,
+      "demoted_at": null,
+      "qualifying_accuracy": null
+    },
+    "owner_statement_delivery": {
+      "status": "locked",
+      "total_decisions": 0,
+      "correct": 0,
+      "accuracy_pct": null,
+      "window": "last_20",
+      "unlocked_at": null,
+      "demoted_at": null,
+      "qualifying_accuracy": null
+    },
+    "tenant_scheduling_notice": {
+      "status": "locked",
+      "total_decisions": 0,
+      "correct": 0,
+      "accuracy_pct": null,
+      "window": "last_20",
+      "unlocked_at": null,
+      "demoted_at": null,
+      "qualifying_accuracy": null
+    },
+    "coordinator_status_request": {
+      "status": "locked",
+      "total_decisions": 0,
+      "correct": 0,
+      "accuracy_pct": null,
+      "window": "last_20",
+      "unlocked_at": null,
+      "demoted_at": null,
+      "qualifying_accuracy": null
+    },
+    "board_row_write": {
+      "status": "locked",
+      "total_decisions": 0,
+      "correct": 0,
+      "accuracy_pct": null,
+      "window": "last_20",
+      "unlocked_at": null,
+      "demoted_at": null,
+      "qualifying_accuracy": null
+    },
+    "decision_log_filing": {
+      "status": "locked",
+      "total_decisions": 0,
+      "correct": 0,
+      "accuracy_pct": null,
+      "window": "last_20",
+      "unlocked_at": null,
+      "demoted_at": null,
+      "qualifying_accuracy": null
+    },
+    "renewal_offer_send_after_terms_set": {
+      "status": "locked",
+      "total_decisions": 0,
+      "correct": 0,
+      "accuracy_pct": null,
+      "window": "last_20",
+      "unlocked_at": null,
+      "demoted_at": null,
+      "qualifying_accuracy": null
+    }
+  }
+}

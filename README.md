@@ -8,6 +8,7 @@ The repository starts with the reviewed maintenance edition and the six-seat map
 
 - `engine/` — intake, validation, substitution, cross-seat, and atomic-transaction code.
 - `editions/maintenance/` — sealed maintenance configurator, answer format, and source library.
+- `editions/pm-assist/` — mapping-driven property-manager assistant edition, questionnaire, fixture, and source library.
 - `mapping-tables/` — the six authoritative mapping tables; collectively they are the cross-seat seam register.
 - `fixtures/ridgeline/` — fictional integration fixtures.
 - `provenance/` — source and destination hashes plus excluded-evidence custody.
@@ -36,3 +37,7 @@ unknown rows remain visible for support. See [the renderer census](docs/rejectio
 
 Supported today: macOS and Linux with Python 3. Windows is not yet a supported
 runner platform.
+
+Choose `Property manager assistant` in the guided setup to configure the PM-assist
+edition. Its cross-seat pointers remain inert and visibly held when their owner seat
+is not installed; setup never invents a peer value.

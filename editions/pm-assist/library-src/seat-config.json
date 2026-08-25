@@ -1,0 +1,124 @@
+{
+  "_note": "The onboarding answers this seat reads. Written by ONBOARDING.md; read by every skill. Values here are the structured half of the questionnaire — the scalar half lands in the double-brace placeholders across the bootstrap files. Nothing in this file grants decision authority; it configures ROUTING and CLOCKS only.",
+  "seat": "pm-assist",
+  "cover_sheet": {
+    "company_name": "",
+    "org_short_name": "",
+    "forward_email": "",
+    "timezone": ""
+  },
+  "people": {
+    "property_manager": "",
+    "broker": "",
+    "broker_channel": "",
+    "eviction_attorney": "",
+    "counsel": "",
+    "backup_decision_maker": "",
+    "financial_board_owner": "",
+    "broker_checkin_cadence": ""
+  },
+  "coordinator_lanes": {
+    "leasing": { "exists": false, "covered_by": "" },
+    "maintenance": { "exists": false, "covered_by": "" },
+    "turnover": { "exists": false, "covered_by": "" },
+    "bookkeeping": { "exists": false, "covered_by": "" }
+  },
+  "state_rules": {
+    "_status": "not_live_until_confirmed_with_counsel",
+    "late_notice_day": null,
+    "late_notice_type": "",
+    "cure_period_days": null,
+    "pre_filing_requirements": "",
+    "nonrenewal_notice_days": null,
+    "entry_notice_hours": null,
+    "deposit_holding_rule": "",
+    "deposit_disposition_days": null,
+    "habitability_standards": "",
+    "habitability_response_hours": null,
+    "inspection_cadence": "",
+    "tenant_file_retention_years": null,
+    "required_filings": []
+  },
+  "thresholds": {
+    "owner_approval_threshold": null,
+    "owner_threshold_overrides": {},
+    "coordinator_spend_authority": null,
+    "pm_emergency_authority": null,
+    "broker_emergency_threshold": null,
+    "owner_reserve_minimum": null,
+    "multi_bid_threshold": null,
+    "trust_variance_resolution_hours": null,
+    "trust_variance_broker_threshold": null
+  },
+  "clocks": {
+    "owner_nonresponse_ladder_hours": [null, null, null],
+    "delinquency_late_notice_day": null,
+    "delinquency_alert_day": null,
+    "delinquency_target_pct": null,
+    "renewal_lookahead_days": null,
+    "owner_decision_days": null,
+    "renewal_tenant_followup_days": [30, 60],
+    "leasing_listing_live_days": null,
+    "leasing_price_review_days": null,
+    "leasing_price_decision_days": null,
+    "leasing_escalation_days": null,
+    "application_decision_hours": null,
+    "turnover_escalation_days": null,
+    "maintenance_sla": { "emergency_hours": null, "urgent_hours": null, "routine_days": null },
+    "invoice_queue_alert_days": null,
+    "followthrough_sweep_day": "Monday",
+    "promise_overdue_hours": null
+  },
+  "kpi_targets": {
+    "days_vacant": null,
+    "days_to_make_ready": null,
+    "occupancy_pct": 95,
+    "wo_close_rate_within_sla_pct": 90,
+    "renewal_rate_pct": 60,
+    "owner_retention_pct": 90,
+    "max_leases_expiring_one_month_pct": 25,
+    "_note": "Standard benchmarks pre-filled from the questionnaire's own B8 standard set. Overwrite only the ones the company overrides."
+  },
+  "delegation": {
+    "_source": "C1 — the 20-row Assistant Can Own table, marked now / later / never",
+    "rows": {}
+  },
+  "owner_comms": {
+    "assistant_may_send_without_review": [],
+    "assistant_may_send_to_owners": [],
+    "always_pm_review": ["anything with judgment or framing", "any response to an owner concern", "any difficult month"],
+    "owner_tags": { "_vocabulary": ["silent investor", "collaborative", "high touch"], "tag_location": "" }
+  },
+  "platform": {
+    "pm_platform": "",
+    "accounting_system": "",
+    "same_product": null,
+    "operating_board_location": "",
+    "live_tabs_day_one": [],
+    "lane_board_locations": {},
+    "lane_pull_method": {},
+    "auto_alert_rules": [],
+    "manual_alert_flags": {},
+    "channels_by_audience": {},
+    "decision_log_location": "",
+    "durable_record_locations": {},
+    "notice_template_location": "",
+    "notice_template_owner": "",
+    "cma_source": "",
+    "cma_run_by": ""
+  },
+  "owner_reporting": {
+    "report_day": null,
+    "channels": [],
+    "high_touch_followup_call": null,
+    "owner_draw_day": null,
+    "financial_review_window_days": [null, null]
+  },
+  "flags": {
+    "phase_zero": [],
+    "unresolved": []
+  },
+  "derived": {
+    "owner_nonresponse_first_hours": 24
+  }
+}
