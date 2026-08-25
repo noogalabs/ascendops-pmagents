@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import hashlib, importlib.util, json, shutil, subprocess, sys, tempfile, unittest
+import contextlib, hashlib, importlib.util, io, json, shutil, subprocess, sys, tempfile, unittest
 from datetime import date
 from pathlib import Path
 
@@ -230,6 +230,36 @@ class ExtensionApplierTests(unittest.TestCase):
                 self.assertEqual(completed.returncode, 2, completed.stderr)
                 self.assertIn(f"appender_mapping.{mapping.name}", completed.stdout)
                 self.assertNotIn("Traceback", completed.stderr)
+
+    def test_named_append_cli_unexpected_exception_is_clean_error_not_traceback(self):
+        print("ARMED: append CLI unexpected exception becomes clean ERROR without traceback")
+        spec = importlib.util.spec_from_file_location("glue_apply_append_cli", HERE / "apply_append.py")
+        cli = importlib.util.module_from_spec(spec)
+        prior_engine_module = sys.modules.get("engine")
+        sys.modules["engine"] = engine
+        try:
+            spec.loader.exec_module(cli)
+        finally:
+            if prior_engine_module is None:
+                sys.modules.pop("engine", None)
+            else:
+                sys.modules["engine"] = prior_engine_module
+        original_apply = cli.engine.apply_persisted_append
+        original_argv = sys.argv
+        cli.engine.apply_persisted_append = lambda *args, **kwargs: (_ for _ in ()).throw(
+            RuntimeError("unexpected invariant failure")
+        )
+        sys.argv = ["apply_append.py", str(self.tmp / "appender"), str(self.tmp / "owner"), "plan"]
+        stderr = io.StringIO()
+        try:
+            with contextlib.redirect_stderr(stderr):
+                code = cli.main()
+        finally:
+            cli.engine.apply_persisted_append = original_apply
+            sys.argv = original_argv
+        self.assertEqual(code, 1)
+        self.assertEqual(stderr.getvalue(), "ERROR unexpected invariant failure\n")
+        self.assertNotIn("Traceback", stderr.getvalue())
 
     def test_named_remaining_member_input_surfaces_reject_valid_json_wrong_shapes(self):
         base_mapping = json.loads(engine.SUPPORTED["maintenance-coordinator"]["mapping"].read_text())

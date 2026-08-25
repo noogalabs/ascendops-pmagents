@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Apply one persisted cross-seat append plan to its owner seat atomically."""
 import argparse
+import sys
 from pathlib import Path
 
 import engine
@@ -28,6 +29,9 @@ def main():
     except engine.IntakeRejected as exc:
         print(exc.render())
         return 2
+    except Exception as exc:
+        print(f"ERROR {exc}", file=sys.stderr)
+        return 1
     print("applied" if changed else "already-applied")
     return 0
 
