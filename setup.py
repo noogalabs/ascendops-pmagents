@@ -83,9 +83,10 @@ def atomic_text(path: Path, text: str) -> None:
     temporary.replace(path)
 
 
-def rejection_rule(row: str):
+def rejection_rule(row: str, fields: dict[str, PromptField] | None = None):
     if re.fullmatch(r"[A-D]\d+", row):
-        return (row, "the answer did not meet the question's required format", "Example: enter a confirmed answer, or use 'unsure' to confirm it later")
+        question = fields[row].label if fields and row in fields else row
+        return (question, "the answer did not meet the question's required format", "Example: enter a confirmed answer, or use 'unsure' to confirm it later")
     if row.startswith("cover."):
         return (row.removeprefix("cover."), "this cover-sheet answer is missing or invalid", "Example: enter the company value requested by this field")
     for prefix, question, problem, example in REJECTION_RULES:
@@ -94,11 +95,15 @@ def rejection_rule(row: str):
     return None
 
 
-def render_rejection(exc: engine.IntakeRejected, err: TextIO) -> None:
+def render_rejection(
+    exc: engine.IntakeRejected,
+    err: TextIO,
+    fields: dict[str, PromptField] | None = None,
+) -> None:
     print("Setup needs a correction. No configured agent files were written.", file=err)
     for row, reason in exc.failures:
         print(f"Issue: {row}: {reason}", file=err)
-        rule = rejection_rule(row)
+        rule = rejection_rule(row, fields)
         if rule is None:
             print("Question to fix: this setup row is not recognized by this wrapper.", file=err)
             print("Share the raw issue above with support; it has not been hidden or replaced.", file=err)
@@ -109,12 +114,27 @@ def render_rejection(exc: engine.IntakeRejected, err: TextIO) -> None:
         print(example, file=err)
 
 
-def fix_named_answer(answers: Path, failures, ask: Callable[[str], str]) -> bool:
-    editable = {field.key: field for field in questionnaire_fields(answers.read_text(encoding="utf-8"))}
+def answer_field_map(answers: Path) -> dict[str, PromptField]:
+    try:
+        return {
+            field.key: field
+            for field in questionnaire_fields(answers.read_text(encoding="utf-8"))
+        }
+    except (OSError, UnicodeError):
+        return {}
+
+
+def fix_named_answer(
+    answers: Path,
+    failures,
+    ask: Callable[[str], str],
+    editable: dict[str, PromptField] | None = None,
+) -> bool:
+    editable = answer_field_map(answers) if editable is None else editable
     row = next((name for name, _reason in failures if name in editable), None)
     if row is None:
         return ask("Correct the named file or setup input, then type 'retry' (Enter exits): ").strip().lower() == "retry"
-    response = ask(f"New answer for {row} (Enter exits setup): ").strip()
+    response = ask(f"New answer for {editable[row].label} (Enter exits setup): ").strip()
     if not response:
         return False
     if response.lower() in SKIP_WORDS:
@@ -203,8 +223,9 @@ def run_setup(
                 configure_fn(actual_source, answers, output, seat, clock=clock, seat_registry={})
                 break
             except engine.IntakeRejected as exc:
-                render_rejection(exc, err)
-                if not fix_named_answer(answers, exc.failures, ask):
+                editable = answer_field_map(answers)
+                render_rejection(exc, err, editable)
+                if not fix_named_answer(answers, exc.failures, ask, editable):
                     return 2
                 actual_source = output if output.exists() else source
         print(f"Configured agent: {output}", file=out)

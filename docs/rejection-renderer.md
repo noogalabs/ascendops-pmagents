@@ -17,7 +17,7 @@ or replaces an engine rejection.
 | `file` | Completed answers file | Choose a UTF-8 edition answers file |
 | `output` | Configured agent destination | New directory or same configured agent |
 | `seat` | Setup edition | Choose an edition listed by setup |
-| `A1`–`D10` | Exact questionnaire question ID | Confirmed answer or `unsure` |
+| `A1`–`D10` | Full questionnaire prompt with its row ID; raw ID if the prompt cannot be loaded | Confirmed answer or `unsure` |
 | `cover.*` | Exact cover-sheet field | Requested company value |
 | unknown row | Raw row plus support guidance | Share the displayed row with support |
 

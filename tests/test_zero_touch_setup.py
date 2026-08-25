@@ -122,7 +122,7 @@ class ZeroTouchSetupTests(unittest.TestCase):
         self.assertEqual(list(output.parent.glob(f".{output.name}.glue-*-*")), [])
 
     def test_named_answer_retry_fixes_in_place_without_restarting_flow(self):
-        print("ARMED: named answer rejection retries in place")
+        print("ARMED: named answer rejection and retry resolve the full question label")
         fixture = ROOT / "editions" / "maintenance" / "fixtures" / "ridgeline-maintenance-answers.md"
         answers = self.tmp / "answers-with-one-error.md"
         answers.write_text(fixture.read_text().replace(
@@ -131,9 +131,28 @@ class ZeroTouchSetupTests(unittest.TestCase):
         ))
         output = self.tmp / "retry-output"
         scripted = iter(["1", str(self.source), str(output), "2", str(answers), "15 percent"])
+        prompts = []
+
+        def ask(prompt):
+            prompts.append(prompt)
+            return next(scripted)
+
         stderr = io.StringIO()
-        self.assertEqual(setup.run_setup(ask=lambda _prompt: next(scripted), err=stderr), 0)
+        self.assertEqual(setup.run_setup(ask=ask, err=stderr), 0)
         self.assertTrue(output.is_dir())
+        full_question = "B4. At what percentage above estimate does an invoice get flagged for review before payment?"
+        self.assertIn(f"Question to fix: {full_question}", stderr.getvalue())
+        self.assertTrue(any(full_question in prompt for prompt in prompts))
+
+    def test_named_unresolvable_question_label_falls_back_to_bare_code(self):
+        print("ARMED: missing questionnaire label falls open to the raw question code")
+        stderr = io.StringIO()
+        setup.render_rejection(
+            setup.engine.IntakeRejected([("B4", "percentage invalid")]),
+            stderr,
+            {},
+        )
+        self.assertIn("Issue: B4: percentage invalid", stderr.getvalue())
         self.assertIn("Question to fix: B4", stderr.getvalue())
 
     def test_named_unknown_rejection_stays_visible_with_support_language(self):
@@ -201,7 +220,12 @@ RENDER_CASES = (
     ("file", "file", "not UTF-8", "completed answers file"),
     ("output", "output", "not a directory", "configured agent destination"),
     ("seat", "seat", "not installed", "setup edition"),
-    ("question", "B4", "percentage invalid", "Question to fix: B4"),
+    (
+        "question",
+        "B4",
+        "percentage invalid",
+        "Question to fix: B4. At what percentage above estimate does an invoice get flagged for review before payment?",
+    ),
     ("cover", "cover.Timezone", "missing", "Timezone"),
 )
 
