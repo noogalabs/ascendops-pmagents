@@ -151,6 +151,25 @@ class CrossSeatTests(unittest.TestCase):
         self.assertEqual((owner_dir / "organic.txt").read_text(), "unchanged")
         self.assertFalse(engine.apply_persisted_append(appender_dir, owner_dir, plan_id))
 
+    def test_named_persisted_append_resolves_each_declared_structured_filename(self):
+        planned, owner, plan_id = self.append_configs()
+        appender_dir = self.tmp / "custom-appender"; appender_dir.mkdir()
+        owner_dir = self.tmp / "custom-owner"; owner_dir.mkdir()
+        appender_mapping = {"structured_answers_file": "turnover-config.json"}
+        owner_mapping = {"structured_answers_file": "maintenance-config.json"}
+        (appender_dir / "turnover-config.json").write_text(json.dumps(planned))
+        (owner_dir / "maintenance-config.json").write_text(json.dumps(owner))
+        self.assertTrue(engine.apply_persisted_append(
+            appender_dir,
+            owner_dir,
+            plan_id,
+            appender_mapping=appender_mapping,
+            owner_mapping=owner_mapping,
+        ))
+        applied = json.loads((owner_dir / "maintenance-config.json").read_text())
+        self.assertEqual(applied["derived"]["roster"]["vendors"], ["Base Vendor", "Mesa Vendor"])
+        self.assertFalse((owner_dir / "seat-config.json").exists())
+
     def test_named_legacy_engine_rejects_v2_compatibility_guard(self):
         legacy_path = self.tmp / "legacy_placeholders.py"
         legacy_path.write_bytes(

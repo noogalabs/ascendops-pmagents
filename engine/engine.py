@@ -209,9 +209,15 @@ def configure(source: Path, answers: Path, output: Path, seat: str,
                 )
                 config_rows = {row["path"]: row for row in mapping.get("config_keys", [])}
                 for item in pointer_config:
-                    item["value"] = placeholders._typed_value(
-                        config_rows[item["config_path"]], item["value"]
-                    )
+                    try:
+                        item["value"] = placeholders._typed_value(
+                            config_rows[item["config_path"]], item["value"]
+                        )
+                    except ValueError as exc:
+                        raise IntakeRejected([(
+                            f"mapping.config_keys.{item['config_path']}",
+                            f"pointer value coercion failed: {exc}",
+                        )]) from exc
                 placeholders.commit_config_manifest(staged, pointer_config)
             except (cross_seat.CrossSeatRejected, placeholders.PlaceholderRejected) as exc:
                 raise IntakeRejected(exc.failures)
@@ -240,12 +246,21 @@ def configure(source: Path, answers: Path, output: Path, seat: str,
         raise
 
 
-def apply_persisted_append(appender: Path, owner: Path, plan_id: str):
+def apply_persisted_append(appender: Path, owner: Path, plan_id: str,
+                           *, appender_mapping=None, owner_mapping=None):
     """Replay one appender-owned plan through an atomic owner-directory transaction."""
-    appender_seat = appender / "seat-config.json"
-    owner_seat = owner / "seat-config.json"
+    try:
+        appender_filename = cross_seat.structured_answers_filename(appender_mapping or {})
+        owner_filename = cross_seat.structured_answers_filename(owner_mapping or {})
+    except cross_seat.CrossSeatRejected as exc:
+        raise IntakeRejected(exc.failures)
+    appender_seat = appender / appender_filename
+    owner_seat = owner / owner_filename
     if not appender_seat.is_file() or not owner_seat.is_file():
-        raise IntakeRejected([("append-plan", "appender and owner seat-config.json files are required")])
+        raise IntakeRejected([(
+            "append-plan",
+            f"declared structured artifacts {appender_filename} and {owner_filename} are required",
+        )])
     appender_payload = json.loads(appender_seat.read_text())
     owner.parent.mkdir(parents=True, exist_ok=True)
     with transaction.DestinationLock(owner):
@@ -255,7 +270,7 @@ def apply_persisted_append(appender: Path, owner: Path, plan_id: str):
             raise RuntimeError(f"append candidate already exists: {staged}")
         try:
             shutil.copytree(owner, staged, symlinks=True)
-            staged_path = staged / "seat-config.json"
+            staged_path = staged / owner_filename
             staged_payload = json.loads(staged_path.read_text())
             try:
                 updated, changed = cross_seat.apply_append_plan(

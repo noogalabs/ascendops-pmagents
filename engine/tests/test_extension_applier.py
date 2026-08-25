@@ -253,6 +253,34 @@ class ExtensionApplierTests(unittest.TestCase):
         finally:
             engine.SUPPORTED["maintenance-coordinator"]["mapping"] = original
 
+    def test_named_uncoercible_pointer_value_is_a_structured_row_rejection(self):
+        mapping = json.loads(engine.SUPPORTED["maintenance-coordinator"]["mapping"].read_text())
+        mapping["cross_seat"] = {"pointers": [{
+            "value_name": "turn_target", "owner_seat": "leasing",
+            "owner_question_id": "B1", "holding_question_id": "A3",
+            "owner_value_path": "/answers/B1",
+        }]}
+        mapping["config_keys"].append({
+            "path": "/turn_target_days", "value_from": "pointer",
+            "pointer_name": "turn_target", "fallback": "not-an-integer",
+            "value_type": "integer", "mode": "replace",
+        })
+        mapping_path = self.tmp / "uncoercible-pointer-mapping.json"
+        mapping_path.write_text(json.dumps(mapping))
+        original = engine.SUPPORTED["maintenance-coordinator"]["mapping"]
+        engine.SUPPORTED["maintenance-coordinator"]["mapping"] = mapping_path
+        try:
+            source = self.tmp / "uncoercible-pointer-source"; prepare_raw(source)
+            output = self.tmp / "uncoercible-pointer-output"
+            with self.assertRaises(engine.IntakeRejected) as caught:
+                engine.configure(source, FIXTURE, output, "maintenance-coordinator", seat_registry={})
+            rendered = caught.exception.render()
+            self.assertIn("mapping.config_keys./turn_target_days", rendered)
+            self.assertIn("pointer value coercion failed", rendered)
+            self.assertFalse(output.exists())
+        finally:
+            engine.SUPPORTED["maintenance-coordinator"]["mapping"] = original
+
 
 if __name__ == "__main__":
     print("ARMED: schema-v2 timezone sourcing and deterministic extension golden")
