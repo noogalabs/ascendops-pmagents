@@ -185,6 +185,32 @@ class ExtensionApplierTests(unittest.TestCase):
         finally:
             engine.SUPPORTED["maintenance-coordinator"]["mapping"] = original
 
+    def test_named_custom_declared_filename_create_then_reconfigure_uses_fresh_core_output(self):
+        print("ARMED: custom declared filename create-then-reconfigure uses fresh core output")
+        mapping = json.loads(engine.SUPPORTED["maintenance-coordinator"]["mapping"].read_text())
+        mapping["structured_answers_file"] = "accounting-config.json"
+        path = self.tmp / "sequential-declared-artifact-mapping.json"
+        path.write_text(json.dumps(mapping))
+        original = engine.SUPPORTED["maintenance-coordinator"]["mapping"]
+        engine.SUPPORTED["maintenance-coordinator"]["mapping"] = path
+        try:
+            source = self.tmp / "sequential-declared-artifact-source"; prepare_raw(source)
+            output = self.tmp / "sequential-declared-artifact-output"
+            engine.configure(source, FIXTURE, output, "maintenance-coordinator")
+            declared = output / "accounting-config.json"
+            stale = json.loads(declared.read_text())
+            stale["stale_source_marker"] = True
+            declared.write_text(json.dumps(stale, indent=2) + "\n")
+
+            engine.configure(output, FIXTURE, output, "maintenance-coordinator")
+
+            fresh = json.loads(declared.read_text())
+            self.assertNotIn("stale_source_marker", fresh)
+            self.assertEqual(fresh["configuration_engine"]["version"], engine.ENGINE_VERSION)
+            self.assertFalse((output / "seat-config.json").exists())
+        finally:
+            engine.SUPPORTED["maintenance-coordinator"]["mapping"] = original
+
     def test_named_pointer_config_rerun_uses_production_resolver_deterministically(self):
         mapping = json.loads(engine.SUPPORTED["maintenance-coordinator"]["mapping"].read_text())
         mapping["cross_seat"] = {"pointers": [{

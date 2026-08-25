@@ -173,10 +173,18 @@ def configure(source: Path, answers: Path, output: Path, seat: str,
         core_structured_path = staged / "seat-config.json"
         if structured_path != core_structured_path and core_structured_path.is_file():
             if structured_path.exists():
-                raise IntakeRejected([(
-                    "structured_answers_file",
-                    f"declared structured artifact {structured_filename} conflicts with core output",
-                )])
+                source_declared_is_stale_counterpart = (
+                    old_seat.is_file()
+                    and structured_path.is_file()
+                    and structured_path.read_bytes() == old_seat.read_bytes()
+                )
+                if source_declared_is_stale_counterpart:
+                    structured_path.unlink()
+                else:
+                    raise IntakeRejected([(
+                        "structured_answers_file",
+                        f"declared structured artifact {structured_filename} conflicts with core output",
+                    )])
             core_structured_path.replace(structured_path)
         if not structured_path.is_file():
             raise IntakeRejected([("structured_answers_file",
