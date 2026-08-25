@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import hashlib, importlib.util, json, shutil, tempfile, unittest
+import contextlib, hashlib, importlib.util, io, json, shutil, subprocess, sys, tempfile, unittest
 from datetime import date
 from pathlib import Path
 
@@ -168,7 +168,177 @@ class ExtensionApplierTests(unittest.TestCase):
         finally:
             engine.SUPPORTED["maintenance-coordinator"]["mapping"] = original
 
-    def test_named_declared_structured_artifact_absent_rejects_atomically(self):
+    def test_named_peer_metadata_malformed_input_triad_is_structured_and_names_peer(self):
+        print("ARMED: peer metadata unreadable malformed and wrong-shape inputs stay structured")
+        mapping = json.loads(engine.SUPPORTED["maintenance-coordinator"]["mapping"].read_text())
+        mapping["cross_seat"] = {"pointers": [{
+            "value_name": "org_timezone", "owner_seat": "leasing",
+            "owner_question_id": "B8", "holding_question_id": "A3",
+            "owner_value_path": "/answers/B8",
+        }]}
+        mapping_path = self.tmp / "peer-shape-mapping.json"
+        mapping_path.write_text(json.dumps(mapping))
+        original = engine.SUPPORTED["maintenance-coordinator"]["mapping"]
+        engine.SUPPORTED["maintenance-coordinator"]["mapping"] = mapping_path
+        try:
+            cases = {
+                "unreadable": b"\xff",
+                "malformed": b"{",
+                "wrong-document-shape": b"[]",
+                "wrong-engine-shape": json.dumps({
+                    "seat": "leasing", "configuration_engine": [],
+                }).encode(),
+                "wrong-schema-shape": json.dumps({
+                    "seat": "leasing", "seat_config_schema": [],
+                }).encode(),
+            }
+            for label, content in cases.items():
+                with self.subTest(label=label):
+                    peer = self.tmp / f"peer-{label}.json"; peer.write_bytes(content)
+                    source = self.tmp / f"peer-source-{label}"; prepare_raw(source)
+                    output = self.tmp / f"peer-output-{label}"
+                    with self.assertRaises(engine.IntakeRejected) as caught:
+                        engine.configure(
+                            source, FIXTURE, output, "maintenance-coordinator",
+                            seat_registry={"leasing": peer},
+                        )
+                    rendered = caught.exception.render()
+                    self.assertIn("leasing", rendered)
+                    self.assertFalse(output.exists())
+        finally:
+            engine.SUPPORTED["maintenance-coordinator"]["mapping"] = original
+
+    def test_named_append_mapping_malformed_input_triad_is_structured_and_names_file(self):
+        print("ARMED: append mapping unreadable malformed and wrong-shape inputs stay structured")
+        appender = self.tmp / "mapping-triad-appender"; appender.mkdir()
+        owner = self.tmp / "mapping-triad-owner"; owner.mkdir()
+        cases = {
+            "unreadable": None,
+            "malformed": "{",
+            "wrong-shape": "[]",
+        }
+        for label, content in cases.items():
+            with self.subTest(label=label):
+                mapping = self.tmp / f"append-{label}.json"
+                if content is not None:
+                    mapping.write_text(content)
+                completed = subprocess.run([
+                    sys.executable, str(HERE / "apply_append.py"),
+                    str(appender), str(owner), "plan-id",
+                    "--appender-mapping", str(mapping),
+                ], text=True, capture_output=True, check=False)
+                self.assertEqual(completed.returncode, 2, completed.stderr)
+                self.assertIn(f"appender_mapping.{mapping.name}", completed.stdout)
+                self.assertNotIn("Traceback", completed.stderr)
+
+    def test_named_append_cli_unexpected_exception_is_clean_error_not_traceback(self):
+        print("ARMED: append CLI unexpected exception becomes clean ERROR without traceback")
+        spec = importlib.util.spec_from_file_location("glue_apply_append_cli", HERE / "apply_append.py")
+        cli = importlib.util.module_from_spec(spec)
+        prior_engine_module = sys.modules.get("engine")
+        sys.modules["engine"] = engine
+        try:
+            spec.loader.exec_module(cli)
+        finally:
+            if prior_engine_module is None:
+                sys.modules.pop("engine", None)
+            else:
+                sys.modules["engine"] = prior_engine_module
+        original_apply = cli.engine.apply_persisted_append
+        original_argv = sys.argv
+        cli.engine.apply_persisted_append = lambda *args, **kwargs: (_ for _ in ()).throw(
+            RuntimeError("unexpected invariant failure")
+        )
+        sys.argv = ["apply_append.py", str(self.tmp / "appender"), str(self.tmp / "owner"), "plan"]
+        stderr = io.StringIO()
+        try:
+            with contextlib.redirect_stderr(stderr):
+                code = cli.main()
+        finally:
+            cli.engine.apply_persisted_append = original_apply
+            sys.argv = original_argv
+        self.assertEqual(code, 1)
+        self.assertEqual(stderr.getvalue(), "ERROR unexpected invariant failure\n")
+        self.assertNotIn("Traceback", stderr.getvalue())
+
+    def test_named_remaining_member_input_surfaces_reject_valid_json_wrong_shapes(self):
+        base_mapping = json.loads(engine.SUPPORTED["maintenance-coordinator"]["mapping"].read_text())
+        original = engine.SUPPORTED["maintenance-coordinator"]["mapping"]
+        try:
+            wrong_mapping = self.tmp / "wrong-shape-mapping.json"; wrong_mapping.write_text("[]")
+            engine.SUPPORTED["maintenance-coordinator"]["mapping"] = wrong_mapping
+            source = self.tmp / "wrong-mapping-source"; prepare_raw(source)
+            with self.assertRaises(engine.IntakeRejected) as caught:
+                engine.configure(source, FIXTURE, self.tmp / "wrong-mapping-output",
+                                 "maintenance-coordinator")
+            self.assertIn("mapping document must be an object", caught.exception.render())
+
+            seam_mapping = dict(base_mapping)
+            seam_mapping["cross_seat"] = {"pointers": [{
+                "value_name": "org_timezone", "owner_seat": "leasing",
+                "owner_question_id": "B8", "holding_question_id": "A3",
+                "owner_value_path": "/answers/B8",
+            }]}
+            seam_path = self.tmp / "wrong-registry-mapping.json"
+            seam_path.write_text(json.dumps(seam_mapping))
+            engine.SUPPORTED["maintenance-coordinator"]["mapping"] = seam_path
+            source = self.tmp / "wrong-registry-source"; prepare_raw(source)
+            with self.assertRaises(engine.IntakeRejected) as caught:
+                engine.configure(source, FIXTURE, self.tmp / "wrong-registry-output",
+                                 "maintenance-coordinator", seat_registry=[])
+            self.assertIn("seat registry must be an object", caught.exception.render())
+
+            engine.SUPPORTED["maintenance-coordinator"]["mapping"] = original
+            source = self.tmp / "wrong-prior-source"; prepare_raw(source)
+            (source / "seat-config.json").write_text("[]")
+            with self.assertRaises(engine.IntakeRejected) as caught:
+                engine.configure(source, FIXTURE, self.tmp / "wrong-prior-output",
+                                 "maintenance-coordinator")
+            self.assertIn("JSON document must be an object", caught.exception.render())
+
+            appender = self.tmp / "wrong-appender"; appender.mkdir()
+            owner = self.tmp / "wrong-owner"; owner.mkdir()
+            (appender / "seat-config.json").write_text("[]")
+            (owner / "seat-config.json").write_text("{}")
+            with self.assertRaises(engine.IntakeRejected) as caught:
+                engine.apply_persisted_append(appender, owner, "plan")
+            self.assertIn("appender.seat-config.json", caught.exception.render())
+
+            (appender / "seat-config.json").write_text(json.dumps({
+                "cross_seat": {"append_plans": []},
+            }))
+            (owner / "seat-config.json").write_text("[]")
+            with self.assertRaises(engine.IntakeRejected) as caught:
+                engine.apply_persisted_append(appender, owner, "plan")
+            self.assertIn("owner.seat-config.json", caught.exception.render())
+
+            (owner / "seat-config.json").write_text(json.dumps({"seat": "maintenance-coordinator"}))
+            with self.assertRaises(engine.IntakeRejected) as caught:
+                engine.apply_persisted_append(appender, owner, "plan")
+            self.assertIn("append_plans must be an object", caught.exception.render())
+
+            plan = {
+                "plan_id": "plan", "status": "planned",
+                "owner_seat": "maintenance-coordinator", "owner_question_id": "D4",
+                "appender_seat": "turnover-coordinator", "appender_question_id": "C5",
+                "value_name": "vendor", "value": "Vendor One", "value_sha256": "sha",
+                "owner_target_path": "/derived/roster/vendors",
+            }
+            (appender / "seat-config.json").write_text(json.dumps({
+                "cross_seat": {"append_plans": {"plan": plan}},
+            }))
+            (owner / "seat-config.json").write_text(json.dumps({
+                "seat": "maintenance-coordinator",
+                "seat_config_schema": {"name": engine.cross_seat.SCHEMA_NAME, "version": "two"},
+                "derived": {"roster": {"vendors": []}},
+            }))
+            with self.assertRaises(engine.IntakeRejected) as caught:
+                engine.apply_persisted_append(appender, owner, "plan")
+            self.assertIn("invalid seat schema", caught.exception.render())
+        finally:
+            engine.SUPPORTED["maintenance-coordinator"]["mapping"] = original
+
+    def test_named_declared_structured_filename_materializes_through_production_configure(self):
         mapping = json.loads(engine.SUPPORTED["maintenance-coordinator"]["mapping"].read_text())
         mapping["structured_answers_file"] = "accounting-config.json"
         path = self.tmp / "declared-artifact-mapping.json"; path.write_text(json.dumps(mapping))
@@ -177,10 +347,161 @@ class ExtensionApplierTests(unittest.TestCase):
         try:
             source = self.tmp / "declared-artifact-source"; prepare_raw(source)
             output = self.tmp / "declared-artifact-output"
+            engine.configure(source, FIXTURE, output, "maintenance-coordinator")
+            self.assertTrue((output / "accounting-config.json").is_file())
+            self.assertFalse((output / "seat-config.json").exists())
+            payload = json.loads((output / "accounting-config.json").read_text())
+            self.assertEqual(payload["configuration_engine"]["version"], engine.ENGINE_VERSION)
+        finally:
+            engine.SUPPORTED["maintenance-coordinator"]["mapping"] = original
+
+    def test_named_custom_declared_filename_create_then_reconfigure_uses_fresh_core_output(self):
+        print("ARMED: custom declared filename create-then-reconfigure uses fresh core output")
+        mapping = json.loads(engine.SUPPORTED["maintenance-coordinator"]["mapping"].read_text())
+        mapping["structured_answers_file"] = "accounting-config.json"
+        path = self.tmp / "sequential-declared-artifact-mapping.json"
+        path.write_text(json.dumps(mapping))
+        original = engine.SUPPORTED["maintenance-coordinator"]["mapping"]
+        engine.SUPPORTED["maintenance-coordinator"]["mapping"] = path
+        try:
+            source = self.tmp / "sequential-declared-artifact-source"; prepare_raw(source)
+            output = self.tmp / "sequential-declared-artifact-output"
+            engine.configure(source, FIXTURE, output, "maintenance-coordinator")
+            declared = output / "accounting-config.json"
+            stale = json.loads(declared.read_text())
+            stale["stale_source_marker"] = True
+            declared.write_text(json.dumps(stale, indent=2) + "\n")
+
+            engine.configure(output, FIXTURE, output, "maintenance-coordinator")
+
+            fresh = json.loads(declared.read_text())
+            self.assertNotIn("stale_source_marker", fresh)
+            self.assertEqual(fresh["configuration_engine"]["version"], engine.ENGINE_VERSION)
+            self.assertFalse((output / "seat-config.json").exists())
+        finally:
+            engine.SUPPORTED["maintenance-coordinator"]["mapping"] = original
+
+    def test_named_pointer_config_rerun_uses_production_resolver_deterministically(self):
+        mapping = json.loads(engine.SUPPORTED["maintenance-coordinator"]["mapping"].read_text())
+        mapping["cross_seat"] = {"pointers": [{
+            "value_name": "org_timezone", "owner_seat": "leasing",
+            "owner_question_id": "B8", "holding_question_id": "A3",
+            "owner_value_path": "/answers/B8",
+        }]}
+        mapping["config_keys"] = [{
+            "path": "/timezone", "value_from": "pointer", "pointer_name": "org_timezone",
+            "fallback": "America/Denver", "value_type": "string", "mode": "replace",
+        }]
+        mapping_path = self.tmp / "rerun-pointer-mapping.json"
+        mapping_path.write_text(json.dumps(mapping))
+        original = engine.SUPPORTED["maintenance-coordinator"]["mapping"]
+        engine.SUPPORTED["maintenance-coordinator"]["mapping"] = mapping_path
+        try:
+            outputs = []
+            for number in (1, 2):
+                source = self.tmp / f"rerun-pointer-source-{number}"
+                output = self.tmp / f"rerun-pointer-output-{number}"
+                prepare_raw(source)
+                engine.configure(source, FIXTURE, output, "maintenance-coordinator", seat_registry={})
+                engine.configure(output, FIXTURE, output, "maintenance-coordinator", seat_registry={})
+                outputs.append(output)
+            self.assertEqual(manifest_bytes(outputs[0]), manifest_bytes(outputs[1]))
+            self.assertEqual(json.loads((outputs[0] / "config.json").read_text())["timezone"],
+                             "America/Denver")
+            managed = json.loads((outputs[0] / "seat-config.json").read_text())["configuration_engine"]["managed_surfaces"]
+            pointer_rows = [row for row in managed if row.get("question_id") == "pointer:org_timezone"]
+            self.assertEqual(len(pointer_rows), 1)
+            self.assertEqual(pointer_rows[0]["resolution"], "held_fallback")
+        finally:
+            engine.SUPPORTED["maintenance-coordinator"]["mapping"] = original
+
+    def test_named_pointer_config_replace_absent_rejects_and_declared_create_creates(self):
+        mapping = json.loads(engine.SUPPORTED["maintenance-coordinator"]["mapping"].read_text())
+        mapping["cross_seat"] = {"pointers": [{
+            "value_name": "org_timezone", "owner_seat": "leasing",
+            "owner_question_id": "B8", "holding_question_id": "A3",
+            "owner_value_path": "/answers/B8",
+        }]}
+        row = {
+            "path": "/pointer_only", "value_from": "pointer", "pointer_name": "org_timezone",
+            "fallback": "America/Denver", "value_type": "string", "mode": "replace",
+        }
+        mapping["config_keys"].append(row)
+        mapping_path = self.tmp / "commit-mode-mapping.json"
+        original = engine.SUPPORTED["maintenance-coordinator"]["mapping"]
+        engine.SUPPORTED["maintenance-coordinator"]["mapping"] = mapping_path
+        try:
+            replace_source = self.tmp / "replace-absent-source"; prepare_raw(replace_source)
+            mapping_path.write_text(json.dumps(mapping))
+            rejected = self.tmp / "replace-absent-output"
             with self.assertRaises(engine.IntakeRejected) as caught:
-                engine.configure(source, FIXTURE, output, "maintenance-coordinator")
-            self.assertIn("declared structured artifact accounting-config.json is absent",
-                          caught.exception.render())
+                engine.configure(replace_source, FIXTURE, rejected, "maintenance-coordinator", seat_registry={})
+            self.assertIn("declared replace target is absent", caught.exception.render())
+            self.assertFalse(rejected.exists())
+
+            create_source = self.tmp / "declared-create-source"; prepare_raw(create_source)
+            mapping["config_keys"][-1]["mode"] = "create"
+            mapping_path.write_text(json.dumps(mapping))
+            created = self.tmp / "declared-create-output"
+            engine.configure(create_source, FIXTURE, created, "maintenance-coordinator", seat_registry={})
+            self.assertEqual(json.loads((created / "config.json").read_text())["pointer_only"],
+                             "America/Denver")
+        finally:
+            engine.SUPPORTED["maintenance-coordinator"]["mapping"] = original
+
+    def test_named_pointer_replace_missing_intermediate_is_a_structured_row_rejection(self):
+        print("ARMED: pointer replace missing intermediate names row and parent segment")
+        mapping = json.loads(engine.SUPPORTED["maintenance-coordinator"]["mapping"].read_text())
+        mapping["cross_seat"] = {"pointers": [{
+            "value_name": "org_timezone", "owner_seat": "leasing",
+            "owner_question_id": "B8", "holding_question_id": "A3",
+            "owner_value_path": "/answers/B8",
+        }]}
+        pointer = "/missing_parent/pointer_only"
+        mapping["config_keys"].append({
+            "path": pointer, "value_from": "pointer", "pointer_name": "org_timezone",
+            "fallback": "America/Denver", "value_type": "string", "mode": "replace",
+        })
+        mapping_path = self.tmp / "missing-intermediate-mapping.json"
+        mapping_path.write_text(json.dumps(mapping))
+        original = engine.SUPPORTED["maintenance-coordinator"]["mapping"]
+        engine.SUPPORTED["maintenance-coordinator"]["mapping"] = mapping_path
+        try:
+            source = self.tmp / "missing-intermediate-source"; prepare_raw(source)
+            output = self.tmp / "missing-intermediate-output"
+            with self.assertRaises(engine.IntakeRejected) as caught:
+                engine.configure(source, FIXTURE, output, "maintenance-coordinator", seat_registry={})
+            rendered = caught.exception.render()
+            self.assertIn(f"mapping.config_keys.{pointer}", rendered)
+            self.assertIn("missing parent segment 'missing_parent'", rendered)
+            self.assertFalse(output.exists())
+        finally:
+            engine.SUPPORTED["maintenance-coordinator"]["mapping"] = original
+
+    def test_named_uncoercible_pointer_value_is_a_structured_row_rejection(self):
+        mapping = json.loads(engine.SUPPORTED["maintenance-coordinator"]["mapping"].read_text())
+        mapping["cross_seat"] = {"pointers": [{
+            "value_name": "turn_target", "owner_seat": "leasing",
+            "owner_question_id": "B1", "holding_question_id": "A3",
+            "owner_value_path": "/answers/B1",
+        }]}
+        mapping["config_keys"].append({
+            "path": "/turn_target_days", "value_from": "pointer",
+            "pointer_name": "turn_target", "fallback": "not-an-integer",
+            "value_type": "integer", "mode": "replace",
+        })
+        mapping_path = self.tmp / "uncoercible-pointer-mapping.json"
+        mapping_path.write_text(json.dumps(mapping))
+        original = engine.SUPPORTED["maintenance-coordinator"]["mapping"]
+        engine.SUPPORTED["maintenance-coordinator"]["mapping"] = mapping_path
+        try:
+            source = self.tmp / "uncoercible-pointer-source"; prepare_raw(source)
+            output = self.tmp / "uncoercible-pointer-output"
+            with self.assertRaises(engine.IntakeRejected) as caught:
+                engine.configure(source, FIXTURE, output, "maintenance-coordinator", seat_registry={})
+            rendered = caught.exception.render()
+            self.assertIn("mapping.config_keys./turn_target_days", rendered)
+            self.assertIn("pointer value coercion failed", rendered)
             self.assertFalse(output.exists())
         finally:
             engine.SUPPORTED["maintenance-coordinator"]["mapping"] = original

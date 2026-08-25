@@ -13,3 +13,5 @@
 Only `maintenance-coordinator` is currently mapped. Any other seat rejects until Lane 2 installs its reviewed mapping and library. Drive retrieval is intentionally parked; file intake is the v1 path.
 
 Schema-v2 mappings may emit cross-seat owner-append plans. After the appender transaction succeeds, inspect its `seat-config.json` for `cross_seat.append_plans` and run `python3 apply_append.py APPENDER_AGENT_DIR OWNER_AGENT_DIR PLAN_ID`. The owner apply is a separate atomic operation: a crash between operations leaves the plan persisted and visibly `PENDING`, and replay is safe.
+
+If either seat mapping declares a structured filename other than `seat-config.json`, pass the reviewed mapping files with `--appender-mapping APPENDER_MAPPING.json` and `--owner-mapping OWNER_MAPPING.json`. The append operation resolves each participant artifact from its own declaration; it never guesses a structured filename from directory contents.

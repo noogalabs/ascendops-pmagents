@@ -39,6 +39,16 @@ SUPPORTED = {
 IntakeRejected = intake.IntakeRejected
 
 
+def read_member_json(path: Path, subject: str):
+    try:
+        payload = json.loads(path.read_text())
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise IntakeRejected([(subject, f"cannot read valid JSON: {exc}")]) from exc
+    if not isinstance(payload, dict):
+        raise IntakeRejected([(subject, "JSON document must be an object")])
+    return payload
+
+
 def load_core():
     actual = hashlib.sha256(SEALED_CORE.read_bytes()).hexdigest()
     if actual != SEALED_CORE_SHA256:
@@ -131,10 +141,18 @@ def configure(source: Path, answers: Path, output: Path, seat: str,
         raise RuntimeError(f"candidate already exists: {staged}")
       try:
         prepared = staging_root / "prepared-source"
-        core.copy_safe(source, prepared)
+        try:
+            core.copy_safe(source, prepared)
+        except (OSError, shutil.Error) as exc:
+            raise IntakeRejected([("template", f"cannot copy source tree: {exc}")]) from exc
         cover, parsed, raw_cover, raw_answers = (parsed_intake.cover, parsed_intake.answers,
                                                   parsed_intake.raw_cover, parsed_intake.raw_answers)
-        mapping = placeholders.load_mapping(SUPPORTED[seat]["mapping"])
+        try:
+            mapping = placeholders.load_mapping(SUPPORTED[seat]["mapping"])
+        except placeholders.PlaceholderRejected as exc:
+            raise IntakeRejected(exc.failures)
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            raise IntakeRejected([("mapping", f"cannot read valid JSON: {exc}")]) from exc
         try:
             structured_filename = cross_seat.structured_answers_filename(mapping)
         except cross_seat.CrossSeatRejected as exc:
@@ -143,9 +161,17 @@ def configure(source: Path, answers: Path, output: Path, seat: str,
         old_preserved = []
         old_seat = source / structured_filename
         if old_seat.is_file():
-            old_engine = json.loads(old_seat.read_text()).get("configuration_engine", {})
+            old_engine = read_member_json(old_seat, structured_filename).get("configuration_engine", {})
+            if not isinstance(old_engine, dict):
+                raise IntakeRejected([(f"{structured_filename}.configuration_engine",
+                                       "must be an object")])
             old_manifest = old_engine.get("managed_surfaces", [])
             old_preserved = old_engine.get("preserved_runtime_tokens", [])
+            if (not isinstance(old_manifest, list) or any(not isinstance(item, dict) for item in old_manifest)
+                    or not isinstance(old_preserved, list)
+                    or any(not isinstance(item, dict) for item in old_preserved)):
+                raise IntakeRejected([(f"{structured_filename}.configuration_engine",
+                                       "managed surfaces and preserved tokens must be lists of objects")])
             try:
                 cross_seat.validate_compatibility_guards(old_manifest, ENGINE_VERSION)
             except cross_seat.CrossSeatRejected as exc:
@@ -164,23 +190,51 @@ def configure(source: Path, answers: Path, output: Path, seat: str,
                 managed = placeholders.apply_initial(prepared, mapping, raw_cover, raw_answers, core)
         except placeholders.PlaceholderRejected as exc:
             raise IntakeRejected(exc.failures)
-        preserved = (placeholders.verify_preserved_runtime_tokens(prepared, old_preserved)
-                     if old_preserved else placeholders.preserved_runtime_manifest(prepared))
-        configuration_date = run_sealed_core(
-            core, prepared, answers, staged, SUPPORTED[seat]["library"], clock
-        )
+        try:
+            preserved = (placeholders.verify_preserved_runtime_tokens(prepared, old_preserved)
+                         if old_preserved else placeholders.preserved_runtime_manifest(prepared))
+        except placeholders.PlaceholderRejected as exc:
+            raise IntakeRejected(exc.failures)
+        try:
+            configuration_date = run_sealed_core(
+                core, prepared, answers, staged, SUPPORTED[seat]["library"], clock
+            )
+        except RuntimeError as exc:
+            stage = str(exc).partition(":")[0]
+            if stage in {"credential-scan", "parse", "merge"}:
+                raise IntakeRejected([(f"sealed_core.{stage}", str(exc))]) from exc
+            raise
         structured_path = staged / structured_filename
+        core_structured_path = staged / "seat-config.json"
+        if structured_path != core_structured_path and core_structured_path.is_file():
+            if structured_path.exists():
+                source_declared_is_stale_counterpart = (
+                    old_seat.is_file()
+                    and structured_path.is_file()
+                    and structured_path.read_bytes() == old_seat.read_bytes()
+                )
+                if source_declared_is_stale_counterpart:
+                    structured_path.unlink()
+                else:
+                    raise IntakeRejected([(
+                        "structured_answers_file",
+                        f"declared structured artifact {structured_filename} conflicts with core output",
+                    )])
+            core_structured_path.replace(structured_path)
         if not structured_path.is_file():
             raise IntakeRejected([("structured_answers_file",
                                    f"declared structured artifact {structured_filename} is absent")])
-        copy_protected(source, staged)
+        try:
+            copy_protected(source, staged)
+        except (OSError, shutil.Error) as exc:
+            raise IntakeRejected([("protected_state", f"cannot preserve source state: {exc}")]) from exc
         placeholders.verify_preserved_runtime_tokens(staged, preserved)
         doctrine = mapping.get("cross_seat")
         if doctrine is not None:
             if seat_registry is None:
                 raise IntakeRejected([("cross_seat", "schema v2 seam mapping requires an explicit seat registry")])
             seat_path = structured_path
-            seat_payload = json.loads(seat_path.read_text())
+            seat_payload = read_member_json(seat_path, structured_filename)
             try:
                 seam_result = cross_seat.apply(
                     seat_payload, mapping, seat_registry, engine_version=ENGINE_VERSION
@@ -201,9 +255,15 @@ def configure(source: Path, answers: Path, output: Path, seat: str,
                 )
                 config_rows = {row["path"]: row for row in mapping.get("config_keys", [])}
                 for item in pointer_config:
-                    item["value"] = placeholders._typed_value(
-                        config_rows[item["config_path"]], item["value"]
-                    )
+                    try:
+                        item["value"] = placeholders._typed_value(
+                            config_rows[item["config_path"]], item["value"]
+                        )
+                    except ValueError as exc:
+                        raise IntakeRejected([(
+                            f"mapping.config_keys.{item['config_path']}",
+                            f"pointer value coercion failed: {exc}",
+                        )]) from exc
                 placeholders.commit_config_manifest(staged, pointer_config)
             except (cross_seat.CrossSeatRejected, placeholders.PlaceholderRejected) as exc:
                 raise IntakeRejected(exc.failures)
@@ -232,13 +292,22 @@ def configure(source: Path, answers: Path, output: Path, seat: str,
         raise
 
 
-def apply_persisted_append(appender: Path, owner: Path, plan_id: str):
+def apply_persisted_append(appender: Path, owner: Path, plan_id: str,
+                           *, appender_mapping=None, owner_mapping=None):
     """Replay one appender-owned plan through an atomic owner-directory transaction."""
-    appender_seat = appender / "seat-config.json"
-    owner_seat = owner / "seat-config.json"
+    try:
+        appender_filename = cross_seat.structured_answers_filename(appender_mapping or {})
+        owner_filename = cross_seat.structured_answers_filename(owner_mapping or {})
+    except cross_seat.CrossSeatRejected as exc:
+        raise IntakeRejected(exc.failures)
+    appender_seat = appender / appender_filename
+    owner_seat = owner / owner_filename
     if not appender_seat.is_file() or not owner_seat.is_file():
-        raise IntakeRejected([("append-plan", "appender and owner seat-config.json files are required")])
-    appender_payload = json.loads(appender_seat.read_text())
+        raise IntakeRejected([(
+            "append-plan",
+            f"declared structured artifacts {appender_filename} and {owner_filename} are required",
+        )])
+    appender_payload = read_member_json(appender_seat, f"appender.{appender_filename}")
     owner.parent.mkdir(parents=True, exist_ok=True)
     with transaction.DestinationLock(owner):
         transaction.recover_directory_transaction(owner)
@@ -247,8 +316,8 @@ def apply_persisted_append(appender: Path, owner: Path, plan_id: str):
             raise RuntimeError(f"append candidate already exists: {staged}")
         try:
             shutil.copytree(owner, staged, symlinks=True)
-            staged_path = staged / "seat-config.json"
-            staged_payload = json.loads(staged_path.read_text())
+            staged_path = staged / owner_filename
+            staged_payload = read_member_json(staged_path, f"owner.{owner_filename}")
             try:
                 updated, changed = cross_seat.apply_append_plan(
                     staged_payload, appender_payload, plan_id, engine_version=ENGINE_VERSION
