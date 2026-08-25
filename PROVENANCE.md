@@ -27,3 +27,12 @@ The first seed is accepted only with a zero hygiene census and no baseline file.
 ## E3 re-anchor
 
 The E3 delta from reviewed head `c4d2cd9c` maps the org-side glue subtree to the flattened `engine/*` product surface. `engine.py` retains the seeded `editions/maintenance/` paths; the two changed test files retain their checked-in, history-free fixtures. E3 documentation uses member-facing product and mapping-table names. The seven artifact rows added for this re-anchor bind every org-side source hash to its landed destination hash, while the org-private locator table retains the original source paths.
+
+## Guided setup wrapper
+
+The root `setup.py` entry point, its rejection-renderer census, README guidance,
+and wrapper tests are product-native files authored in this repository. They
+delegate to the reviewed engine without changing its output bytes or the sealed
+maintenance configurator. Their review custody is the PMAgents pull request and
+exact-head CI; they do not claim an org-side source hash in the imported-source
+TSV.

@@ -14,3 +14,25 @@ The repository starts with the reviewed maintenance edition and the six-seat map
 - `ci/` and `.github/` — hygiene and regression gates.
 
 See `engine/HOW-TO-RUN.md` for the operator flow. This repository contains product files only; internal walkthrough transcripts and build evidence remain in the org-private retention area named in `PROVENANCE.md`.
+
+## Guided member setup
+
+From the repository root, run this one command:
+
+```sh
+python3 setup.py
+```
+
+The setup interview offers the installed edition, asks where the clean template
+and configured agent should live, and then walks the questionnaire in plain
+language. Enter `unsure` to mark an answer for later confirmation; the generated
+agent skips features that depend on it. If setup stops, run the same command and
+choose the same answers file to resume. Existing configured agents are safely
+reconfigured through the same flow rather than overwritten as new installs.
+
+On success, setup prints the configured agent directory and the next review
+step. On rejection, it shows the engine's exact row plus a plain-language fix;
+unknown rows remain visible for support. See [the renderer census](docs/rejection-renderer.md).
+
+Supported today: macOS and Linux with Python 3. Windows is not yet a supported
+runner platform.
