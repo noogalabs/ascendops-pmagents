@@ -1,0 +1,158 @@
+name: Leak Guard
+
+# Server-side operational-leak backstop. Runs on every PR (incl. forks) and on
+# push to main, so it covers the paths a LOCAL pre-push hook cannot: fork PRs
+# and GitHub UI-merges. Intended to be a REQUIRED status check on main.
+#
+# SECURITY: uses `pull_request` (NOT `pull_request_target`) so fork PRs run with
+# a read-only token and NO repo secrets — the scanner only needs to read the
+# diff and fail. pull_request_target would expose secrets to untrusted fork code.
+#
+# SECURITY (F1): on pull_request the enforcement scan executes the guard script
+# from the PROTECTED BASE BRANCH (origin/$BASE_REF), never the PR's checked-out
+# copy — otherwise a PR could neuter the guard (`exit 0`) and leak in the same
+# change. The falsifiability-test step below still runs the PR's own guard/test
+# pair; it is a development aid, NOT the enforcement boundary.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  leak-guard:
+    name: Operational-leak scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Select trusted guard (base-branch copy on PRs)
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          EVENT_NAME: ${{ github.event_name }}
+          ALLOW_BOOTSTRAP: ${{ vars.LEAK_GUARD_ALLOW_BOOTSTRAP }}
+        run: |
+          # BEGIN leak-guard-trusted-artifact-selection
+          BASELINE_NAME="leak-guard-bare-first-name-baseline.tsv"
+          TRUSTED_BASELINE="$RUNNER_TEMP/$BASELINE_NAME"
+          rm -f "$TRUSTED_BASELINE"
+          copy_baseline_from_ref() {
+            local ref="$1" subject="$ref:.github/scripts/$BASELINE_NAME"
+            if git cat-file -e "$subject" 2>/dev/null; then
+              git show "$subject" > "$TRUSTED_BASELINE"
+            fi
+          }
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            git fetch origin "$BASE_REF" --quiet
+            if git show "origin/$BASE_REF:.github/scripts/leak-guard.sh" > "$RUNNER_TEMP/leak-guard-trusted.sh" 2>/dev/null; then
+              echo "Using trusted guard from origin/$BASE_REF"
+              # The guard resolves its exact-site ratchet beside its own trusted
+              # copy. Keep the guard and baseline in one custody unit; copying
+              # only the script silently turns an existing baseline into zero.
+              copy_baseline_from_ref "origin/$BASE_REF"
+            elif [ "$ALLOW_BOOTSTRAP" = "1" ]; then
+              # Bootstrap ESCAPE HATCH (one-time): the base branch predates the
+              # guard (the first guard-introducing PR). An admin sets repo var
+              # LEAK_GUARD_ALLOW_BOOTSTRAP=1 for that single run, then clears it.
+              echo "::warning::LEAK_GUARD_ALLOW_BOOTSTRAP set — one-time bootstrap, using the PR's copy"
+              cp .github/scripts/leak-guard.sh "$RUNNER_TEMP/leak-guard-trusted.sh"
+              [ ! -f ".github/scripts/$BASELINE_NAME" ] || cp ".github/scripts/$BASELINE_NAME" "$TRUSTED_BASELINE"
+            else
+              # FAIL CLOSED: never run the PR's own (untrusted) guard. To land the
+              # first guard-introducing PR, set repo var LEAK_GUARD_ALLOW_BOOTSTRAP=1
+              # for that one run.
+              echo "::error::origin/$BASE_REF has no trusted leak-guard.sh — failing closed (refusing to run the PR's own guard)."
+              exit 1
+            fi
+          else
+            # Push scans the full tracked tree, while pull requests scan changed
+            # blobs. The exact-site baseline therefore covers their union: it is
+            # consulted on both events, and every site outside it fails.
+            cp .github/scripts/leak-guard.sh "$RUNNER_TEMP/leak-guard-trusted.sh"
+            [ ! -f ".github/scripts/$BASELINE_NAME" ] || cp ".github/scripts/$BASELINE_NAME" "$TRUSTED_BASELINE"
+          fi
+          chmod +x "$RUNNER_TEMP/leak-guard-trusted.sh"
+          # END leak-guard-trusted-artifact-selection
+
+      - name: Scan for operational leaks
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          GUARD="$RUNNER_TEMP/leak-guard-trusted.sh"
+          # (F2) Historical name, deliberate pass-through behavior. Every path in
+          # the Git diff/tree is tracked and therefore ships publicly, including a
+          # path shaped like private runtime. Preserve every tracked path here and
+          # let scan_file() report private-looking paths as leaks. Genuinely-private
+          # runtime is gitignored and never enters this list. The explicit cases
+          # document that public org carve-outs and private-looking tracked paths
+          # receive the same fail-safe treatment. (F3) NUL-delimited end to end so
+          # filenames with spaces are scanned, not silently skipped.
+          filter_private() {
+            while IFS= read -r -d '' f; do
+              case "$f" in
+                orgs/*/docs/durable/*|orgs/*/knowledge.md|orgs/*/research-artifacts/.gitignore) printf '%s\0' "$f" ;;
+                orgs/*|.agent/*|agents/*/memory/*|agents/*/local/*|agents/*/telegram-images/*) printf '%s\0' "$f" ;;
+                *) printf '%s\0' "$f" ;;
+              esac
+            done
+          }
+          # BEGIN leak-guard-subject-filter
+          # Direct mode accepts file/symlink subjects only. Gitlinks are tracked
+          # commit references, not blobs, and appear as checkout directories.
+          # Keep them out of the caller's content population rather than
+          # weakening the guard's strict subject validation.
+          filter_scannable_changed_subjects() {
+            local ref="$1" f mode
+            while IFS= read -r -d '' f; do
+              if ! mode=$(git ls-tree --format='%(objectmode)' "$ref" -- "$f") || [ -z "$mode" ]; then
+                echo "::error::Unable to resolve changed scan subject in $ref: $f" >&2
+                return 2
+              fi
+              case "$mode" in
+                100644|100755|120000) printf '%s\0' "$f" ;;
+              esac
+            done
+          }
+          list_scannable_tree_subjects() {
+            local ref="$1" entry mode path tree_list
+            tree_list=$(mktemp "${RUNNER_TEMP:-/tmp}/leak-guard-subjects.XXXXXX")
+            if ! git ls-tree -r -z "$ref" > "$tree_list"; then
+              rm -f "$tree_list"
+              echo "::error::Unable to enumerate scan subjects in tree $ref" >&2
+              return 2
+            fi
+            while IFS= read -r -d '' entry; do
+              mode=${entry%% *}
+              path=${entry#*$'\t'}
+              case "$mode" in
+                100644|100755|120000) printf '%s\0' "$path" ;;
+              esac
+            done < "$tree_list"
+            rm -f "$tree_list"
+          }
+          # END leak-guard-subject-filter
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            git fetch origin "$BASE_REF" --quiet
+            git diff -z --name-only --diff-filter=ACMRT "origin/$BASE_REF"...HEAD \
+              | filter_scannable_changed_subjects HEAD \
+              | filter_private > "$RUNNER_TEMP/scan-list.z"
+          else
+            # Push to main: scan the full tracked surface.
+            list_scannable_tree_subjects HEAD \
+              | filter_private > "$RUNNER_TEMP/scan-list.z"
+          fi
+          if [ ! -s "$RUNNER_TEMP/scan-list.z" ]; then
+            echo "No tracked files in the change set."
+            exit 0
+          fi
+          echo "Scanning:"
+          tr '\0' '\n' < "$RUNNER_TEMP/scan-list.z"
+          xargs -0 -r "$GUARD" < "$RUNNER_TEMP/scan-list.z"
+
+      - name: Prove the scanner (falsifiability test)
+        run: bash tests/leak-guard.test.sh

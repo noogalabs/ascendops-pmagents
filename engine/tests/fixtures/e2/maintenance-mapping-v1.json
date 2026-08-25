@@ -1,0 +1,18 @@
+{
+  "seat": "maintenance-coordinator",
+  "library_id": "maintenance-2026-08-23",
+  "source_table": "mapping-tables/maintenance.md",
+  "source_table_sha256": "b9542904c30a57f22099aaadd3ee4c72f2424f1579f63e97868ed74ac96efc5c",
+  "placeholders": [
+    {"placeholder": "approval_threshold", "source": "B1", "extractor": "currency"},
+    {"placeholder": "triage_sla_minutes", "source": "B5", "extractor": "emergency_minutes"},
+    {"placeholder": "property_manager_name", "source": "C1", "extractor": "first_person"},
+    {"placeholder": "platform", "source": "D1", "extractor": "maintenance_platform"},
+    {"placeholder": "day_mode_start", "source": "B8", "extractor": "window_start"},
+    {"placeholder": "day_mode_end", "source": "B8", "extractor": "window_end"},
+    {"placeholder": "timezone", "source": "cover.timezone", "extractor": "identity"},
+    {"placeholder": "company_name", "source": "cover.company_name", "extractor": "identity"},
+    {"placeholder": "org_name", "source": "cover.org_short_name", "extractor": "identity"},
+    {"placeholder": "forward_email", "source": "cover.forward_email", "extractor": "identity"}
+  ]
+}

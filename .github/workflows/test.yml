@@ -1,0 +1,23 @@
+name: PMAgents tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - name: Member hygiene census
+        run: python3 ci/member-hygiene.py
+      - name: Hygiene falsifiability tests
+        run: python3 ci/test-member-hygiene.py
+      - name: Engine and frozen-baseline suites
+        run: python3 -m unittest discover -s engine/tests -p 'test_*.py'
+      - name: Sealed maintenance configurator suite
+        run: python3 -m unittest editions/maintenance/tests/test_configurator.py

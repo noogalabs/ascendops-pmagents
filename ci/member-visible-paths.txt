@@ -1,0 +1,26 @@
+# Independent member-visible file census; one tracked path per line.
+PROVENANCE.md
+README.md
+editions/maintenance/answers-format.md
+editions/maintenance/fixtures/ridgeline-maintenance-answers.md
+editions/maintenance/library-src/coordinator-scope-playbook.md
+editions/maintenance/library-src/invoice-review-example.md
+editions/maintenance/library-src/maintenance-auto-send-message-library.md
+editions/maintenance/library-src/maintenance-coordinator-judgment-guide.md
+editions/maintenance/library-src/occupied-unit-maintenance-board.md
+editions/maintenance/library-src/occupied-unit-maintenance-workflow.md
+engine/E2-SCHEMA.md
+engine/HOW-TO-RUN.md
+engine/MERGE-POLICY.md
+fixtures/ridgeline/accounting-answers.md
+fixtures/ridgeline/bd-answers.md
+fixtures/ridgeline/leasing-answers.md
+fixtures/ridgeline/maintenance-answers.md
+fixtures/ridgeline/pm-assist-answers.md
+fixtures/ridgeline/turnover-answers.md
+mapping-tables/accounting.md
+mapping-tables/bd.md
+mapping-tables/leasing.md
+mapping-tables/maintenance.md
+mapping-tables/pm-assist.md
+mapping-tables/turnover.md
