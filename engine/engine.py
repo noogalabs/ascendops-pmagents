@@ -170,6 +170,14 @@ def configure(source: Path, answers: Path, output: Path, seat: str,
             core, prepared, answers, staged, SUPPORTED[seat]["library"], clock
         )
         structured_path = staged / structured_filename
+        core_structured_path = staged / "seat-config.json"
+        if structured_path != core_structured_path and core_structured_path.is_file():
+            if structured_path.exists():
+                raise IntakeRejected([(
+                    "structured_answers_file",
+                    f"declared structured artifact {structured_filename} conflicts with core output",
+                )])
+            core_structured_path.replace(structured_path)
         if not structured_path.is_file():
             raise IntakeRejected([("structured_answers_file",
                                    f"declared structured artifact {structured_filename} is absent")])

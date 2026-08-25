@@ -352,7 +352,11 @@ def apply(current, mapping, registry, *, engine_version):
             for participant in participants:
                 seat = participant["seat"]
                 payload = result if seat == result.get("seat") else peers[seat]
+                if seat != result.get("seat"):
+                    _validate_peer_version(seat, payload, engine_version)
                 values.append((seat, participant["path"], _read_pointer(payload, participant["path"])))
+        except CrossSeatRejected as exc:
+            failures.extend(exc.failures); continue
         except (KeyError, IndexError, TypeError, ValueError) as exc:
             failures.append((f"cross_seat.all_pairs.{check_id}", f"participant unresolvable: {exc}")); continue
         failing = []
@@ -519,6 +523,7 @@ def resolve_pointer_config_rows(current, mapping, registry, *, engine_version):
             "row_type": "config_key", "config_path": row["path"],
             "question_id": f"pointer:{name}", "file": "config.json#" + row["path"],
             "count": 1, "value": value, "resolution": state, "owner_seat": owner,
+            "mode": row.get("mode", "replace"),
         })
     if failures:
         raise CrossSeatRejected(failures)

@@ -281,6 +281,28 @@ class CrossSeatTests(unittest.TestCase):
         self.assertEqual((record["pair_count"], record["failing_pair_count"]), (15, 13))
         self.assertEqual(len(result.report_items), 13)
 
+    def test_named_all_pairs_rejects_a_version_skewed_peer(self):
+        owner = self.owner(version="2.0.0")
+        payload = json.loads((owner / "seat-config.json").read_text())
+        payload["derived"] = {"name": "A"}
+        (owner / "seat-config.json").write_text(json.dumps(payload))
+        current = {**self.current, "derived": {"name": "A"}}
+        mapping = {"cross_seat": {"all_pairs": [{
+            "check_id": "versioned-pair",
+            "participants": [
+                {"seat": current["seat"], "path": "/derived/name"},
+                {"seat": "maintenance-coordinator", "path": "/derived/name"},
+            ],
+        }]}}
+        with self.assertRaises(cross_seat.CrossSeatRejected) as caught:
+            cross_seat.apply(
+                current,
+                mapping,
+                {"maintenance-coordinator": owner},
+                engine_version="1.1.0",
+            )
+        self.assertIn("newer than reader", str(caught.exception.failures))
+
     def test_named_fill_exempt_set_and_lane_shape_are_durable(self):
         mapping = {"cross_seat": {
             "fill_exempt": ["quotable_standards", "packages"],

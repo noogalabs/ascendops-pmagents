@@ -194,13 +194,26 @@ def _plan_config_keys_initial(root, mapping, cover, answers, core):
     return path, manifest
 
 
-def _commit_config_keys(path, manifest):
+def _commit_config_keys(path, manifest, *, mode_by_path=None):
     if path is None:
         return
+    mode_by_path = mode_by_path or {}
     data = json.loads(path.read_text())
     for item in manifest:
-        node, leaf = _pointer_parent(data, item["config_path"], create=True)
+        pointer = item["config_path"]
+        mode = mode_by_path.get(pointer, item.get("mode", "replace"))
+        node, leaf = _pointer_parent(data, pointer, create=mode == "create")
+        exists = ((isinstance(node, list) and isinstance(leaf, int) and 0 <= leaf < len(node))
+                  or (isinstance(node, dict) and leaf in node))
+        if not exists and mode != "create":
+            raise PlaceholderRejected([
+                (f"mapping.config_keys.{pointer}", "declared replace target is absent")
+            ])
         if isinstance(node, list):
+            if not exists:
+                raise PlaceholderRejected([
+                    (f"mapping.config_keys.{pointer}", "create mode cannot extend arrays")
+                ])
             node[leaf] = item["value"]
         else:
             node[leaf] = item["value"]
@@ -266,7 +279,12 @@ def apply_initial(root: Path, mapping, cover, answers, core):
                 path.write_text(text.replace(token, marker))
                 manifest.append({"placeholder": name, "question_id": row["source"], "file": relative, "count": count, "value": value})
     if config_path is not None:
-        _commit_config_keys(config_path, config_manifest)
+        _commit_config_keys(
+            config_path,
+            config_manifest,
+            mode_by_path={row["path"]: row.get("mode", "replace")
+                          for row in mapping.get("config_keys", [])},
+        )
     manifest.extend(config_manifest)
     return manifest
 
@@ -315,6 +333,10 @@ def apply_rerun(root: Path, mapping, cover, answers, core, old_manifest):
                 current = node[leaf]
                 if current != item.get("value"):
                     raise ValueError("managed config value changed outside the engine")
+                if row.get("value_from") == "pointer":
+                    # Cross-seat state must be rebuilt before resolving this row.
+                    # The initial and rerun paths therefore share one resolver.
+                    continue
                 value = _typed_value(row, extract(row, cover, answers, core))
                 node[leaf] = value
                 path.write_text(json.dumps(data, indent=2) + "\n")
