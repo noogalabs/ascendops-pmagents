@@ -15,14 +15,22 @@ class PlaceholderRejected(RuntimeError):
 
 def load_mapping(path: Path):
     data = json.loads(path.read_text())
+    if not isinstance(data, dict):
+        raise PlaceholderRejected([("mapping", "mapping document must be an object")])
     schema_version = data.get("schema_version", 1)
     if not isinstance(schema_version, int) or schema_version < 1:
         raise PlaceholderRejected([("mapping.schema_version", "schema version must be a positive integer")])
     rows = data.get("placeholders", [])
+    if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+        raise PlaceholderRejected([("mapping.placeholders", "must be a list of row objects")])
     names = [row.get("placeholder") for row in rows]
     if not rows or len(names) != len(set(names)):
         raise PlaceholderRejected([("mapping", "placeholder rows are missing or duplicated")])
     config_rows = data.get("config_keys", [])
+    if not isinstance(config_rows, list) or any(not isinstance(row, dict) for row in config_rows):
+        raise PlaceholderRejected([("mapping.config_keys", "must be a list of row objects")])
+    if data.get("cross_seat") is not None and not isinstance(data["cross_seat"], dict):
+        raise PlaceholderRejected([("mapping.cross_seat", "must be an object")])
     config_paths = [row.get("path") for row in config_rows]
     failures = []
     if len(config_paths) != len(set(config_paths)):

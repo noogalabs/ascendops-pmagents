@@ -39,7 +39,7 @@ SUPPORTED = {
 IntakeRejected = intake.IntakeRejected
 
 
-def _read_member_json(path: Path, subject: str):
+def read_member_json(path: Path, subject: str):
     try:
         payload = json.loads(path.read_text())
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
@@ -161,15 +161,17 @@ def configure(source: Path, answers: Path, output: Path, seat: str,
         old_preserved = []
         old_seat = source / structured_filename
         if old_seat.is_file():
-            old_engine = _read_member_json(old_seat, structured_filename).get("configuration_engine", {})
+            old_engine = read_member_json(old_seat, structured_filename).get("configuration_engine", {})
             if not isinstance(old_engine, dict):
                 raise IntakeRejected([(f"{structured_filename}.configuration_engine",
                                        "must be an object")])
             old_manifest = old_engine.get("managed_surfaces", [])
             old_preserved = old_engine.get("preserved_runtime_tokens", [])
-            if not isinstance(old_manifest, list) or not isinstance(old_preserved, list):
+            if (not isinstance(old_manifest, list) or any(not isinstance(item, dict) for item in old_manifest)
+                    or not isinstance(old_preserved, list)
+                    or any(not isinstance(item, dict) for item in old_preserved)):
                 raise IntakeRejected([(f"{structured_filename}.configuration_engine",
-                                       "managed surfaces and preserved tokens must be lists")])
+                                       "managed surfaces and preserved tokens must be lists of objects")])
             try:
                 cross_seat.validate_compatibility_guards(old_manifest, ENGINE_VERSION)
             except cross_seat.CrossSeatRejected as exc:
@@ -232,7 +234,7 @@ def configure(source: Path, answers: Path, output: Path, seat: str,
             if seat_registry is None:
                 raise IntakeRejected([("cross_seat", "schema v2 seam mapping requires an explicit seat registry")])
             seat_path = structured_path
-            seat_payload = json.loads(seat_path.read_text())
+            seat_payload = read_member_json(seat_path, structured_filename)
             try:
                 seam_result = cross_seat.apply(
                     seat_payload, mapping, seat_registry, engine_version=ENGINE_VERSION
@@ -305,7 +307,7 @@ def apply_persisted_append(appender: Path, owner: Path, plan_id: str,
             "append-plan",
             f"declared structured artifacts {appender_filename} and {owner_filename} are required",
         )])
-    appender_payload = _read_member_json(appender_seat, f"appender.{appender_filename}")
+    appender_payload = read_member_json(appender_seat, f"appender.{appender_filename}")
     owner.parent.mkdir(parents=True, exist_ok=True)
     with transaction.DestinationLock(owner):
         transaction.recover_directory_transaction(owner)
@@ -315,7 +317,7 @@ def apply_persisted_append(appender: Path, owner: Path, plan_id: str,
         try:
             shutil.copytree(owner, staged, symlinks=True)
             staged_path = staged / owner_filename
-            staged_payload = _read_member_json(staged_path, f"owner.{owner_filename}")
+            staged_payload = read_member_json(staged_path, f"owner.{owner_filename}")
             try:
                 updated, changed = cross_seat.apply_append_plan(
                     staged_payload, appender_payload, plan_id, engine_version=ENGINE_VERSION

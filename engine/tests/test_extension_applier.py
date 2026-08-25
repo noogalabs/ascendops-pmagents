@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import hashlib, importlib.util, json, shutil, tempfile, unittest
+import hashlib, importlib.util, json, shutil, subprocess, sys, tempfile, unittest
 from datetime import date
 from pathlib import Path
 
@@ -165,6 +165,146 @@ class ExtensionApplierTests(unittest.TestCase):
                 engine.configure(source, FIXTURE, rejected, "maintenance-coordinator",
                                  seat_registry={})
             self.assertFalse(rejected.exists())
+        finally:
+            engine.SUPPORTED["maintenance-coordinator"]["mapping"] = original
+
+    def test_named_peer_metadata_malformed_input_triad_is_structured_and_names_peer(self):
+        print("ARMED: peer metadata unreadable malformed and wrong-shape inputs stay structured")
+        mapping = json.loads(engine.SUPPORTED["maintenance-coordinator"]["mapping"].read_text())
+        mapping["cross_seat"] = {"pointers": [{
+            "value_name": "org_timezone", "owner_seat": "leasing",
+            "owner_question_id": "B8", "holding_question_id": "A3",
+            "owner_value_path": "/answers/B8",
+        }]}
+        mapping_path = self.tmp / "peer-shape-mapping.json"
+        mapping_path.write_text(json.dumps(mapping))
+        original = engine.SUPPORTED["maintenance-coordinator"]["mapping"]
+        engine.SUPPORTED["maintenance-coordinator"]["mapping"] = mapping_path
+        try:
+            cases = {
+                "unreadable": b"\xff",
+                "malformed": b"{",
+                "wrong-document-shape": b"[]",
+                "wrong-engine-shape": json.dumps({
+                    "seat": "leasing", "configuration_engine": [],
+                }).encode(),
+                "wrong-schema-shape": json.dumps({
+                    "seat": "leasing", "seat_config_schema": [],
+                }).encode(),
+            }
+            for label, content in cases.items():
+                with self.subTest(label=label):
+                    peer = self.tmp / f"peer-{label}.json"; peer.write_bytes(content)
+                    source = self.tmp / f"peer-source-{label}"; prepare_raw(source)
+                    output = self.tmp / f"peer-output-{label}"
+                    with self.assertRaises(engine.IntakeRejected) as caught:
+                        engine.configure(
+                            source, FIXTURE, output, "maintenance-coordinator",
+                            seat_registry={"leasing": peer},
+                        )
+                    rendered = caught.exception.render()
+                    self.assertIn("leasing", rendered)
+                    self.assertFalse(output.exists())
+        finally:
+            engine.SUPPORTED["maintenance-coordinator"]["mapping"] = original
+
+    def test_named_append_mapping_malformed_input_triad_is_structured_and_names_file(self):
+        print("ARMED: append mapping unreadable malformed and wrong-shape inputs stay structured")
+        appender = self.tmp / "mapping-triad-appender"; appender.mkdir()
+        owner = self.tmp / "mapping-triad-owner"; owner.mkdir()
+        cases = {
+            "unreadable": None,
+            "malformed": "{",
+            "wrong-shape": "[]",
+        }
+        for label, content in cases.items():
+            with self.subTest(label=label):
+                mapping = self.tmp / f"append-{label}.json"
+                if content is not None:
+                    mapping.write_text(content)
+                completed = subprocess.run([
+                    sys.executable, str(HERE / "apply_append.py"),
+                    str(appender), str(owner), "plan-id",
+                    "--appender-mapping", str(mapping),
+                ], text=True, capture_output=True, check=False)
+                self.assertEqual(completed.returncode, 2, completed.stderr)
+                self.assertIn(f"appender_mapping.{mapping.name}", completed.stdout)
+                self.assertNotIn("Traceback", completed.stderr)
+
+    def test_named_remaining_member_input_surfaces_reject_valid_json_wrong_shapes(self):
+        base_mapping = json.loads(engine.SUPPORTED["maintenance-coordinator"]["mapping"].read_text())
+        original = engine.SUPPORTED["maintenance-coordinator"]["mapping"]
+        try:
+            wrong_mapping = self.tmp / "wrong-shape-mapping.json"; wrong_mapping.write_text("[]")
+            engine.SUPPORTED["maintenance-coordinator"]["mapping"] = wrong_mapping
+            source = self.tmp / "wrong-mapping-source"; prepare_raw(source)
+            with self.assertRaises(engine.IntakeRejected) as caught:
+                engine.configure(source, FIXTURE, self.tmp / "wrong-mapping-output",
+                                 "maintenance-coordinator")
+            self.assertIn("mapping document must be an object", caught.exception.render())
+
+            seam_mapping = dict(base_mapping)
+            seam_mapping["cross_seat"] = {"pointers": [{
+                "value_name": "org_timezone", "owner_seat": "leasing",
+                "owner_question_id": "B8", "holding_question_id": "A3",
+                "owner_value_path": "/answers/B8",
+            }]}
+            seam_path = self.tmp / "wrong-registry-mapping.json"
+            seam_path.write_text(json.dumps(seam_mapping))
+            engine.SUPPORTED["maintenance-coordinator"]["mapping"] = seam_path
+            source = self.tmp / "wrong-registry-source"; prepare_raw(source)
+            with self.assertRaises(engine.IntakeRejected) as caught:
+                engine.configure(source, FIXTURE, self.tmp / "wrong-registry-output",
+                                 "maintenance-coordinator", seat_registry=[])
+            self.assertIn("seat registry must be an object", caught.exception.render())
+
+            engine.SUPPORTED["maintenance-coordinator"]["mapping"] = original
+            source = self.tmp / "wrong-prior-source"; prepare_raw(source)
+            (source / "seat-config.json").write_text("[]")
+            with self.assertRaises(engine.IntakeRejected) as caught:
+                engine.configure(source, FIXTURE, self.tmp / "wrong-prior-output",
+                                 "maintenance-coordinator")
+            self.assertIn("JSON document must be an object", caught.exception.render())
+
+            appender = self.tmp / "wrong-appender"; appender.mkdir()
+            owner = self.tmp / "wrong-owner"; owner.mkdir()
+            (appender / "seat-config.json").write_text("[]")
+            (owner / "seat-config.json").write_text("{}")
+            with self.assertRaises(engine.IntakeRejected) as caught:
+                engine.apply_persisted_append(appender, owner, "plan")
+            self.assertIn("appender.seat-config.json", caught.exception.render())
+
+            (appender / "seat-config.json").write_text(json.dumps({
+                "cross_seat": {"append_plans": []},
+            }))
+            (owner / "seat-config.json").write_text("[]")
+            with self.assertRaises(engine.IntakeRejected) as caught:
+                engine.apply_persisted_append(appender, owner, "plan")
+            self.assertIn("owner.seat-config.json", caught.exception.render())
+
+            (owner / "seat-config.json").write_text(json.dumps({"seat": "maintenance-coordinator"}))
+            with self.assertRaises(engine.IntakeRejected) as caught:
+                engine.apply_persisted_append(appender, owner, "plan")
+            self.assertIn("append_plans must be an object", caught.exception.render())
+
+            plan = {
+                "plan_id": "plan", "status": "planned",
+                "owner_seat": "maintenance-coordinator", "owner_question_id": "D4",
+                "appender_seat": "turnover-coordinator", "appender_question_id": "C5",
+                "value_name": "vendor", "value": "Vendor One", "value_sha256": "sha",
+                "owner_target_path": "/derived/roster/vendors",
+            }
+            (appender / "seat-config.json").write_text(json.dumps({
+                "cross_seat": {"append_plans": {"plan": plan}},
+            }))
+            (owner / "seat-config.json").write_text(json.dumps({
+                "seat": "maintenance-coordinator",
+                "seat_config_schema": {"name": engine.cross_seat.SCHEMA_NAME, "version": "two"},
+                "derived": {"roster": {"vendors": []}},
+            }))
+            with self.assertRaises(engine.IntakeRejected) as caught:
+                engine.apply_persisted_append(appender, owner, "plan")
+            self.assertIn("invalid seat schema", caught.exception.render())
         finally:
             engine.SUPPORTED["maintenance-coordinator"]["mapping"] = original
 

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Apply one persisted cross-seat append plan to its owner seat atomically."""
 import argparse
-import json
 from pathlib import Path
 
 import engine
@@ -15,11 +14,13 @@ def main():
     parser.add_argument("--appender-mapping", type=Path)
     parser.add_argument("--owner-mapping", type=Path)
     args = parser.parse_args()
-    appender_mapping = (json.loads(args.appender_mapping.read_text())
-                        if args.appender_mapping else None)
-    owner_mapping = (json.loads(args.owner_mapping.read_text())
-                     if args.owner_mapping else None)
     try:
+        appender_mapping = (engine.read_member_json(
+            args.appender_mapping, f"appender_mapping.{args.appender_mapping.name}"
+        ) if args.appender_mapping else None)
+        owner_mapping = (engine.read_member_json(
+            args.owner_mapping, f"owner_mapping.{args.owner_mapping.name}"
+        ) if args.owner_mapping else None)
         changed = engine.apply_persisted_append(
             args.appender_agent_dir.resolve(), args.owner_agent_dir.resolve(), args.plan_id,
             appender_mapping=appender_mapping, owner_mapping=owner_mapping,

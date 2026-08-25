@@ -119,11 +119,16 @@ def undeclared_structured_artifacts(root, mapping):
 
 
 def _load_registry(registry):
+    if not isinstance(registry, dict):
+        raise CrossSeatRejected([("registry", "seat registry must be an object")])
     result = {}
     for seat, entry in registry.items():
         if isinstance(entry, dict):
             path = entry.get("path")
-            filename = structured_answers_filename(entry.get("mapping", {}))
+            mapping = entry.get("mapping", {})
+            if not isinstance(mapping, dict):
+                raise CrossSeatRejected([(f"registry.{seat}", "mapping declaration must be an object")])
+            filename = structured_answers_filename(mapping)
         else:
             path = entry
             filename = "seat-config.json"
@@ -133,7 +138,13 @@ def _load_registry(registry):
         if not candidate.is_file():
             raise CrossSeatRejected([(f"registry.{seat}",
                                       f"declared structured artifact {filename} is absent")])
-        payload = json.loads(candidate.read_text())
+        try:
+            payload = json.loads(candidate.read_text())
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            raise CrossSeatRejected([(f"registry.{seat}",
+                                      f"cannot read valid peer JSON: {exc}")]) from exc
+        if not isinstance(payload, dict):
+            raise CrossSeatRejected([(f"registry.{seat}", "peer payload must be an object")])
         if payload.get("seat") != seat:
             raise CrossSeatRejected([(f"registry.{seat}", "seat-config identity mismatch")])
         result[seat] = payload
@@ -164,14 +175,33 @@ def _ordering_passes(left, right, operator):
 
 
 def _validate_peer_version(seat, payload, reader_version):
-    schema = _schema_version(payload)
+    if not isinstance(payload, dict):
+        raise CrossSeatRejected([(f"cross_seat.{seat}", "peer payload must be an object")])
+    seat_schema = payload.get("seat_config_schema")
+    if seat_schema is not None and not isinstance(seat_schema, dict):
+        raise CrossSeatRejected([(f"cross_seat.{seat}",
+                                  "seat_config_schema must be an object")])
+    engine_metadata = payload.get("configuration_engine", {})
+    if not isinstance(engine_metadata, dict):
+        raise CrossSeatRejected([(f"cross_seat.{seat}",
+                                  "configuration_engine must be an object")])
+    try:
+        schema = _schema_version(payload)
+    except (TypeError, ValueError) as exc:
+        raise CrossSeatRejected([(f"cross_seat.{seat}", f"invalid seat schema: {exc}")]) from exc
     if schema > SCHEMA_VERSION:
         raise CrossSeatRejected([(f"cross_seat.{seat}",
                                   f"seat schema {schema} is newer than supported {SCHEMA_VERSION}")])
-    producer = payload.get("configuration_engine", {}).get("version")
-    if producer is not None and _version(producer) > _version(reader_version):
-        raise CrossSeatRejected([(f"cross_seat.{seat}",
-                                  f"owner engine {producer} is newer than reader {reader_version}")])
+    producer = engine_metadata.get("version")
+    if producer is not None:
+        try:
+            producer_version = _version(producer)
+        except (TypeError, ValueError) as exc:
+            raise CrossSeatRejected([(f"cross_seat.{seat}",
+                                      f"invalid producer engine version: {exc}")]) from exc
+        if producer_version > _version(reader_version):
+            raise CrossSeatRejected([(f"cross_seat.{seat}",
+                                      f"owner engine {producer} is newer than reader {reader_version}")])
     return schema
 
 
@@ -532,15 +562,27 @@ def resolve_pointer_config_rows(current, mapping, registry, *, engine_version):
 
 def apply_append_plan(owner, appender, plan_id, *, engine_version):
     """Apply one persisted plan to an owner config in memory, replay-safe by plan id."""
+    if not isinstance(owner, dict):
+        raise CrossSeatRejected([(f"append_plan.{plan_id}", "owner payload must be an object")])
+    if not isinstance(appender, dict):
+        raise CrossSeatRejected([(f"append_plan.{plan_id}", "appender payload must be an object")])
+    appender_cross = appender.get("cross_seat", {})
+    if not isinstance(appender_cross, dict):
+        raise CrossSeatRejected([(f"append_plan.{plan_id}", "appender cross_seat must be an object")])
     owner_result = copy.deepcopy(owner)
-    plans = appender.get("cross_seat", {}).get("append_plans", {})
+    plans = appender_cross.get("append_plans", {})
+    if not isinstance(plans, dict):
+        raise CrossSeatRejected([(f"append_plan.{plan_id}", "append_plans must be an object")])
     plan = plans.get(plan_id)
     if not isinstance(plan, dict) or plan.get("status") != "planned":
         raise CrossSeatRejected([(f"append_plan.{plan_id}", "persisted appender plan is missing or invalid")])
     if owner_result.get("seat") != plan.get("owner_seat"):
         raise CrossSeatRejected([(f"append_plan.{plan_id}", "owner seat identity mismatch")])
     _validate_peer_version(owner_result.get("seat"), owner_result, engine_version)
-    cross = owner_result.setdefault("cross_seat", {})
+    existing_cross = owner_result.get("cross_seat", {})
+    if not isinstance(existing_cross, dict):
+        raise CrossSeatRejected([(f"append_plan.{plan_id}", "owner cross_seat must be an object")])
+    cross = owner_result.setdefault("cross_seat", existing_cross)
     receipts = cross.setdefault("appends", {})
     if plan_id in receipts:
         if receipts[plan_id].get("value_sha256") != plan.get("value_sha256"):
