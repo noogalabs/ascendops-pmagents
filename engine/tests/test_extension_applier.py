@@ -279,6 +279,35 @@ class ExtensionApplierTests(unittest.TestCase):
         finally:
             engine.SUPPORTED["maintenance-coordinator"]["mapping"] = original
 
+    def test_named_pointer_replace_missing_intermediate_is_a_structured_row_rejection(self):
+        print("ARMED: pointer replace missing intermediate names row and parent segment")
+        mapping = json.loads(engine.SUPPORTED["maintenance-coordinator"]["mapping"].read_text())
+        mapping["cross_seat"] = {"pointers": [{
+            "value_name": "org_timezone", "owner_seat": "leasing",
+            "owner_question_id": "B8", "holding_question_id": "A3",
+            "owner_value_path": "/answers/B8",
+        }]}
+        pointer = "/missing_parent/pointer_only"
+        mapping["config_keys"].append({
+            "path": pointer, "value_from": "pointer", "pointer_name": "org_timezone",
+            "fallback": "America/Denver", "value_type": "string", "mode": "replace",
+        })
+        mapping_path = self.tmp / "missing-intermediate-mapping.json"
+        mapping_path.write_text(json.dumps(mapping))
+        original = engine.SUPPORTED["maintenance-coordinator"]["mapping"]
+        engine.SUPPORTED["maintenance-coordinator"]["mapping"] = mapping_path
+        try:
+            source = self.tmp / "missing-intermediate-source"; prepare_raw(source)
+            output = self.tmp / "missing-intermediate-output"
+            with self.assertRaises(engine.IntakeRejected) as caught:
+                engine.configure(source, FIXTURE, output, "maintenance-coordinator", seat_registry={})
+            rendered = caught.exception.render()
+            self.assertIn(f"mapping.config_keys.{pointer}", rendered)
+            self.assertIn("missing parent segment 'missing_parent'", rendered)
+            self.assertFalse(output.exists())
+        finally:
+            engine.SUPPORTED["maintenance-coordinator"]["mapping"] = original
+
     def test_named_uncoercible_pointer_value_is_a_structured_row_rejection(self):
         mapping = json.loads(engine.SUPPORTED["maintenance-coordinator"]["mapping"].read_text())
         mapping["cross_seat"] = {"pointers": [{

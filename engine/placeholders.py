@@ -202,7 +202,16 @@ def _commit_config_keys(path, manifest, *, mode_by_path=None):
     for item in manifest:
         pointer = item["config_path"]
         mode = mode_by_path.get(pointer, item.get("mode", "replace"))
-        node, leaf = _pointer_parent(data, pointer, create=mode == "create")
+        try:
+            node, leaf = _pointer_parent(data, pointer, create=mode == "create")
+        except (KeyError, IndexError, TypeError, ValueError) as exc:
+            if isinstance(exc, KeyError) and exc.args:
+                detail = f"missing parent segment {exc.args[0]!r}"
+            else:
+                detail = f"parent traversal failed: {exc}"
+            raise PlaceholderRejected([
+                (f"mapping.config_keys.{pointer}", detail)
+            ]) from exc
         exists = ((isinstance(node, list) and isinstance(leaf, int) and 0 <= leaf < len(node))
                   or (isinstance(node, dict) and leaf in node))
         if not exists and mode != "create":
