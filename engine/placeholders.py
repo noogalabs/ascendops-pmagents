@@ -34,16 +34,23 @@ def load_mapping(path: Path):
             failures.append((f"mapping.config_keys.{row.get('path')}", "mode must be replace or create"))
         if row.get("value_type", "string") not in {"string", "integer", "number", "boolean"}:
             failures.append((f"mapping.config_keys.{row.get('path')}", "unsupported value_type"))
+        if row.get("value_from") not in {None, "pointer"}:
+            failures.append((f"mapping.config_keys.{row.get('path')}", "value_from must be pointer"))
+        if row.get("value_from") == "pointer" and not isinstance(row.get("pointer_name"), str):
+            failures.append((f"mapping.config_keys.{row.get('path')}", "pointer_name is required"))
     if schema_version >= 2:
         timezone_rows = [row for row in config_rows if row.get("path") == "/timezone"]
         if len(timezone_rows) != 1:
             failures.append(("mapping.config_keys./timezone",
                              "schema v2+ requires exactly one timezone config-key row"))
-        elif not (timezone_rows[0].get("source") == "cover.timezone"
-                  and timezone_rows[0].get("extractor") == "identity"
-                  and timezone_rows[0].get("value_type", "string") == "string"):
+        elif not ((timezone_rows[0].get("source") == "cover.timezone"
+                   and timezone_rows[0].get("extractor") == "identity"
+                   and timezone_rows[0].get("value_type", "string") == "string")
+                  or (timezone_rows[0].get("value_from") == "pointer"
+                      and isinstance(timezone_rows[0].get("pointer_name"), str)
+                      and timezone_rows[0].get("value_type", "string") == "string")):
             failures.append(("mapping.config_keys./timezone",
-                             "timezone row must source cover.timezone as an identity string"))
+                             "timezone row must source cover.timezone or a declared pointer as a string"))
     for row in rows:
         sites = row.get("sites")
         if sites is None:
@@ -152,7 +159,7 @@ def _typed_value(row, value):
 
 
 def _plan_config_keys_initial(root, mapping, cover, answers, core):
-    rows = mapping.get("config_keys", [])
+    rows = [row for row in mapping.get("config_keys", []) if row.get("value_from") != "pointer"]
     if not rows:
         return None, []
     path = root / "config.json"
@@ -198,6 +205,16 @@ def _commit_config_keys(path, manifest):
         else:
             node[leaf] = item["value"]
     path.write_text(json.dumps(data, indent=2) + "\n")
+
+
+def commit_config_manifest(root: Path, manifest):
+    """Commit pre-resolved config rows to the staged config artifact."""
+    if not manifest:
+        return
+    path = root / "config.json"
+    if not path.is_file():
+        raise PlaceholderRejected([("mapping.config_keys", "config.json is missing")])
+    _commit_config_keys(path, manifest)
 
 
 def apply_initial(root: Path, mapping, cover, answers, core):

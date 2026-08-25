@@ -102,17 +102,65 @@ def _plan_id(row, appender_seat, value):
     return hashlib.sha256(json.dumps(identity, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
+def structured_answers_filename(mapping):
+    """Resolve the declared structured artifact without guessing from the tree."""
+    filename = mapping.get("structured_answers_file", "seat-config.json")
+    if (not isinstance(filename, str) or not filename or Path(filename).name != filename
+            or not filename.endswith(".json")):
+        raise CrossSeatRejected([("mapping.structured_answers_file",
+                                  "must be a safe JSON filename")])
+    return filename
+
+
+def undeclared_structured_artifacts(root, mapping):
+    declared = structured_answers_filename(mapping)
+    return sorted(path.name for path in Path(root).glob("*-config.json")
+                  if path.name != declared)
+
+
 def _load_registry(registry):
     result = {}
-    for seat, path in registry.items():
-        candidate = Path(path) / "seat-config.json" if Path(path).is_dir() else Path(path)
+    for seat, entry in registry.items():
+        if isinstance(entry, dict):
+            path = entry.get("path")
+            filename = structured_answers_filename(entry.get("mapping", {}))
+        else:
+            path = entry
+            filename = "seat-config.json"
+        if not isinstance(path, (str, Path)):
+            raise CrossSeatRejected([(f"registry.{seat}", "registry path is invalid")])
+        candidate = Path(path) / filename if Path(path).is_dir() else Path(path)
         if not candidate.is_file():
-            continue
+            raise CrossSeatRejected([(f"registry.{seat}",
+                                      f"declared structured artifact {filename} is absent")])
         payload = json.loads(candidate.read_text())
         if payload.get("seat") != seat:
             raise CrossSeatRejected([(f"registry.{seat}", "seat-config identity mismatch")])
         result[seat] = payload
     return result
+
+
+def _check_kind(row):
+    kind = row.get("type", row.get("assertion_type", row.get("doctrine")))
+    return {"POLICY": "POLICY_DIVERGE", "SPLIT": "POLICY_DIVERGE"}.get(kind, kind)
+
+
+def _ordering_passes(left, right, operator):
+    operations = {
+        "gte": lambda a, b: a >= b, ">=": lambda a, b: a >= b,
+        "gt": lambda a, b: a > b, ">": lambda a, b: a > b,
+        "lte": lambda a, b: a <= b, "<=": lambda a, b: a <= b,
+        "lt": lambda a, b: a < b, "<": lambda a, b: a < b,
+    }
+    if operator not in operations:
+        raise ValueError(f"unknown ordering operator {operator!r}")
+    def comparable(value):
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            return value
+        if isinstance(value, str) and re.fullmatch(r"\s*\$?[-+]?\d[\d,]*(?:\.\d+)?\s*", value):
+            return float(value.strip().replace("$", "").replace(",", ""))
+        raise TypeError(f"ordering value {value!r} is not numeric")
+    return operations[operator](comparable(left), comparable(right))
 
 
 def _validate_peer_version(seat, payload, reader_version):
@@ -143,6 +191,21 @@ def apply(current, mapping, registry, *, engine_version):
     cross.setdefault("append_plans", {})
     result["cross_seat_checks"] = []
     result["never_graduate"] = copy.deepcopy(doctrine.get("never_graduate", []))
+    fill_exempt = doctrine.get("fill_exempt", [])
+    if (not isinstance(fill_exempt, list) or any(not isinstance(item, str) or not item
+                                                for item in fill_exempt)
+            or len(fill_exempt) != len(set(fill_exempt))):
+        raise CrossSeatRejected([("cross_seat.fill_exempt", "must be a unique string set")])
+    result["fill_exempt"] = copy.deepcopy(fill_exempt)
+    lanes = doctrine.get("cross_seat_lane", [])
+    if not isinstance(lanes, list):
+        raise CrossSeatRejected([("cross_seat.cross_seat_lane", "must be a list")])
+    for lane in lanes:
+        if (not isinstance(lane, dict)
+                or not all(isinstance(lane.get(key), str) and lane[key]
+                           for key in ("lane_id", "from_seat", "to_seat"))):
+            raise CrossSeatRejected([("cross_seat.cross_seat_lane", "lane definition is invalid")])
+    result["cross_seat_lanes"] = copy.deepcopy(lanes)
     failures = []
     report_items = []
 
@@ -187,15 +250,45 @@ def apply(current, mapping, registry, *, engine_version):
                 "value": value,
                 "value_sha256": _digest(value),
             }
+        if row.get("migration_pending"):
+            trigger = row.get("migration_trigger")
+            target = row.get("migrates_to")
+            if not all(isinstance(item, str) and item for item in (trigger, target)):
+                failures.append((f"cross_seat.pointers.{name}",
+                                 "migration_pending requires migration_trigger and migrates_to")); continue
+            migration = {
+                "migration_pending": True,
+                "migration_trigger": trigger,
+                "migrates_to": target,
+                "trigger_present": trigger in peers,
+            }
+            cross.setdefault("migrations", {})[name] = migration
+            if trigger in peers:
+                report_items.append({
+                    "check_id": f"migration-{name}", "doctrine": "MIGRATION",
+                    "status": "PENDING", "migration_trigger": trigger,
+                    "migrates_to": target, "value_name": name,
+                })
 
     for row in doctrine.get("checks", []):
         check_id = row.get("check_id")
-        kind = row.get("doctrine")
+        kind = _check_kind(row)
         peer = row.get("peer_seat")
-        if kind not in {"POLICY", "SPLIT"} or not all(
+        if kind not in {"FACT_MATCH", "POLICY_DIVERGE", "ORDERING"} or not all(
                 isinstance(item, str) and item for item in
                 (check_id, peer, row.get("local_ref"), row.get("peer_ref"))):
             failures.append((f"cross_seat_checks.{check_id}", "check definition is invalid")); continue
+        if kind == "FACT_MATCH":
+            local_measure = row.get("local_measure", row.get("measure"))
+            peer_measure = row.get("peer_measure", row.get("measure"))
+            if local_measure is not None or peer_measure is not None:
+                if (not isinstance(local_measure, str) or not local_measure
+                        or not isinstance(peer_measure, str) or not peer_measure
+                        or local_measure != peer_measure):
+                    failures.append((f"cross_seat_checks.{check_id}",
+                                     "FACT_MATCH requires one declared common measure")); continue
+        if row.get("severity", "report") not in {"report", "error"}:
+            failures.append((f"cross_seat_checks.{check_id}", "severity must be report or error")); continue
         try:
             local_value = _read_pointer(result, row["local_ref"])
         except (KeyError, IndexError, TypeError, ValueError) as exc:
@@ -210,6 +303,12 @@ def apply(current, mapping, registry, *, engine_version):
         if peer not in peers:
             record["status"] = "peer_absent"
             record["peer_sha256"] = None
+            if kind == "FACT_MATCH" and row.get("promise"):
+                report_items.append({
+                    "check_id": check_id, "doctrine": kind, "status": "UNBACKED",
+                    "local": {"seat": result.get("seat"), "path": row["local_ref"], "value": local_value},
+                    "peer": {"seat": peer, "path": row["peer_ref"], "value": None},
+                })
         else:
             try:
                 _validate_peer_version(peer, peers[peer], engine_version)
@@ -218,8 +317,21 @@ def apply(current, mapping, registry, *, engine_version):
                 detail = exc.failures if isinstance(exc, CrossSeatRejected) else str(exc)
                 failures.append((f"cross_seat_checks.{check_id}", f"peer value unresolvable: {detail}")); continue
             record["peer_sha256"] = _digest(peer_value)
-            record["status"] = "agree" if local_value == peer_value else "disagree"
-            if record["status"] == "disagree":
+            if kind == "FACT_MATCH":
+                passed = local_value == peer_value
+            elif kind == "POLICY_DIVERGE":
+                passed = True
+            else:
+                try:
+                    passed = _ordering_passes(local_value, peer_value, row.get("operator"))
+                except (TypeError, ValueError) as exc:
+                    failures.append((f"cross_seat_checks.{check_id}", str(exc))); continue
+            record["status"] = "pass" if passed else "fail"
+            should_report = (kind == "POLICY_DIVERGE" and local_value != peer_value) or not passed
+            if should_report:
+                if row.get("severity", "report") == "error":
+                    failures.append((f"cross_seat_checks.{check_id}",
+                                     f"{kind} assertion failed")); continue
                 report_items.append({
                     "check_id": check_id,
                     "doctrine": kind,
@@ -228,6 +340,51 @@ def apply(current, mapping, registry, *, engine_version):
                     "status": "EYEBALL",
                 })
         result["cross_seat_checks"].append(record)
+
+    for row in doctrine.get("all_pairs", []):
+        check_id = row.get("check_id")
+        participants = row.get("participants")
+        if (not isinstance(check_id, str) or not check_id or not isinstance(participants, list)
+                or len(participants) < 2):
+            failures.append(("cross_seat.all_pairs", "all-pairs definition is invalid")); continue
+        values = []
+        try:
+            for participant in participants:
+                seat = participant["seat"]
+                payload = result if seat == result.get("seat") else peers[seat]
+                values.append((seat, participant["path"], _read_pointer(payload, participant["path"])))
+        except (KeyError, IndexError, TypeError, ValueError) as exc:
+            failures.append((f"cross_seat.all_pairs.{check_id}", f"participant unresolvable: {exc}")); continue
+        failing = []
+        for index, left in enumerate(values):
+            for right in values[index + 1:]:
+                if left[2] != right[2]:
+                    failing.append((left, right))
+                    report_items.append({
+                        "check_id": f"{check_id}:{left[0]}:{right[0]}",
+                        "doctrine": "POLICY_DIVERGE", "status": "EYEBALL",
+                        "local": {"seat": left[0], "path": left[1], "value": left[2]},
+                        "peer": {"seat": right[0], "path": right[1], "value": right[2]},
+                    })
+        result["cross_seat_checks"].append({
+            "check_id": check_id, "doctrine": "ALL_PAIRS", "pair_count": len(values) * (len(values) - 1) // 2,
+            "failing_pair_count": len(failing), "status": "pass" if not failing else "fail",
+        })
+
+    fill_hints = doctrine.get("fill_hints", {})
+    if not isinstance(fill_hints, dict):
+        failures.append(("cross_seat.fill_hints", "must be an object"))
+        fill_hints = {}
+    derived = result.setdefault("derived", {})
+    for field, hint in fill_hints.items():
+        if field not in fill_exempt and field not in derived:
+            derived[field] = copy.deepcopy(hint)
+    for field in fill_exempt:
+        if field not in derived:
+            report_items.append({
+                "check_id": f"fill-exempt-{field}", "doctrine": "FILL_EXEMPT",
+                "status": "ABSENT", "value_name": field,
+            })
 
     for row in doctrine.get("appends", []):
         required = ("value_name", "owner_seat", "owner_question_id", "appender_question_id",
@@ -279,7 +436,32 @@ def render_report_block(items):
     if not items:
         lines.append("- None.")
     for item in items:
+        if item["status"] == "UNDECLARED":
+            lines.append(
+                f"- UNDECLARED {item['check_id']} (STRUCTURED-ARTIFACT): "
+                f"{item['value_name']} is present but the mapping does not declare it."
+            )
+            continue
+        if item["status"] == "ABSENT":
+            lines.append(
+                f"- ABSENT {item['check_id']} (FILL_EXEMPT): {item['value_name']} stayed empty; "
+                "no documentation hint was promoted into a promise."
+            )
+            continue
+        if item["status"] == "UNBACKED":
+            lines.append(
+                f"- UNBACKED {item['check_id']} ({item['doctrine']}): "
+                f"{item['local']['seat']} {item['local']['path']} has a promise but "
+                f"delivering seat {item['peer']['seat']} is absent."
+            )
+            continue
         if item["status"] == "PENDING":
+            if item.get("doctrine") == "MIGRATION":
+                lines.append(
+                    f"- PENDING {item['check_id']} (MIGRATION): trigger {item['migration_trigger']} "
+                    f"is present; explicit promotion to {item['migrates_to']} is required. No auto-flip occurred."
+                )
+                continue
             lines.append(
                 f"- PENDING {item['check_id']} (OWNER-APPEND): plan {item['plan_id']} "
                 f"awaits apply on {item['owner_seat']} for {item['value_name']}; it was not silently omitted."
@@ -301,6 +483,46 @@ def replace_report_block(text, items):
     if pattern.search(text):
         return pattern.sub(block, text)
     return text.rstrip() + "\n\n" + block
+
+
+def resolve_pointer_config_rows(current, mapping, registry, *, engine_version):
+    """Resolve K-rows through declared cross-seat pointers without silent defaults."""
+    peers = _load_registry(registry)
+    pointer_rows = {row.get("value_name"): row
+                    for row in mapping.get("cross_seat", {}).get("pointers", [])}
+    resolved = []
+    failures = []
+    for row in mapping.get("config_keys", []):
+        if row.get("value_from") != "pointer":
+            continue
+        name = row.get("pointer_name")
+        pointer = pointer_rows.get(name)
+        if not pointer:
+            failures.append((f"mapping.config_keys.{row.get('path')}",
+                             f"pointer {name!r} is not declared")); continue
+        owner = pointer.get("owner_seat")
+        if owner in peers:
+            try:
+                _validate_peer_version(owner, peers[owner], engine_version)
+                value = _read_pointer(peers[owner], pointer["owner_value_path"])
+            except (KeyError, IndexError, TypeError, ValueError, CrossSeatRejected) as exc:
+                failures.append((f"mapping.config_keys.{row.get('path')}",
+                                 f"owner pointer unresolvable: {exc}")); continue
+            state = "owner"
+        elif "fallback" in row:
+            value = copy.deepcopy(row["fallback"])
+            state = "held_fallback"
+        else:
+            failures.append((f"mapping.config_keys.{row.get('path')}",
+                             "owner is absent and no fallback is declared")); continue
+        resolved.append({
+            "row_type": "config_key", "config_path": row["path"],
+            "question_id": f"pointer:{name}", "file": "config.json#" + row["path"],
+            "count": 1, "value": value, "resolution": state, "owner_seat": owner,
+        })
+    if failures:
+        raise CrossSeatRejected(failures)
+    return resolved
 
 
 def apply_append_plan(owner, appender, plan_id, *, engine_version):

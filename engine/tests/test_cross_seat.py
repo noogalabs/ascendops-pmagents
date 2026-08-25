@@ -176,6 +176,140 @@ class CrossSeatTests(unittest.TestCase):
             )
         self.assertIn("requires engine 2.0.0", str(caught.exception.failures))
 
+    def test_named_declared_structured_filename_resolves_and_absent_rejects(self):
+        root = self.tmp / "accounting"; root.mkdir()
+        payload = {"seat": "accounting", "answers": {"A1": "ok"}}
+        (root / "accounting-config.json").write_text(json.dumps(payload))
+        loaded = cross_seat._load_registry({"accounting": {
+            "path": root, "mapping": {"structured_answers_file": "accounting-config.json"},
+        }})
+        self.assertEqual(loaded["accounting"]["answers"]["A1"], "ok")
+        (root / "seat-config.json").write_text(json.dumps(payload))
+        self.assertEqual(cross_seat.undeclared_structured_artifacts(root, {}),
+                         ["accounting-config.json"])
+        with self.assertRaises(cross_seat.CrossSeatRejected) as caught:
+            cross_seat._load_registry({"accounting": {
+                "path": root, "mapping": {"structured_answers_file": "missing-config.json"},
+            }})
+        self.assertIn("declared structured artifact", str(caught.exception.failures))
+
+    def _check_mapping(self, kind, left, right, **extra):
+        owner = self.owner(); payload = json.loads((owner / "seat-config.json").read_text())
+        payload["derived"] = {"value": right}
+        (owner / "seat-config.json").write_text(json.dumps(payload))
+        current = {**self.current, "derived": {"value": left}}
+        row = {"check_id": f"{kind}-check", "type": kind,
+               "local_ref": "/derived/value", "peer_seat": "maintenance-coordinator",
+               "peer_ref": "/derived/value", **extra}
+        return cross_seat.apply(current, {"cross_seat": {"checks": [row]}},
+                                {"maintenance-coordinator": owner}, engine_version="1.1.0")
+
+    def test_named_assertion_types_each_fire_and_pass(self):
+        self.assertEqual(len(self._check_mapping("FACT_MATCH", 4, 5, measure="days").report_items), 1)
+        self.assertEqual(self._check_mapping("FACT_MATCH", 4, 4, measure="days").report_items, [])
+        self.assertEqual(self._check_mapping("POLICY_DIVERGE", "same", "same").report_items, [])
+        self.assertEqual(len(self._check_mapping("POLICY_DIVERGE", "a", "b").report_items), 1)
+        self.assertEqual(len(self._check_mapping("ORDERING", 4, 5, operator="gte").report_items), 1)
+        self.assertEqual(self._check_mapping("ORDERING", 5, 4, operator="gte").report_items, [])
+
+    def test_named_unknown_type_and_mismatched_measure_reject(self):
+        with self.assertRaises(cross_seat.CrossSeatRejected):
+            self._check_mapping("UNKNOWN", 1, 1)
+        with self.assertRaises(cross_seat.CrossSeatRejected) as caught:
+            self._check_mapping("FACT_MATCH", 1, 1, local_measure="property", peer_measure="unit")
+        self.assertIn("common measure", str(caught.exception.failures))
+
+    def test_named_severity_error_rejects_report_surfaces_and_absent_promise_is_unbacked(self):
+        with self.assertRaises(cross_seat.CrossSeatRejected):
+            self._check_mapping("FACT_MATCH", 4, 5, severity="error", measure="days")
+        self.assertEqual(self._check_mapping(
+            "FACT_MATCH", 4, 5, severity="report", measure="days"
+        ).report_items[0]["status"], "EYEBALL")
+        mapping = {"cross_seat": {"checks": [{
+            "check_id": "quoted-inspection", "type": "FACT_MATCH", "promise": True,
+            "measure": "days", "local_ref": "/derived/value",
+            "peer_seat": "missing-delivery-seat", "peer_ref": "/derived/value",
+        }]}}
+        current = {**self.current, "derived": {"value": 3}}
+        result = cross_seat.apply(current, mapping, {}, engine_version="1.1.0")
+        self.assertEqual(result.report_items[0]["status"], "UNBACKED")
+
+    def test_named_migration_pending_only_surfaces_when_trigger_present_and_never_flips(self):
+        mapping = self.mapping(); mapping["cross_seat"]["pointers"][0].update({
+            "migration_pending": True, "migration_trigger": "accounting",
+            "migrates_to": "accounting:/answers/Z9",
+        })
+        absent = cross_seat.apply(self.current, mapping, {}, engine_version="1.1.0")
+        self.assertFalse(absent.current["cross_seat"]["migrations"]["deposit_deadline"]["trigger_present"])
+        self.assertEqual(absent.report_items, [])
+        trigger = self.tmp / "accounting"; trigger.mkdir()
+        (trigger / "seat-config.json").write_text(json.dumps({"seat": "accounting"}))
+        present = cross_seat.apply(self.current, mapping, {"accounting": trigger}, engine_version="1.1.0")
+        self.assertEqual(present.report_items[0]["status"], "PENDING")
+        self.assertIn("accounting:/answers/Z9", cross_seat.render_report_block(present.report_items))
+        self.assertIn("deposit_deadline", present.current["cross_seat"]["held"])
+
+    def test_named_pointer_config_owner_fallback_and_missing_fallback(self):
+        pointer = self.mapping()["cross_seat"]["pointers"][0]
+        mapping = {"cross_seat": {"pointers": [pointer]}, "config_keys": [{
+            "path": "/day_mode_start", "value_from": "pointer",
+            "pointer_name": "deposit_deadline", "fallback": "08:00",
+        }]}
+        owner_rows = cross_seat.resolve_pointer_config_rows(
+            self.current, mapping, {"maintenance-coordinator": self.owner(answer="07:30")},
+            engine_version="1.1.0")
+        self.assertEqual((owner_rows[0]["value"], owner_rows[0]["resolution"]), ("07:30", "owner"))
+        fallback = cross_seat.resolve_pointer_config_rows(
+            self.current, mapping, {}, engine_version="1.1.0")
+        self.assertEqual((fallback[0]["value"], fallback[0]["resolution"]), ("08:00", "held_fallback"))
+        del mapping["config_keys"][0]["fallback"]
+        with self.assertRaises(cross_seat.CrossSeatRejected):
+            cross_seat.resolve_pointer_config_rows(self.current, mapping, {}, engine_version="1.1.0")
+
+    def test_named_six_way_all_pairs_reports_exactly_thirteen_failures(self):
+        values = ["A", "A", "B", "C", "D", "D"]
+        registry = {}
+        participants = [{"seat": self.current["seat"], "path": "/derived/name"}]
+        current = {**self.current, "derived": {"name": values[0]}}
+        for index, value in enumerate(values[1:], 1):
+            seat = f"seat-{index}"; root = self.tmp / seat; root.mkdir()
+            (root / "seat-config.json").write_text(json.dumps({"seat": seat, "derived": {"name": value}}))
+            registry[seat] = root; participants.append({"seat": seat, "path": "/derived/name"})
+        mapping = {"cross_seat": {"all_pairs": [{"check_id": "six-way", "participants": participants}]}}
+        result = cross_seat.apply(current, mapping, registry, engine_version="1.1.0")
+        record = result.current["cross_seat_checks"][0]
+        self.assertEqual((record["pair_count"], record["failing_pair_count"]), (15, 13))
+        self.assertEqual(len(result.report_items), 13)
+
+    def test_named_fill_exempt_set_and_lane_shape_are_durable(self):
+        mapping = {"cross_seat": {
+            "fill_exempt": ["quotable_standards", "packages"],
+            "fill_hints": {"quotable_standards": "never promise", "packages": "never package",
+                           "internal_note": "safe hint"},
+            "cross_seat_lane": [{"lane_id": "bd-to-ops", "from_seat": "business-development",
+                                 "to_seat": "maintenance-coordinator"}],
+        }}
+        result = cross_seat.apply(self.current, mapping, {}, engine_version="1.1.0")
+        self.assertEqual(result.current["fill_exempt"], ["quotable_standards", "packages"])
+        self.assertEqual(len(result.current["cross_seat_lanes"]), 1)
+        self.assertEqual(result.current["derived"]["internal_note"], "safe hint")
+        self.assertNotIn("quotable_standards", result.current["derived"])
+        self.assertEqual([item["status"] for item in result.report_items], ["ABSENT", "ABSENT"])
+        mapping["cross_seat"]["fill_exempt"].remove("packages")
+        casualty = cross_seat.apply(self.current, mapping, {}, engine_version="1.1.0")
+        self.assertEqual(casualty.current["derived"]["packages"], "never package")
+
+    def test_named_e3_fixture_two_fresh_runs_are_byte_identical(self):
+        mapping = {"cross_seat": {
+            "fill_exempt": ["packages"], "fill_hints": {"packages": "unsafe"},
+            "cross_seat_lane": [{"lane_id": "bd-ops", "from_seat": "bd", "to_seat": "ops"}],
+            "checks": [], "pointers": [], "all_pairs": [],
+        }}
+        first = cross_seat.apply(self.current, mapping, {}, engine_version="1.1.0")
+        second = cross_seat.apply(self.current, mapping, {}, engine_version="1.1.0")
+        self.assertEqual(json.dumps(first._asdict(), sort_keys=True),
+                         json.dumps(second._asdict(), sort_keys=True))
+
 
 if __name__ == "__main__":
     print("ARMED: graduated cross-seat pointers, holding, checks, and version directionality")

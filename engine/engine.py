@@ -100,8 +100,8 @@ def copy_protected(source: Path, staged: Path):
 
 
 def stamp(staged: Path, seat: str, managed_surfaces, preserved_tokens, provenance,
-          configuration_date: str):
-    path = staged / "seat-config.json"
+          configuration_date: str, structured_filename="seat-config.json"):
+    path = staged / structured_filename
     payload = json.loads(path.read_text())
     payload["configuration_engine"] = {
         "version": ENGINE_VERSION,
@@ -135,9 +135,13 @@ def configure(source: Path, answers: Path, output: Path, seat: str,
         cover, parsed, raw_cover, raw_answers = (parsed_intake.cover, parsed_intake.answers,
                                                   parsed_intake.raw_cover, parsed_intake.raw_answers)
         mapping = placeholders.load_mapping(SUPPORTED[seat]["mapping"])
+        try:
+            structured_filename = cross_seat.structured_answers_filename(mapping)
+        except cross_seat.CrossSeatRejected as exc:
+            raise IntakeRejected(exc.failures)
         old_manifest = []
         old_preserved = []
-        old_seat = source / "seat-config.json"
+        old_seat = source / structured_filename
         if old_seat.is_file():
             old_engine = json.loads(old_seat.read_text()).get("configuration_engine", {})
             old_manifest = old_engine.get("managed_surfaces", [])
@@ -165,13 +169,17 @@ def configure(source: Path, answers: Path, output: Path, seat: str,
         configuration_date = run_sealed_core(
             core, prepared, answers, staged, SUPPORTED[seat]["library"], clock
         )
+        structured_path = staged / structured_filename
+        if not structured_path.is_file():
+            raise IntakeRejected([("structured_answers_file",
+                                   f"declared structured artifact {structured_filename} is absent")])
         copy_protected(source, staged)
         placeholders.verify_preserved_runtime_tokens(staged, preserved)
         doctrine = mapping.get("cross_seat")
         if doctrine is not None:
             if seat_registry is None:
                 raise IntakeRejected([("cross_seat", "schema v2 seam mapping requires an explicit seat registry")])
-            seat_path = staged / "seat-config.json"
+            seat_path = structured_path
             seat_payload = json.loads(seat_path.read_text())
             try:
                 seam_result = cross_seat.apply(
@@ -179,7 +187,27 @@ def configure(source: Path, answers: Path, output: Path, seat: str,
                 )
             except cross_seat.CrossSeatRejected as exc:
                 raise IntakeRejected(exc.failures)
+            undeclared = cross_seat.undeclared_structured_artifacts(staged, mapping)
+            if undeclared:
+                seam_result.report_items.extend({
+                    "check_id": f"undeclared-structured-{name}",
+                    "doctrine": "STRUCTURED-ARTIFACT", "status": "UNDECLARED",
+                    "value_name": name,
+                } for name in undeclared)
             seat_path.write_text(json.dumps(seam_result.current, indent=2) + "\n")
+            try:
+                pointer_config = cross_seat.resolve_pointer_config_rows(
+                    seam_result.current, mapping, seat_registry, engine_version=ENGINE_VERSION
+                )
+                config_rows = {row["path"]: row for row in mapping.get("config_keys", [])}
+                for item in pointer_config:
+                    item["value"] = placeholders._typed_value(
+                        config_rows[item["config_path"]], item["value"]
+                    )
+                placeholders.commit_config_manifest(staged, pointer_config)
+            except (cross_seat.CrossSeatRejected, placeholders.PlaceholderRejected) as exc:
+                raise IntakeRejected(exc.failures)
+            managed.extend(pointer_config)
             report_path = staged / "contradiction-report.md"
             report_path.write_text(cross_seat.replace_report_block(
                 report_path.read_text(), seam_result.report_items
@@ -192,6 +220,7 @@ def configure(source: Path, answers: Path, output: Path, seat: str,
             preserved,
             parsed_intake.provenance,
             configuration_date,
+            structured_filename,
         )
         shutil.rmtree(staging_root)
         result = transaction.replace_directory_transactional(staged, output, already_locked=True)

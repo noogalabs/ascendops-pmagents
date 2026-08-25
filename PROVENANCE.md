@@ -7,6 +7,7 @@ This is a fresh seed, not a history import. The seed preserves review custody th
 - Scenario foundation content: `2518058073348f66e04074c9b38f768924935b3a`; scenario review CLEAR `1787511891345-piper-taoml`, relocation/content-identity acceptance `1787625375769-dane-6cdhr`.
 - Lane-1 engine content: `97ec10f9c53f2a07420cf3fcf56f9b735b4e89a7`; CLEAR relayed in `1787624894645-dane-eo661`, relocation/content-identity acceptance `1787625375769-dane-6cdhr`.
 - E2 extension content: `3ea772ff0843e72acac52a079724c350de1e653c`; NORMAL review CLEAR relayed in `1787638034656-dane-vsn93`.
+- E3 extension content: `c4d2cd9c`; design conformance CLEAR `1787664519844-collie-vepsk`, NORMAL review CLEAR `1787665935655`-era record. Seven delta files are re-anchored under `engine/`; the TSV records source and destination hashes separately wherever the seed's member-safe flattening or documentation sanitization changes bytes.
 - Six mapping tables and six Ridgeline fixtures: mapping-owner reviewed outputs dated 2026-08-23/25; each original and destination hash is pinned in the TSV.
 
 ## Flattening decision
@@ -22,3 +23,7 @@ The six mapping tables collectively are the authoritative seam register; no deri
 Thirty-three internal evidence files are deliberately excluded from the member product. Each is represented by a neutral artifact ID, reviewed head, content hash, and exact retention location in `provenance/source-files.tsv`. The bytes were re-homed, not deleted, under `orgs/ascendops/ops/pmagents-evidence/source-3ea772ff/`. Internal reports, walkthrough packages, diagnostics, and transcripts stay there; they are not scrubbed into a product that does not need them.
 
 The first seed is accepted only with a zero hygiene census and no baseline file. Any future source addition must pass the same gates rather than inherit an exemption.
+
+## E3 re-anchor
+
+The E3 delta from reviewed head `c4d2cd9c` maps the org-side glue subtree to the flattened `engine/*` product surface. `engine.py` retains the seeded `editions/maintenance/` paths; the two changed test files retain their checked-in, history-free fixtures. E3 documentation uses member-facing product and mapping-table names. The seven artifact rows added for this re-anchor bind every org-side source hash to its landed destination hash, while the org-private locator table retains the original source paths.
