@@ -31,6 +31,7 @@ PM_ASSIST_EDITION = ROOT / "editions" / "pm-assist"
 LEASING_EDITION = ROOT / "editions" / "leasing"
 TURNOVER_EDITION = ROOT / "editions" / "turnover"
 ACCOUNTING_EDITION = ROOT / "editions" / "accounting"
+BUSINESS_DEVELOPMENT_EDITION = ROOT / "editions" / "business-development"
 SEALED_CORE = MAINTENANCE_EDITION / "configure_agent.py"
 SEALED_CORE_SHA256 = "0540ea08aa8d47ecb1aebbb7f51db85c5a67ab252172804e9ba24e56c2403551"
 SUPPORTED = {
@@ -72,6 +73,14 @@ SUPPORTED = {
         "library": ACCOUNTING_EDITION / "library-src",
         "mapping": Path(__file__).resolve().parent / "mappings" / "accounting.json",
         "question_ids": [*(f"A{i}" for i in range(1, 18)), *(f"B{i}" for i in range(1, 14)), *(f"C{i}" for i in range(1, 8)), *(f"D{i}" for i in range(1, 10))],
+        "runner": "mapping",
+    },
+    "business-development": {
+        "library_id": "business-development-2026-08-25",
+        "answers": BUSINESS_DEVELOPMENT_EDITION / "answers-format.md",
+        "library": BUSINESS_DEVELOPMENT_EDITION / "library-src",
+        "mapping": Path(__file__).resolve().parent / "mappings" / "business-development.json",
+        "question_ids": [*(f"A{i}" for i in range(1, 10)), *(f"B{i}" for i in range(1, 13)), *(f"C{i}" for i in range(1, 10)), *(f"D{i}" for i in range(1, 13))],
         "runner": "mapping",
     },
 }

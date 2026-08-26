@@ -1,0 +1,108 @@
+{
+  "agent": "{{agent_name}}",
+  "org": "{{org_name}}",
+  "updated_at": "1970-01-01T00:00:00Z",
+  "_note": "Message classes only. A class graduates from locked to unlocked one at a time, lowest consequence first, by explicit action of the BD manager -- never by accuracy alone, and never by this agent. Any correction on a released message demotes its class immediately and triggers stop-and-wait. THE NEVER-GRADUATES SET IS DELIBERATELY ABSENT FROM THIS FILE: fee or package deviation, any management-agreement language or threshold change, anything on the Never-Promise List, any legal or fair housing answer, any property acceptance of a red-flag property, and the decision to decline an owner or walk away. If one of those ever appears as a category here, that is a defect in this file, not a permission. Delete it and tell the BD manager.",
+  "_cite": "Class vocabulary is a seat default, not a questionnaire answer -- no BDM question asks for a message-class taxonomy. Recorded in the assembly report NO-SOURCE table.",
+  "categories": {
+    "board_row_write": {
+      "description": "Writing or updating a row on the pipeline board: stage move, next action, touch log, notes.",
+      "status": "locked",
+      "total_decisions": 0,
+      "correct": 0,
+      "accuracy_pct": null,
+      "window": "last_20",
+      "unlocked_at": null,
+      "demoted_at": null,
+      "qualifying_accuracy": null
+    },
+    "alert_triage_note": {
+      "description": "Recording which alert fired, what was done, and the new next-action date.",
+      "status": "locked",
+      "total_decisions": 0,
+      "correct": 0,
+      "accuracy_pct": null,
+      "window": "last_20",
+      "unlocked_at": null,
+      "demoted_at": null,
+      "qualifying_accuracy": null
+    },
+    "internal_status_to_manager": {
+      "description": "Pipeline status, alert digest, and review packs sent to the BD manager.",
+      "status": "locked",
+      "total_decisions": 0,
+      "correct": 0,
+      "accuracy_pct": null,
+      "window": "last_20",
+      "unlocked_at": null,
+      "demoted_at": null,
+      "qualifying_accuracy": null
+    },
+    "meeting_confirmation": {
+      "description": "Confirming a discovery call or listing appointment already agreed on a live call: time, place, who attends.",
+      "status": "locked",
+      "total_decisions": 0,
+      "correct": 0,
+      "accuracy_pct": null,
+      "window": "last_20",
+      "unlocked_at": null,
+      "demoted_at": null,
+      "qualifying_accuracy": null
+    },
+    "appointment_reminder": {
+      "description": "The pre-appointment reminder touch on an appointment already on the calendar.",
+      "status": "locked",
+      "total_decisions": 0,
+      "correct": 0,
+      "accuracy_pct": null,
+      "window": "last_20",
+      "unlocked_at": null,
+      "demoted_at": null,
+      "qualifying_accuracy": null
+    },
+    "post_call_recap": {
+      "description": "The recap of a call that already happened, restating only what the owner said and what was agreed.",
+      "status": "locked",
+      "total_decisions": 0,
+      "correct": 0,
+      "accuracy_pct": null,
+      "window": "last_20",
+      "unlocked_at": null,
+      "demoted_at": null,
+      "qualifying_accuracy": null
+    },
+    "nurture_value_touch": {
+      "description": "A value touch to a nurture-stage lead drawn from the approved message library: no offer, no fee, no promise.",
+      "status": "locked",
+      "total_decisions": 0,
+      "correct": 0,
+      "accuracy_pct": null,
+      "window": "last_20",
+      "unlocked_at": null,
+      "demoted_at": null,
+      "qualifying_accuracy": null
+    },
+    "cold_outreach_first_touch": {
+      "description": "The first outbound touch to a prospect who has not engaged.",
+      "status": "locked",
+      "total_decisions": 0,
+      "correct": 0,
+      "accuracy_pct": null,
+      "window": "last_20",
+      "unlocked_at": null,
+      "demoted_at": null,
+      "qualifying_accuracy": null
+    },
+    "intake_form_link_send": {
+      "description": "Sending the owner intake form link after an agreement is fully executed.",
+      "status": "locked",
+      "total_decisions": 0,
+      "correct": 0,
+      "accuracy_pct": null,
+      "window": "last_20",
+      "unlocked_at": null,
+      "demoted_at": null,
+      "qualifying_accuracy": null
+    }
+  }
+}

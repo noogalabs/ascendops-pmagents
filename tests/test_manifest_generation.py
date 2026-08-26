@@ -26,6 +26,7 @@ class ManifestGenerationTests(unittest.TestCase):
         )
         self.assertEqual(suite_dirs, [
             "editions/accounting/tests",
+            "editions/business-development/tests",
             "editions/leasing/tests",
             "editions/maintenance/tests",
             "editions/pm-assist/tests",
