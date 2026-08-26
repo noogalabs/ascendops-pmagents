@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import importlib.util
 import re
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -73,6 +74,38 @@ class IntakeTests(unittest.TestCase):
         self.assertEqual(result.provenance["B2"], "inferred")
         self.assertEqual(result.provenance["D6"], "NEEDS-DAVID")
         self.assertTrue(result.answers["D6"].startswith("[NEEDS-DAVID]"))
+
+    def test_named_declared_e_question_parses_and_undeclared_id_rejects(self):
+        print("ARMED: declared E questions parse and undeclared question ids reject loudly")
+        text = self.path.read_text() + "\nE1. What is the turnover escalation rule?\n\nAnswer: [documented] Escalate after review.\n"
+        self.path.write_text(text)
+        parsed = intake.preflight(self.path, [*QIDS, "E1"])
+        self.assertEqual(parsed.raw_answers["E1"], "[documented] Escalate after review.")
+        with self.assertRaises(intake.IntakeRejected) as caught:
+            intake.preflight(self.path, QIDS)
+        self.assertIn(
+            ("E1", "question id is not declared for this edition"),
+            caught.exception.failures,
+        )
+
+    def test_named_question_id_consumers_use_the_canonical_surface(self):
+        print("ARMED: no tracked consumer can fork the canonical question-id regex")
+        allowed = {
+            "engine/intake.py",
+            "editions/maintenance/configure_agent.py",
+            "editions/maintenance/tests/test_configurator.py",
+        }
+        tracked = subprocess.check_output(
+            ["git", "ls-files", "*.py"], cwd=HERE.parent, text=True
+        ).splitlines()
+        range_token = re.compile(r"\[[A-Z]-[A-Z]\](?:\\d|\[0-9\])\+")
+        violations = []
+        for relative in tracked:
+            if relative in allowed:
+                continue
+            for match in range_token.finditer((HERE.parent / relative).read_text()):
+                violations.append((relative, match.group(0)))
+        self.assertEqual(violations, [], "question-id regex fork outside canonical intake")
 
 
 if __name__ == "__main__":

@@ -13,6 +13,10 @@ COVER_FIELDS = {
     "Forward email": "forward_email",
     "Timezone": "timezone",
 }
+QUESTION_ID_PATTERN = r"[A-Z]\d+"
+QUESTION_ID = re.compile(rf"^{QUESTION_ID_PATTERN}$")
+QUESTION_LINE = re.compile(rf"^({QUESTION_ID_PATTERN})\.\s")
+QUESTION_HEADING = re.compile(rf"^({QUESTION_ID_PATTERN})\.\s+(.+)$", re.M)
 
 
 class IntakeRejected(RuntimeError):
@@ -129,7 +133,7 @@ def preflight(path: Path, question_ids: list[str], *, cover_fields=None,
     counts: dict[str, int] = {}
     current = None
     for line in text.splitlines():
-        question = re.match(r"^([A-D]\d+)\.\s", line)
+        question = QUESTION_LINE.match(line)
         if question:
             current = question.group(1)
         elif current and line.startswith("Answer:"):
@@ -137,6 +141,9 @@ def preflight(path: Path, question_ids: list[str], *, cover_fields=None,
             raw_answers.setdefault(current, line.partition(":")[2].strip())
         elif current and line.startswith("  ") and current in raw_answers:
             raw_answers[current] += "\n" + line[2:]
+    declared_questions = set(question_ids)
+    for question in sorted(set(counts) - declared_questions):
+        failures.append((question, "question id is not declared for this edition"))
     for question in question_ids:
         if counts.get(question) != 1:
             failures.append((question, "requires exactly one Answer line"))
