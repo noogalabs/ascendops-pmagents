@@ -32,7 +32,9 @@ The spelling boundary is explicit and reviewable: `must`, `blocker`, `never`, `e
 `every`, `graduate`, `autonomous`, and `automatically`. Every candidate question or intro
 section must appear in the ledger. Wrong-source consumption is not mechanically inferred;
 that remains a contract-review responsibility. Successor dispositions are visible rather
-than silent.
+than silent. Every disposition is also bound to the SHA-256 of its complete questionnaire
+subject, so editing already-dispositioned wording forces a fresh review instead of silently
+inheriting the old judgment.
 
 ## CI custody
 
@@ -47,6 +49,7 @@ Each guard was independently armed before freeze and restored clean afterward:
 - a prose ordering bypass killed the named numeric-ordering casualty;
 - an unconsumed synthetic PM-assist placeholder killed the declared-consumer sweep;
 - removing leasing D10 from the promise ledger killed the promise census;
+- changing wording inside a dispositioned subject killed its content-hash binding;
 - restoring a false PM-assist companion claim in the filled fixture killed the
   questionnaire-and-fixture truth sweep;
 - removing an `if` from the leasing onboarding finalization block killed the

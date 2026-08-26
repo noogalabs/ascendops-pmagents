@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import re
 import subprocess
 import unittest
@@ -106,16 +107,25 @@ class ReviewSweepTests(unittest.TestCase):
         for seat, row in ledger["editions"].items():
             questionnaire = ROOT / "editions" / row["edition"] / "answers-format.md"
             current = "INTRO"
-            candidates = set()
+            sections = {current: []}
             for line in questionnaire.read_text().splitlines():
                 match = QUESTION.match(line)
                 if match:
                     current = match.group(1)
-                if PROMISE_WORDS.search(line):
-                    candidates.add(current)
+                    sections.setdefault(current, [])
+                sections[current].append(line)
+            candidates = {
+                subject: hashlib.sha256(
+                    (("\n".join(lines).strip() + "\n").encode())
+                ).hexdigest()
+                for subject, lines in sections.items()
+                if any(PROMISE_WORDS.search(line) for line in lines)
+            }
             dispositions = row["promise_ledger"]
-            self.assertEqual(candidates, set(dispositions),
+            self.assertEqual(set(candidates), set(dispositions),
                              f"{seat} promise ledger is incomplete")
+            self.assertEqual(candidates, row["promise_subject_sha256"],
+                             f"{seat} promise wording changed without fresh disposition")
             for subject, disposition in dispositions.items():
                 valid = (
                     {"gate_surface", "named_test"} <= set(disposition)
