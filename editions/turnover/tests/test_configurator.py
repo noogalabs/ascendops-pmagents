@@ -201,15 +201,26 @@ class TurnoverConfiguratorTests(unittest.TestCase):
     def test_named_onboarding_is_post_config_and_does_not_recollect_answers(self):
         print("ARMED: turnover first boot verifies configured custody without a second interview")
         onboarding = (SOURCE / "ONBOARDING.md").read_text()
+        skill = (SOURCE / ".claude" / "skills" / "onboarding" / "SKILL.md").read_text()
         self.assertIn("Read `turnover-config.json`", onboarding)
         self.assertIn("only new values collected at first boot are deployment credentials", onboarding)
         self.assertIn("rerun `python3 setup.py`", onboarding)
+        for required in (
+            "Repository `setup.py` is the single configuration interview",
+            "read `turnover-config.json` in full",
+            "Do not correct, recollect, or silently substitute turnover answers",
+            "The only values first boot may collect",
+        ):
+            self.assertIn(required, skill)
         for stale in (
             "what's your name", "How many units do you manage",
             "Who are your go-to vendors", "A few operating numbers",
             "What timezone should I use",
+            "reverse-prompting interview", "YOU ask the operator questions",
+            "write each answer into your config",
         ):
             self.assertNotIn(stale, onboarding)
+            self.assertNotIn(stale, skill)
 
     def test_named_onboarding_completion_preserves_all_five_custody_properties(self):
         print("ARMED: turnover completion is gated, idempotent, rollback-safe, durable, and heartbeat-last")
