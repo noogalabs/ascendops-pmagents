@@ -1,0 +1,52 @@
+{
+  "schema_version": 2,
+  "structured_answers_file": "leasing-config.json",
+  "cover_fields": [
+    { "label": "Company name", "key": "company_name" },
+    { "label": "Org short-name", "key": "org_short_name" },
+    { "label": "Forward email", "key": "forward_email" },
+    { "label": "Timezone", "key": "timezone" },
+    { "label": "Prospect response SLA (minutes)", "key": "prospect_response_sla_minutes" },
+    { "label": "Application decision SLA (business hours)", "key": "application_decision_sla_hours" },
+    { "label": "Leasing approval threshold (USD)", "key": "leasing_approval_threshold_usd" },
+    { "label": "Renewal offer lead (days)", "key": "renewal_offer_lead_days" },
+    { "label": "Renewal response window (days)", "key": "renewal_response_window_days" }
+  ],
+  "placeholders": [
+    {"placeholder":"agent_name","source":"cover.org_short_name","extractor":"literal","value":"leasing-coordinator"},
+    {"placeholder":"company_name","source":"cover.company_name","extractor":"identity"},
+    {"placeholder":"timezone","source":"cover.timezone","extractor":"identity"},
+    {"placeholder":"income_multiplier","source":"A2","extractor":"identity"},
+    {"placeholder":"credit_min_score","source":"A3","extractor":"identity"},
+    {"placeholder":"screening_criteria_established","source":"A1","extractor":"identity"},
+    {"placeholder":"screening_visibility_policy","source":"D2","extractor":"identity"},
+    {"placeholder":"pre_1978_properties","source":"B8","extractor":"identity"},
+    {"placeholder":"renewal_offer_lead_days","source":"cover.renewal_offer_lead_days","extractor":"identity"},
+    {"placeholder":"renewal_response_window_days","source":"cover.renewal_response_window_days","extractor":"identity"},
+    {"placeholder":"non_renewal_notice_days","source":"B3","extractor":"first_integer"},
+    {"placeholder":"operator_name","source":"D7","extractor":"first_person"}
+  ],
+  "config_keys": [
+    {"path":"/timezone","source":"cover.timezone","extractor":"identity","value_type":"string","mode":"replace"},
+    {"path":"/prospect_response_sla_minutes","source":"cover.prospect_response_sla_minutes","extractor":"identity","value_type":"integer","mode":"create"},
+    {"path":"/application_decision_sla_hours","source":"cover.application_decision_sla_hours","extractor":"identity","value_type":"integer","mode":"create"},
+    {"path":"/leasing_approval_threshold_usd","source":"cover.leasing_approval_threshold_usd","extractor":"identity","value_type":"integer","mode":"create"},
+    {"path":"/renewal_offer_lead_days","source":"cover.renewal_offer_lead_days","extractor":"identity","value_type":"integer","mode":"create"},
+    {"path":"/renewal_response_window_days","source":"cover.renewal_response_window_days","extractor":"identity","value_type":"integer","mode":"create"},
+    {"path":"/screening_criteria_established","source":"A1","extractor":"identity","value_type":"string","mode":"create"},
+    {"path":"/screening_visibility_policy","source":"D2","extractor":"identity","value_type":"string","mode":"create"},
+    {"path":"/pre_1978_properties","source":"B8","extractor":"identity","value_type":"string","mode":"create"}
+  ],
+  "cross_seat": {
+    "pointers": [
+      {"value_name":"deposit_disposition_deadline","owner_seat":"maintenance-coordinator","owner_question_id":"A3","holding_question_id":"B1","owner_value_path":"/answers/A3"},
+      {"value_name":"move_out_inspection_owner","owner_seat":"turnover-coordinator","owner_question_id":"D2","holding_question_id":"B9","owner_value_path":"/answers/D2"}
+    ],
+    "checks": [],
+    "never_graduate": [
+      {"gate_id":"housing_decision","question_id":"D7","reason":"human housing decision"},
+      {"gate_id":"criminal_assessment","question_id":"A5","reason":"individualized human review"},
+      {"gate_id":"legal_notice","question_id":"B3","reason":"PM or counsel serves notices"}
+    ]
+  }
+}
