@@ -109,10 +109,18 @@ the shared PR13 capability work; the member seat does not invent engine machiner
 B3 now requires the first answer line to use the labeled form `Notice days: NN`.
 The fixture begins `Notice days: 30`, and the named production test proves the
 configured `non_renewal_notice_days` value is 30. A repository census finds exactly
-one live mapping declaration of `first_integer`, this leasing B3 row. The remaining
-limitation is explicit: arbitrary nonconforming prose can still expose the wrong
-number until PR13a adds a loud `labeled_integer` extractor and the leasing mapping
-adopts it in its follow-up.
+zero live mapping declarations of `first_integer`: leasing B3 now consumes PR13a's
+`labeled_integer` extractor with the exact `Notice days` label. The adversarial
+round-7 phrase `Use 2 delivery methods at least 60 days before lease end` is rejected
+loudly because it lacks the labeled line; it can never silently configure `2` as the
+legal notice floor.
+
+All five typed leasing cover values declare `minimum: 1`: prospect-response minutes,
+application-decision hours, approval-threshold USD, renewal-offer lead days, and
+renewal-response days. A named production-entry test derives the five rows from the
+mapping and drives a zero-valued fixture variant for each through `configure()`. Each
+rejects before the output tree exists, while the normal fixture remains the configured
+positive-value regression.
 
 ## Supported member setup
 

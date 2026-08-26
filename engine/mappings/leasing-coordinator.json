@@ -23,16 +23,16 @@
     {"placeholder":"pre_1978_properties","source":"B8","extractor":"identity"},
     {"placeholder":"renewal_offer_lead_days","source":"cover.renewal_offer_lead_days","extractor":"identity"},
     {"placeholder":"renewal_response_window_days","source":"cover.renewal_response_window_days","extractor":"identity"},
-    {"placeholder":"non_renewal_notice_days","source":"B3","extractor":"first_integer"},
+    {"placeholder":"non_renewal_notice_days","source":"B3","extractor":"labeled_integer","label":"Notice days"},
     {"placeholder":"operator_name","source":"D7","extractor":"first_person"}
   ],
   "config_keys": [
     {"path":"/timezone","source":"cover.timezone","extractor":"identity","value_type":"string","mode":"replace"},
-    {"path":"/prospect_response_sla_minutes","source":"cover.prospect_response_sla_minutes","extractor":"identity","value_type":"integer","mode":"create"},
-    {"path":"/application_decision_sla_hours","source":"cover.application_decision_sla_hours","extractor":"identity","value_type":"integer","mode":"create"},
-    {"path":"/leasing_approval_threshold_usd","source":"cover.leasing_approval_threshold_usd","extractor":"identity","value_type":"integer","mode":"create"},
-    {"path":"/renewal_offer_lead_days","source":"cover.renewal_offer_lead_days","extractor":"identity","value_type":"integer","mode":"create"},
-    {"path":"/renewal_response_window_days","source":"cover.renewal_response_window_days","extractor":"identity","value_type":"integer","mode":"create"},
+    {"path":"/prospect_response_sla_minutes","source":"cover.prospect_response_sla_minutes","extractor":"identity","value_type":"integer","minimum":1,"mode":"create"},
+    {"path":"/application_decision_sla_hours","source":"cover.application_decision_sla_hours","extractor":"identity","value_type":"integer","minimum":1,"mode":"create"},
+    {"path":"/leasing_approval_threshold_usd","source":"cover.leasing_approval_threshold_usd","extractor":"identity","value_type":"integer","minimum":1,"mode":"create"},
+    {"path":"/renewal_offer_lead_days","source":"cover.renewal_offer_lead_days","extractor":"identity","value_type":"integer","minimum":1,"mode":"create"},
+    {"path":"/renewal_response_window_days","source":"cover.renewal_response_window_days","extractor":"identity","value_type":"integer","minimum":1,"mode":"create"},
     {"path":"/screening_criteria_established","source":"A1","extractor":"identity","value_type":"string","mode":"create"},
     {"path":"/screening_visibility_policy","source":"D2","extractor":"identity","value_type":"string","mode":"create"},
     {"path":"/pre_1978_properties","source":"B8","extractor":"identity","value_type":"string","mode":"create"}
