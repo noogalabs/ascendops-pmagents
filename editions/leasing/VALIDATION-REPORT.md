@@ -153,7 +153,19 @@ location without claiming this edition ships either inspection checklist. The tw
 checklists join the six companion artifacts in the owner-authorization decision lane.
 The post-shadow text now states the shipped permanent copilot posture: a human approves
 every external message, and any future message-class change requires an explicit policy
-and runtime change. The named test bans the former autonomous-graduation promise.
+and runtime change. The first week is likewise described as operator-supervised review,
+with no automated calibration digest or automatic shadow exit. The named test bans all
+former automation and graduation promises.
+
+The onboarding name-marker step is unconditional: it writes `$CTX_AGENT_NAME` as the
+default display value and substitutes a different human-facing value only when requested.
+Keeping the canonical display name therefore cannot strand the marker that the final
+completeness sweep rejects.
+
+The round-9 A2/A3 unresolved-threshold row is owned by PR13a's generalized executable-
+value gate rather than duplicated here. Its explicit casualty list now includes unresolved
+`income_multiplier` and `credit_min_score`, alongside string-gate and integer variants;
+every mapping-consumed sentinel must reject configuration with the field and resolution path.
 
 ## CI edition-suite census
 

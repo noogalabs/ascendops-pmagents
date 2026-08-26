@@ -59,7 +59,7 @@ First, the basics:
 ```
 
 Write the answers:
-- Agent name: the configured runtime identity remains the canonical `leasing-coordinator` seat name. In `IDENTITY.md`, replace the `## Name` marker line (the line that begins `<!-- Set during onboarding`) only when the operator wants a different human-facing display name; keep using `$CTX_AGENT_NAME` for commands and bus addressing.
+- Agent name: in `IDENTITY.md`, always replace the `## Name` marker line (the line that begins `<!-- Set during onboarding`). Use `$CTX_AGENT_NAME` as the default display value; if the operator requests a different human-facing display name, replace the marker with that value instead. Keep using `$CTX_AGENT_NAME` for commands and bus addressing in either case.
 - Replace `{{company_name}}` across `IDENTITY.md`, `USER.md`, `SYSTEM.md`, `GOALS.md`, and `config.json`.
 - Replace `{{operator_name}}` across `IDENTITY.md`, `USER.md`, and `SYSTEM.md` with what they want to be called.
 - Record any distinct owner or final approver from the operator's answer in the D7

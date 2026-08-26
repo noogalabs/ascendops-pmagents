@@ -90,6 +90,11 @@ class LeasingEditionTests(unittest.TestCase):
         self.assertLess(gate, heartbeat)
         self.assertIn("Do not continue into Session Start", agents)
 
+        onboarding = (SOURCE / "ONBOARDING.md").read_text()
+        self.assertIn("always replace the `## Name` marker line", onboarding)
+        self.assertIn("Use `$CTX_AGENT_NAME` as the default display value", onboarding)
+        self.assertNotIn("only when the operator wants", onboarding)
+
     def test_named_onboarding_failure_cannot_leave_heartbeat_live(self):
         print("ARMED: heartbeat registration follows the durable onboarding marker")
         onboarding = (SOURCE / "ONBOARDING.md").read_text()
@@ -263,9 +268,12 @@ class LeasingEditionTests(unittest.TestCase):
     def test_named_shadow_mode_never_promises_unshipped_autonomy(self):
         print("ARMED: shadow-mode outcome matches permanent copilot approval policy")
         banned = ("Autonomy widens by consequence", "graduate to autonomous send",
-                  "graduates to autonomous send")
+                  "graduates to autonomous send", "runs the daily board sweep silently",
+                  "reports a calibration digest", "Shadow mode ends when")
         for path in (EDITION / "answers-format.md", FIXTURE):
             text = path.read_text()
+            self.assertIn("operator-supervised copilot", text)
+            self.assertIn("does not run an automated calibration digest", text)
             self.assertIn("remains a copilot after shadow mode", text)
             self.assertIn("a human approves every external message", text)
             for phrase in banned:

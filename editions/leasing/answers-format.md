@@ -289,7 +289,7 @@ Answer: ________________________________________
 Your answers do three things, in order:
 
 - The configured agent gets your values. Your Group A criteria, Group B clocks, and Group C showing rules become the configuration and operational instructions its checks, time clocks, and escalation flags read from.
-- The agent boots in shadow mode. For about the first week the agent runs the daily board sweep silently, drafts every message it would have sent, and reports a calibration digest to the people you named in Group D. Nothing outbound, no actions. Shadow mode ends when a week of drafts matches what the property manager would have sent.
+- For about the first week, the agent operates as an operator-supervised copilot: a human reviews every draft and may compare it manually with the property manager's preferred response. This edition does not run an automated calibration digest or automatically exit a shadow phase.
 - The agent remains a copilot after shadow mode: it prepares prospect replies, showing schedules, and file-chasing drafts, and a human approves every external message. Any future change to a message class requires an explicit operator-and-owner policy decision and a corresponding runtime configuration change. Application approvals and denials, adverse action notices, legal notices, money and committed terms, holds, and key or code release always end with a human.
 
 Keep the answers current. When a criterion, a person, a property, or a platform changes, the config changes the same day; the questionnaire is a living document, not a one-time form.
