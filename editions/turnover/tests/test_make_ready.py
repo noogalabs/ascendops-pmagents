@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import datetime as dt
 import contextlib
 import importlib.util
@@ -154,6 +155,59 @@ class MakeReadySafetyTests(unittest.TestCase):
                 dt.date(2026, 8, 1), 10, 2, as_of_date=dt.date(2026, 8, 6),
             )
         self.assertNotIn("STALE_STAGE_ALERT_DAYS", SCRIPT.read_text())
+
+    def test_named_malformed_task_dates_reject_distinct_from_absence(self):
+        print("ARMED: malformed task dates cannot masquerade as absent optional state")
+        with self.assertRaisesRegex(
+            ValueError,
+            r"repair.*invalid last_progress_date: '2026/08/25'",
+        ):
+            make_ready.analyze_turn(
+                [task("repair", done=False, evidence="", progress="2026/08/25"),
+                 task("rekey", depends=("repair",), rekey=True)],
+                dt.date(2026, 8, 1), 10, 2, as_of_date=dt.date(2026, 8, 26),
+            )
+        with self.assertRaisesRegex(
+            ValueError,
+            r"repair.*invalid stage_entered_date: '2026/08/25'",
+        ):
+            make_ready.analyze_turn(
+                [task("repair", done=False, evidence="", stage_entered="2026/08/25"),
+                 task("rekey", depends=("repair",), rekey=True)],
+                dt.date(2026, 8, 1), 10, 2, as_of_date=dt.date(2026, 8, 26),
+            )
+        with self.assertRaisesRegex(ValueError, "repair.*missing stage_entered_date"):
+            make_ready.analyze_turn(
+                [task("repair", done=False, evidence="", stage_entered=""),
+                 task("rekey", depends=("repair",), rekey=True)],
+                dt.date(2026, 8, 1), 10, 2, as_of_date=dt.date(2026, 8, 26),
+            )
+
+    def test_named_certification_dates_never_skip_malformed_values(self):
+        print("ARMED: malformed certification dates reject instead of skipping finality")
+        rows = scheduled([task("repair"), task("rekey", depends=("repair",), rekey=True)])
+        rows[0]["end_date"] = "2026/08/25"
+        with self.assertRaisesRegex(ValueError, r"repair.*invalid end_date: '2026/08/25'"):
+            make_ready.certify_gate(rows)
+
+    def test_named_every_parse_date_consumer_is_strict_or_pinned_loud(self):
+        print("ARMED: every parse_date consumer has an explicit absent/malformed policy")
+        tree = ast.parse(SCRIPT.read_text())
+        direct_calls = {}
+        for function in [node for node in ast.walk(tree)
+                         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))]:
+            count = sum(
+                1 for node in ast.walk(function)
+                if isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "parse_date"
+            )
+            if count:
+                direct_calls[function.name] = count
+        self.assertEqual(
+            direct_calls,
+            {"strict_task_date": 1, "find_critical_path": 2, "main": 1},
+        )
 
     def test_named_future_last_progress_date_rejects_by_task_field_and_date(self):
         print("ARMED: year-typo future progress cannot flatter staleness")

@@ -31,6 +31,26 @@ def parse_date(value: object) -> Optional[dt.date]:
     return None
 
 
+def strict_task_date(
+    value: object,
+    task: Dict[str, object],
+    field: str,
+    *,
+    required: bool,
+) -> Optional[dt.date]:
+    """Parse a task date without conflating an absent optional with malformed input."""
+    raw = str(value or "").strip()
+    task_label = f"Task {task.get('id')} ({task.get('name')})"
+    if not raw:
+        if required:
+            raise ValueError(f"{task_label} is missing {field}")
+        return None
+    parsed = parse_date(raw)
+    if parsed is None:
+        raise ValueError(f"{task_label} has invalid {field}: {raw!r}")
+    return parsed
+
+
 def parse_int(value: object, default: int = 0) -> int:
     try:
         return int(str(value or "").strip() or default)
@@ -221,9 +241,13 @@ def certify_gate(scheduled: List[Dict[str, object]]) -> Tuple[bool, List[str]]:
             for required in scheduled:
                 if required["id"] == r["id"] or required.get("is_rekey"):
                     continue
-                required_end = parse_date(required["end_date"])
-                rekey_start = parse_date(r["start_date"])
-                if required_end and rekey_start and required_end > rekey_start:
+                required_end = strict_task_date(
+                    required.get("end_date"), required, "end_date", required=True
+                )
+                rekey_start = strict_task_date(
+                    r.get("start_date"), r, "start_date", required=True
+                )
+                if required_end > rekey_start:
                     open_items.append(
                         f"RE-KEY NOT LAST: {r['name']} starts {r['start_date']} before "
                         f"required task {required['name']} ends {required['end_date']}"
@@ -298,10 +322,12 @@ def analyze_turn(
     for s in scheduled:
         stage_num = str(s.get("stage", ""))
         if not s["verified_done"] and s["must_fix"]:
-            stage_entered = parse_date(s.get("stage_entered_date"))
-            if stage_entered is None:
-                raise ValueError(f"Task {s['id']} ({s['name']}) is missing stage_entered_date")
-            last_progress = parse_date(s.get("last_progress_date"))
+            stage_entered = strict_task_date(
+                s.get("stage_entered_date"), s, "stage_entered_date", required=True
+            )
+            last_progress = strict_task_date(
+                s.get("last_progress_date"), s, "last_progress_date", required=False
+            )
             if stage_entered > today:
                 raise ValueError(
                     f"Task {s['id']} ({s['name']}) has future stage_entered_date "

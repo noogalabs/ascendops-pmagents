@@ -31,10 +31,15 @@ the merged turnover edition. The reviewed subject is the shipped
    contradictory record to substitute. If real boards intentionally carry
    prior-stage progress forward, that requires an explicit reviewed state in a
    later contract decision rather than a silent default here.
+   A shared strict task-date parser distinguishes a genuinely blank optional
+   progress date from any present-but-malformed value; required stage and
+   certification dates reject missing or malformed values with named fields and
+   raw inputs. An AST census pins every remaining direct `parse_date` consumer
+   to the existing loud critical-path or CLI paths.
 
 ## Running guards
 
-`editions.turnover.tests.test_make_ready` carries thirteen named casualties covering
+`editions.turnover.tests.test_make_ready` carries sixteen named casualties covering
 the five original review directions, four live-review recut directions, both
 future-anchor directions, the missing-stage-entry rejection, and configured CLI default. The turnover
 configurator suite remains unchanged and green; the source template and sealed
