@@ -52,6 +52,36 @@ class GlueEngineTests(unittest.TestCase):
         engine.ENGINE_VERSION = self.production_version
         shutil.rmtree(self.tmp)
 
+    def register_custom_mapping_seat(self, seat="test-custom-structured"):
+        edition = self.tmp / seat
+        library = edition / "library-src"
+        shutil.copytree(self.source, library)
+        (library / "configured.txt").write_text("company={{company_name}}\n")
+        fixture_dir = edition / "fixtures"
+        fixture_dir.mkdir()
+        fixture = fixture_dir / f"ridgeline-{seat}-answers.md"
+        fixture.write_bytes(self.answers.read_bytes())
+        mapping = self.tmp / f"{seat}-mapping.json"
+        mapping.write_text(json.dumps({
+            "schema_version": 1,
+            "structured_answers_file": f"{seat}-config.json",
+            "placeholders": [{
+                "placeholder": "company_name",
+                "source": "cover.company_name",
+                "extractor": "identity",
+            }],
+            "config_keys": [],
+        }))
+        engine.SUPPORTED[seat] = {
+            "library_id": f"{seat}-2026-08-26",
+            "answers": fixture,
+            "library": library,
+            "mapping": mapping,
+            "question_ids": list(engine.load_core().QUESTION_IDS),
+            "runner": "mapping",
+        }
+        return fixture, mapping
+
     def test_named_golden_round_trip_matches_sealed_core_plus_version_stamp(self):
         print("ARMED: golden round-trip sealed-core byte comparison")
         direct = self.tmp / "direct"
@@ -242,6 +272,67 @@ class GlueEngineTests(unittest.TestCase):
         self.assertIn("credential-scan", caught.exception.render())
         self.assertIn("AWS key", caught.exception.render())
         self.assertFalse(output.exists())
+
+    def test_named_registry_mapping_seats_create_then_reconfigure_with_own_declared_filename(self):
+        print("ARMED: every mapping seat create-then-reconfigure uses its declared filename")
+        synthetic = "test-custom-structured"
+        self.register_custom_mapping_seat(synthetic)
+        try:
+            mapping_seats = [seat for seat, row in engine.SUPPORTED.items()
+                             if row.get("runner") == "mapping"]
+            self.assertTrue(mapping_seats, "mapping-seat rerun casualty must never be vacuous")
+            custom_seen = default_seen = False
+            for seat in mapping_seats:
+                row = engine.SUPPORTED[seat]
+                declared = engine.cross_seat.structured_answers_filename(
+                    engine.load_seat_mapping(seat)
+                )
+                custom_seen |= declared != "seat-config.json"
+                default_seen |= declared == "seat-config.json"
+                fixtures = sorted((row["library"].parent / "fixtures").glob("ridgeline-*-answers.md"))
+                self.assertEqual(len(fixtures), 1, f"{seat} must ship exactly one conventional fixture")
+                output = self.tmp / f"{seat}-sequential-output"
+                engine.configure(row["library"], fixtures[0], output, seat, seat_registry={})
+                engine.configure(output, fixtures[0], output, seat, seat_registry={})
+                self.assertTrue((output / declared).is_file())
+                if declared != "seat-config.json":
+                    self.assertFalse((output / "seat-config.json").exists())
+            self.assertTrue(custom_seen, "registry casualty must include a custom declared filename")
+            self.assertTrue(default_seen, "registry casualty must include the default filename")
+        finally:
+            engine.SUPPORTED.pop(synthetic, None)
+
+    def test_named_custom_rerun_rejects_genuine_core_counterpart_conflict(self):
+        print("ARMED: custom rerun rejects a differing declared/core counterpart pair")
+        seat = "test-custom-conflict"
+        fixture, _ = self.register_custom_mapping_seat(seat)
+        try:
+            output = self.tmp / "custom-conflict-output"
+            engine.configure(engine.SUPPORTED[seat]["library"], fixture, output, seat, seat_registry={})
+            declared = output / f"{seat}-config.json"
+            (output / "seat-config.json").write_bytes(declared.read_bytes() + b"\n")
+            with self.assertRaises(engine.IntakeRejected) as caught:
+                engine.configure(output, fixture, output, seat, seat_registry={})
+            self.assertIn("conflicts with core counterpart", caught.exception.render())
+        finally:
+            engine.SUPPORTED.pop(seat, None)
+
+    def test_named_custom_rerun_rejects_cross_seat_counterfeit(self):
+        print("ARMED: custom rerun rejects a cross-seat counterfeit declared artifact")
+        seat = "test-custom-counterfeit"
+        fixture, _ = self.register_custom_mapping_seat(seat)
+        try:
+            output = self.tmp / "custom-counterfeit-output"
+            engine.configure(engine.SUPPORTED[seat]["library"], fixture, output, seat, seat_registry={})
+            declared = output / f"{seat}-config.json"
+            payload = json.loads(declared.read_text())
+            payload["seat"] = "different-seat"
+            declared.write_text(json.dumps(payload, indent=2) + "\n")
+            with self.assertRaises(engine.IntakeRejected) as caught:
+                engine.configure(output, fixture, output, seat, seat_registry={})
+            self.assertIn("belongs to 'different-seat'", caught.exception.render())
+        finally:
+            engine.SUPPORTED.pop(seat, None)
 
     def test_named_mapping_production_entry_supports_literal_and_first_integer(self):
         print("ARMED: mapping production entry supports literal and first_integer extractors")

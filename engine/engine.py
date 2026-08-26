@@ -171,6 +171,30 @@ def run_mapping_core(core, source: Path, answers: Path, output: Path, library: P
     return configuration_date.isoformat()
 
 
+def restore_mapping_core_counterpart(prepared: Path, structured_filename: str, seat: str, old_manifest):
+    """Restore the mapping core's canonical artifact only for an accepted managed rerun."""
+    if structured_filename == "seat-config.json" or not old_manifest:
+        return
+    declared = prepared / structured_filename
+    canonical = prepared / "seat-config.json"
+    if not declared.is_file():
+        return
+    payload = read_member_json(declared, structured_filename)
+    if payload.get("seat") != seat:
+        raise IntakeRejected([(
+            f"{structured_filename}.seat",
+            f"configured artifact belongs to {payload.get('seat')!r}, expected {seat!r}",
+        )])
+    if canonical.exists():
+        if not canonical.is_file() or canonical.read_bytes() != declared.read_bytes():
+            raise IntakeRejected([(
+                "structured_answers_file",
+                f"declared structured artifact {structured_filename} conflicts with core counterpart seat-config.json",
+            )])
+        return
+    shutil.copy2(declared, canonical)
+
+
 def copy_protected(source: Path, staged: Path):
     census = transaction.protected_class_census(source)
     names = sorted({item.split("/", 1)[0] for items in census.values() for item in items})
@@ -275,6 +299,7 @@ def configure(source: Path, answers: Path, output: Path, seat: str,
                          if old_preserved else placeholders.preserved_runtime_manifest(prepared))
         except placeholders.PlaceholderRejected as exc:
             raise IntakeRejected(exc.failures)
+        restore_mapping_core_counterpart(prepared, structured_filename, seat, old_manifest)
         try:
             if SUPPORTED[seat].get("runner") == "mapping":
                 configuration_date = run_mapping_core(
