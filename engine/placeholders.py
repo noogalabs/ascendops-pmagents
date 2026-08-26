@@ -133,9 +133,13 @@ def load_mapping(path: Path):
 
 
 def _number(value, *, integer=False):
-    match = re.search(r"\$([0-9][0-9,]*(?:\.\d+)?)", value)
+    match = re.search(r"\$([0-9][0-9,]*(?:\.\d+)?)(?!\.\d|\d)", value)
     if not match:
-        match = re.search(r"([0-9][0-9,]*(?:\.\d+)?)\s*(?:base\s+)?threshold", value, re.I)
+        match = re.search(
+            r"([0-9][0-9,]*(?:\.\d+)?)(?!\.\d|\d)\s*(?:base\s+)?threshold",
+            value,
+            re.I,
+        )
     if not match: raise ValueError("currency value not found")
     token = match.group(1).replace(",", "")
     try:

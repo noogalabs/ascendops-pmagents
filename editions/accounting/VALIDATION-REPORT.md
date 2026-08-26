@@ -158,6 +158,9 @@ loudly at raw labeled-integer extraction rather than silently rewriting input.
 The artifact-grain custody casualty also reads `accounting-config.json` after a
 successful configure and proves punctuation in the raw A1 counsel line survives
 unchanged in the persisted `answers.A1` value.
+Currency extraction accepts an integral decimal such as `$30.00` as 30, rejects
+non-integral `$30.50` on integer fields without rounding, and rejects malformed
+chained decimals such as `$30.00.50` rather than silently truncating the token.
 Canonical-label qualifier classification is position-independent: prefix,
 suffix (`for Georgia`), and parenthetical (`(Georgia)`) qualifiers with a
 numeric value are scoped conflicts and reject rather than falling through.

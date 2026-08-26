@@ -233,6 +233,12 @@ class PlaceholderTests(unittest.TestCase):
             )
         self.assertIn("threshold must be stated in whole dollars", str(caught.exception.failures))
         self.assertEqual(json.loads(path.read_text())["threshold"], 1)
+        with self.assertRaises(engine.placeholders.PlaceholderRejected) as malformed:
+            engine.placeholders.apply_initial(
+                self.root, mapping, self.cover, dict(self.answers, B1="$30.00.50"), self.core
+            )
+        self.assertIn("currency value not found", str(malformed.exception.failures))
+        self.assertEqual(json.loads(path.read_text())["threshold"], 1)
         self.assertEqual(next(row for row in manifest if row["row_type"] == "config_key")["value"], 30)
 
     def test_named_config_key_replace_missing_rejects_but_explicit_create_works(self):
