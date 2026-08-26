@@ -20,7 +20,10 @@ the merged turnover edition. The reviewed subject is the shipped
    duplicates are detected after normalization.
 4. **True critical path:** a forward schedule plus backward latest-start pass
    reports zero-slack work only. At an unequal two-branch join, the short branch
-   is no longer mislabeled critical.
+   is no longer mislabeled critical. Scheduling is the single duration-parsing
+   boundary: blank duration keeps the documented one-day default, while
+   malformed, zero, and negative durations reject by task and field before date
+   math. The stored canonical integer flows into CPM without reparsing.
 5. **Configured progress staleness:** the CLI reads the configured
    `stale_stage_alert_days` unless explicitly overridden. Unfinished must-fix
    work measures staleness from `last_progress_date`, or visibly from required
@@ -39,7 +42,7 @@ the merged turnover edition. The reviewed subject is the shipped
 
 ## Running guards
 
-`editions.turnover.tests.test_make_ready` carries sixteen named casualties covering
+`editions.turnover.tests.test_make_ready` carries twenty-one named casualties covering
 the five original review directions, four live-review recut directions, both
 future-anchor directions, the missing-stage-entry rejection, and configured CLI default. The turnover
 configurator suite remains unchanged and green; the source template and sealed

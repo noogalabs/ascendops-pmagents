@@ -39,7 +39,7 @@ def strict_task_date(
     required: bool,
 ) -> Optional[dt.date]:
     """Parse a task date without conflating an absent optional with malformed input."""
-    raw = str(value or "").strip()
+    raw = "" if value is None else str(value).strip()
     task_label = f"Task {task.get('id')} ({task.get('name')})"
     if not raw:
         if required:
@@ -51,11 +51,19 @@ def strict_task_date(
     return parsed
 
 
-def parse_int(value: object, default: int = 0) -> int:
+def strict_task_duration(value: object, task: Dict[str, object]) -> int:
+    """Return a positive duration, preserving only the documented blank default."""
+    raw = "" if value is None else str(value).strip()
+    if not raw:
+        return 1
+    task_label = f"Task {task.get('id')} ({task.get('name')})"
     try:
-        return int(str(value or "").strip() or default)
-    except (TypeError, ValueError):
-        return default
+        duration = int(raw)
+    except ValueError as exc:
+        raise ValueError(f"{task_label} has invalid duration_days: {raw!r}") from exc
+    if duration < 1:
+        raise ValueError(f"{task_label} has nonpositive duration_days: {duration}")
+    return duration
 
 
 def parse_bool(value: object) -> bool:
@@ -134,7 +142,7 @@ def schedule_tasks(
     scheduled: List[Dict[str, object]] = []
     for task in ordered:
         tid = str(task["id"])
-        duration_days = parse_int(task.get("duration_days"), 1)
+        duration_days = strict_task_duration(task.get("duration_days"), task)
 
         # Start = max(possession_date, max finish of all dependencies)
         start = possession_date
@@ -194,7 +202,7 @@ def find_critical_path(scheduled: List[Dict[str, object]]) -> Tuple[List[str], d
     latest_start: Dict[str, dt.date] = {}
     for task in reversed(scheduled):
         tid = str(task["id"])
-        duration = dt.timedelta(days=parse_int(task.get("duration_days"), 1))
+        duration = dt.timedelta(days=task["duration_days"])
         latest_finish = (
             min(latest_start[child] for child in dependents[tid])
             if dependents[tid] else project_finish

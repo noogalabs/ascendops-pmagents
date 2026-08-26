@@ -102,6 +102,53 @@ class MakeReadySafetyTests(unittest.TestCase):
         ok, open_items = make_ready.certify_gate(rows)
         self.assertTrue(ok, open_items)
 
+    def test_named_negative_duration_after_rekey_rejects_before_certification(self):
+        print("ARMED: negative post-rekey duration rejects before timeline certification")
+        with self.assertRaisesRegex(ValueError, "cosmetic.*nonpositive duration_days: -1"):
+            scheduled([
+                task("rekey", rekey=True),
+                task("cosmetic", duration=-1, depends=("rekey",), must_fix=False),
+            ])
+
+    def test_named_zero_duration_rejects_by_task_and_field(self):
+        print("ARMED: zero duration cannot flatten scheduled work")
+        with self.assertRaisesRegex(ValueError, "repair.*nonpositive duration_days: 0"):
+            scheduled([task("repair", duration=0)])
+
+    def test_named_malformed_duration_rejects_instead_of_defaulting(self):
+        print("ARMED: present malformed duration cannot masquerade as the default")
+        with self.assertRaisesRegex(ValueError, r"repair.*invalid duration_days: 'two'"):
+            scheduled([task("repair", duration="two")])
+
+    def test_named_absent_duration_preserves_one_day_default(self):
+        print("ARMED: genuinely absent duration keeps the documented one-day default")
+        row = task("repair")
+        row.pop("duration_days")
+        result = scheduled([row])
+        self.assertEqual(result[0]["duration_days"], 1)
+        self.assertEqual(result[0]["end_date"], "2026-08-02")
+
+    def test_named_cpm_consumes_canonical_duration_without_reparse(self):
+        print("ARMED: scheduler canonicalizes duration once and CPM consumes that integer")
+        rows = scheduled([
+            task("repair", duration=" 2 "),
+            task("rekey", depends=("repair",), rekey=True),
+        ])
+        self.assertEqual(rows[0]["duration_days"], 2)
+        self.assertIs(type(rows[0]["duration_days"]), int)
+        _, finish = make_ready.find_critical_path(rows)
+        self.assertEqual(finish, dt.date(2026, 8, 4))
+
+        tree = ast.parse(SCRIPT.read_text())
+        find_cpm = next(node for node in ast.walk(tree)
+                        if isinstance(node, ast.FunctionDef)
+                        and node.name == "find_critical_path")
+        reparses = [node for node in ast.walk(find_cpm)
+                    if isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Name)
+                    and node.func.id == "parse_int"]
+        self.assertEqual(reparses, [])
+
     def test_named_critical_path_uses_zero_slack_at_unequal_join(self):
         print("ARMED: short join branch has slack and is not reported critical")
         rows = scheduled([
