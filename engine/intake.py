@@ -146,6 +146,10 @@ def _validate_accounting_scope(answers: dict[str, str], failures: list[tuple[str
         (re.search(r"\blate fee grace days\b", line, re.I)
          and re.search(r":\s*\d+\s*$", line)
          and not canonical_pattern.fullmatch(line))
+        or (re.search(r"\blate fee grace\b", line, re.I)
+            and re.search(r"\b\d+\b", line)
+            and re.search(r"\bdays?\b", line, re.I)
+            and not canonical_pattern.fullmatch(line))
         or STRUCTURED_DAY_COUNT_LINE.fullmatch(line)
         or re.fullmatch(
             r"\s*.+\b(?:county|parish|city|state|jurisdiction)\s*:\s*\d+\s+days\s*",

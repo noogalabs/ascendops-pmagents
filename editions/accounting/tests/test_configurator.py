@@ -553,6 +553,21 @@ class AccountingConfiguratorTests(unittest.TestCase):
         self.assertEqual(json.loads((output / "config.json").read_text())[
             "late_fee_grace_days"], 6)
 
+    def test_named_accounting_prose_form_jurisdiction_clock_rejects_loudly(self):
+        print("ARMED: prose-form jurisdiction grace clock cannot silently flatten")
+        output = self.tmp / "prose-form-jurisdiction-clock"
+        fixture = self.fixture_variant(
+            "A1",
+            "Late fee grace days: 5\n"
+            "  Georgia late fee grace period is 10 days.\n"
+            "  Counsel confirmed both jurisdictions.",
+        )
+        with self.assertRaises(engine.IntakeRejected) as caught:
+            engine.configure(self.source, fixture, output, "accounting", seat_registry={})
+        self.assertIn("A1 accepts exactly one structured day-count line",
+                      caught.exception.render())
+        self.assertFalse(output.exists())
+
     def test_named_accounting_single_punctuated_clock_preserves_raw_then_refuses_extraction(self):
         print("ARMED: punctuated canonical passes guard without rewriting raw extraction bytes")
         answer = "Late fee grace days: 6.\n  Counsel confirmed the one supported clock."
