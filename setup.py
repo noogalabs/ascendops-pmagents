@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import json
 import re
 import shutil
 import sys
@@ -226,6 +227,73 @@ def cleanup_interrupted_candidates(output: Path | None) -> None:
                 shutil.rmtree(path, ignore_errors=True)
 
 
+def discover_seat_registry(
+    output: Path,
+    current_seat: str,
+    *,
+    out: TextIO = sys.stdout,
+) -> dict[str, dict]:
+    """Discover complete sibling installations without writing to peer trees."""
+    registry: dict[str, dict] = {}
+    if not output.parent.is_dir():
+        return registry
+    for candidate in sorted(output.parent.iterdir()):
+        if candidate == output or not candidate.is_dir() or not (candidate / "config.json").is_file():
+            continue
+        for seat in engine.SUPPORTED:
+            if seat == current_seat:
+                continue
+            mapping = engine.load_seat_mapping(seat)
+            filename = engine.cross_seat.structured_answers_filename(mapping)
+            artifact = candidate / filename
+            if not artifact.is_file():
+                continue
+            try:
+                payload = json.loads(artifact.read_text(encoding="utf-8"))
+                if not isinstance(payload, dict) or payload.get("seat") != seat:
+                    continue
+                engine.cross_seat._validate_peer_version(
+                    seat, payload, engine.ENGINE_VERSION,
+                )
+            except engine.cross_seat.CrossSeatRejected as exc:
+                detail = "; ".join(f"{row}: {reason}" for row, reason in exc.failures)
+                print(f"Excluded connected seat {seat} at {candidate}: {detail}", file=out)
+                continue
+            except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+                print(f"Excluded connected seat {seat} at {candidate}: {exc}", file=out)
+                continue
+            if seat in registry:
+                first = Path(registry[seat]["path"])
+                raise ValueError(
+                    f"duplicate connected seat {seat}: both {first} and {candidate} "
+                    "claim this seat; remove or relocate one before setup"
+                )
+            registry[seat] = {"path": candidate, "mapping": mapping}
+    return registry
+
+
+def render_cross_seat_completion(output: Path, seat: str, out: TextIO) -> None:
+    mapping = engine.load_seat_mapping(seat)
+    artifact = output / engine.cross_seat.structured_answers_filename(mapping)
+    try:
+        payload = json.loads(artifact.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return
+    cross = payload.get("cross_seat", {})
+    if not isinstance(cross, dict):
+        return
+    pointers = cross.get("pointers", {})
+    held = cross.get("held", {})
+    if not isinstance(pointers, dict) or not isinstance(held, dict):
+        return
+    for name, row in sorted(pointers.items()):
+        if isinstance(row, dict) and row.get("state") == "resolved":
+            print(f"Connected pointer {name}: resolved from {row.get('owner_seat')}", file=out)
+    for name, row in sorted(held.items()):
+        if isinstance(row, dict):
+            print(f"Connected pointer {name}: held pending {row.get('held_pending_seat')}", file=out)
+
+
 def run_setup(
     *,
     ask: Callable[[str], str] = input,
@@ -255,9 +323,13 @@ def run_setup(
             raise ValueError("answers choice must be 1 or 2")
 
         actual_source = output if output.exists() else source
+        seat_registry = discover_seat_registry(output, seat, out=out)
         while True:
             try:
-                configure_fn(actual_source, answers, output, seat, clock=clock, seat_registry={})
+                configure_fn(
+                    actual_source, answers, output, seat, clock=clock,
+                    seat_registry=seat_registry,
+                )
                 break
             except engine.IntakeRejected as exc:
                 editable = answer_field_map(answers, engine.cover_fields_for_seat(seat))
@@ -266,6 +338,7 @@ def run_setup(
                     return 2
                 actual_source = output if output.exists() else source
         print(f"Configured agent: {output}", file=out)
+        render_cross_seat_completion(output, seat, out)
         print("Next: review the generated agent with your implementation contact before activation.", file=out)
         return 0
     except KeyboardInterrupt:
