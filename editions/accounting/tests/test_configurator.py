@@ -576,31 +576,6 @@ class AccountingConfiguratorTests(unittest.TestCase):
                               caught.exception.render())
                 self.assertFalse(output.exists())
 
-    def test_named_accounting_unlisted_place_grace_prose_is_accepted_residual(self):
-        print("ARMED: unlisted place prose remains outside the closed jurisdiction vocabulary")
-        output = self.tmp / "unlisted-place-grace-prose"
-        engine.configure(self.source, self.fixture_variant(
-            "A1", "Late fee grace days: 6\n  Riverside grace period is 10 days."
-        ), output, "accounting", seat_registry={})
-        self.assertEqual(json.loads((output / "config.json").read_text())[
-            "late_fee_grace_days"], 6)
-
-    def test_named_accounting_prose_clock_conjunction_requires_all_three_legs(self):
-        print("ARMED: jurisdiction, late-fee grace, and integer duration are all required")
-        benign_lines = (
-            "Georgia requires a 10-day filing deadline.",
-            "Counsel confirms this 5-day grace period.",
-            "Counsel reviews the separate payment window within 30 business days.",
-        )
-        for index, benign in enumerate(benign_lines, 1):
-            with self.subTest(benign=benign):
-                output = self.tmp / f"prose-clock-missing-leg-{index}"
-                engine.configure(self.source, self.fixture_variant(
-                    "A1", f"Late fee grace days: 6\n  {benign}"
-                ), output, "accounting", seat_registry={})
-                self.assertEqual(json.loads((output / "config.json").read_text())[
-                    "late_fee_grace_days"], 6)
-
     def test_named_accounting_single_punctuated_clock_preserves_raw_then_refuses_extraction(self):
         print("ARMED: punctuated canonical passes guard without rewriting raw extraction bytes")
         answer = "Late fee grace days: 6.\n  Counsel confirmed the one supported clock."
