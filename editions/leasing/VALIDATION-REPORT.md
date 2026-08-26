@@ -168,6 +168,15 @@ value gate rather than duplicated here. Its explicit casualty list now includes 
 `income_multiplier` and `credit_min_score`, alongside string-gate and integer variants;
 every mapping-consumed sentinel must reject configuration with the field and resolution path.
 
+## Embedded Bash parser custody
+
+The finalization command chain is a real nested `if` and parses before any textual
+ordering property is asserted. `test_named_every_onboarding_bash_block_parses`
+enumerates all five indentation-aware `bash` fences in `ONBOARDING.md` and runs each
+through the real `bash -n` parser. Removing the opening `if` kills that named test on
+the finalization block. PR13c generalizes the same parser-first casualty across every
+shipped edition onboarding file.
+
 ## CI edition-suite census
 
 At the pre-fix head, three edition test suites existed—maintenance, PM-assist, and

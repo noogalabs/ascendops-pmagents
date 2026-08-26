@@ -180,7 +180,7 @@ else
   # Idempotent: clear any crons left by a prior partial run so re-running this
   # block is safe (add-cron errors on a duplicate name).
   for c in heartbeat applicant-screening-digest renewal-window-am renewal-window-pm lease-abstraction-intake fair-housing-presend-sweep; do cortextos bus remove-cron "$CTX_AGENT_NAME" "$c" 2>/dev/null; done
-  cortextos bus add-cron "$CTX_AGENT_NAME" applicant-screening-digest "0 8 * * 1-5" "Run the applicant-screening skill in digest mode: score new applications against the written rubric, write a reason on every line, never auto-decline, and surface results for the operator's decision." \
+  if cortextos bus add-cron "$CTX_AGENT_NAME" applicant-screening-digest "0 8 * * 1-5" "Run the applicant-screening skill in digest mode: score new applications against the written rubric, write a reason on every line, never auto-decline, and surface results for the operator's decision." \
     && cortextos bus add-cron "$CTX_AGENT_NAME" renewal-window-am "0 8 * * 1-5" "Run renewals-coordinator in morning mode: detect leases entering the renewal window, score risk off payment history, recommend a path, and draft approval-ready renewal offers." \
     && cortextos bus add-cron "$CTX_AGENT_NAME" renewal-window-pm "0 17 * * 1-5" "Run renewals-coordinator in evening mode: surface changed renewal flags and deadline pressure only." \
     && cortextos bus add-cron "$CTX_AGENT_NAME" lease-abstraction-intake "0 9 * * 1-5" "Run lease-abstraction on any newly received leases: extract terms into structured data and flag missing, ambiguous, or contradictory clauses." \

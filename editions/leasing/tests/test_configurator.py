@@ -9,6 +9,7 @@ import io
 import json
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -120,6 +121,23 @@ class LeasingEditionTests(unittest.TestCase):
         self.assertIn("Re-run this block", onboarding)
         self.assertLess(failure.index("rm -f"), failure.index("STOP:"))
         self.assertLess(failure.index("remove-cron"), failure.index("STOP:"))
+
+    def test_named_every_onboarding_bash_block_parses(self):
+        print("ARMED: every embedded onboarding Bash block passes the real parser")
+        onboarding = (SOURCE / "ONBOARDING.md").read_text()
+        fenced = re.findall(
+            r"(?m)^([ \t]*)```bash\n(.*?)\n\1```$", onboarding, re.S,
+        )
+        self.assertEqual(len(fenced), 5)
+        for index, (_, block) in enumerate(fenced, start=1):
+            parsed = subprocess.run(
+                ["bash", "-n"], input=block, text=True,
+                capture_output=True, check=False,
+            )
+            self.assertEqual(
+                parsed.returncode, 0,
+                f"ONBOARDING bash block {index} does not parse: {parsed.stderr}",
+            )
 
     def test_named_d7_and_cross_seat_contract_rows_match_authority(self):
         print("ARMED: leasing D7 and cross-seat authority rows stay exact")
