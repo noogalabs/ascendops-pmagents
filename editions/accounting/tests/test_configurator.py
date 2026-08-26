@@ -103,16 +103,20 @@ class AccountingConfiguratorTests(unittest.TestCase):
         print("ARMED: accounting first boot verifies configured custody without recollecting answers")
         onboarding = (SOURCE / "ONBOARDING.md").read_text()
         self.assertIn("Read `accounting-config.json` in full", onboarding)
-        self.assertIn("only new values collected at first boot are the Telegram bot token and chat", onboarding)
+        self.assertIn("Telegram bot token, chat\n"
+                      "id, and allowed sender id", onboarding)
+        for required in ("`BOT_TOKEN`", "`CHAT_ID`", "`ALLOWED_USER`",
+                         "Validate that all three are nonblank"):
+            self.assertIn(required, onboarding)
         self.assertIn("rerun\n   `python3 setup.py`", onboarding)
         for stale in ("what should my name be", "Which accounting system", "approval thresholds"):
             self.assertNotIn(stale, onboarding)
 
     def test_named_accounting_onboarding_skill_is_verify_only_and_skill_census_is_exact(self):
-        print("ARMED: all eight accounting skills are dispositioned and onboarding never re-interviews")
+        print("ARMED: all nine accounting skills are dispositioned and onboarding never re-interviews")
         skills = SOURCE / ".claude" / "skills"
         self.assertEqual({path.parent.name for path in skills.glob("*/SKILL.md")}, {
-            "ap-vendor-payments", "ar-rent-posting", "onboarding", "owner-draws",
+            "ap-vendor-payments", "approvals", "ar-rent-posting", "onboarding", "owner-draws",
             "owner-statement-drafting", "security-deposit-accounting", "trust-compliance",
             "trust-reconciliation",
         })
@@ -125,6 +129,22 @@ class AccountingConfiguratorTests(unittest.TestCase):
                        "write their answers into your own configuration",
                        "What should I call myself?", "What timezone are you in?"):
             self.assertNotIn(banned, onboarding)
+
+    def test_named_accounting_skill_references_resolve_inside_shipped_tree(self):
+        print("ARMED: every accounting skill reference resolves inside the shipped tree")
+        skills = SOURCE / ".claude" / "skills"
+        references = []
+        for path in sorted(skills.glob("*/SKILL.md")):
+            for name in re.findall(r"\.claude/skills/([a-z0-9-]+)/SKILL\.md",
+                                   path.read_text()):
+                references.append((path, name))
+        self.assertTrue(references)
+        missing = [
+            f"{path.relative_to(SOURCE)} -> .claude/skills/{name}/SKILL.md"
+            for path, name in references
+            if not (skills / name / "SKILL.md").is_file()
+        ]
+        self.assertEqual(missing, [])
 
     def test_named_accounting_completion_preserves_five_custody_properties(self):
         print("ARMED: accounting completion is gated, rollback-safe, durable, and heartbeat-last")
@@ -224,6 +244,16 @@ class AccountingConfiguratorTests(unittest.TestCase):
             ("decision_log_location", "pm-assist", "D7", "D6", "/answers/D7"),
         })
         self.assertNotIn("day_mode_window", pointers)
+        deposit_config = next(
+            row for row in mapping["config_keys"] if row["path"] == "/deposit_return_days"
+        )
+        self.assertEqual(deposit_config["source"],
+                         pointers["deposit_disposition_deadline"]["holding_question_id"])
+        self.assertEqual(
+            (deposit_config["extractor"], deposit_config["label"],
+             deposit_config["value_type"], deposit_config["minimum"]),
+            ("labeled_integer", "Deposit return days", "integer", 1),
+        )
         self.assertEqual({
             (row["check_id"], row["type"], row["local_ref"],
              row["peer_seat"], row["peer_ref"])

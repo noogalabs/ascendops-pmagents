@@ -17,10 +17,11 @@ not run a second accounting interview.
    `$CTX_AGENT_NAME` as the default display value; an operator override changes
    only the value written, not whether the marker is removed.
 
-The only new values collected at first boot are the Telegram bot token and chat
-id. Store them in the agent's private environment file; never write them into a
-tracked file. If they are not available, stop before registering crons or
-writing the onboarding marker.
+The only new values collected at first boot are the Telegram bot token, chat
+id, and allowed sender id. Store them as `BOT_TOKEN`, `CHAT_ID`, and
+`ALLOWED_USER` in the agent's private environment file; never write them into
+a tracked file. Validate that all three are nonblank. If any are unavailable,
+stop before registering crons or writing the onboarding marker.
 
 ## Complete onboarding
 

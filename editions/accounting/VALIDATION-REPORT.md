@@ -6,7 +6,9 @@ Contract: `pmagents-five-seat-editions-contract-2026-08-25.md`.
 
 - Questionnaire: 46 IDs, A1-A17, B1-B13, C1-C7, D1-D9.
 - Structured artifact: `accounting-config.json`, declared by the mapping.
-- Member library: the owner-reviewed 28-file classroom accounting package.
+- Member library: the owner-reviewed 28-file classroom accounting package plus
+  the reviewed byte-identical PM-assist approval workflow required by the
+  classroom rent-posting skill.
 - Fixture: fictional Ridgeline Residential Management.
 - Mapping authority: `mapping-tables/accounting.md`, source SHA-256 pinned in
   `engine/mappings/accounting.json`.
@@ -18,19 +20,25 @@ placeholder spelling, session-start structured-config custody, guided-only
 setup, and verify-not-reenter first boot. The mapping-owned `seat-config.json`
 baseline and edition tests are product-native, not falsely attributed to the
 classroom source. The larger in-fan draft is not shipped.
+Artifact 195 records the separately reviewed, byte-identical approval workflow
+import. It closes the classroom rent-posting skill's dangling money-gate
+reference without inventing a new approval procedure.
 
 The QAd mapping table targeted that draft tree. Its semantic question-to-value
 rows survive; destination anchors were retargeted to the classroom package.
 Production configuration, the declared-consumer sweep, and the named runtime
 retarget casualty prove those values reach the actual shipped tree.
 
-The eight reviewed skills are dispositioned exhaustively: `ap-vendor-payments`,
+The nine shipped skills are dispositioned exhaustively: `ap-vendor-payments`,
+`approvals`,
 `ar-rent-posting`, `owner-draws`, `owner-statement-drafting`,
 `security-deposit-accounting`, `trust-compliance`, and `trust-reconciliation`
 remain byte-identical to classroom custody; `onboarding` is the one adapted
 skill. Its platform delta is verify-not-reenter, private Telegram deployment
 wiring, and completion only through `ONBOARDING.md`'s final gate. It contains no
 second identity, company, goals, policy, or software interview.
+The deployment-only step collects and validates the complete private Telegram
+wiring triple: `BOT_TOKEN`, `CHAT_ID`, and `ALLOWED_USER`.
 
 ## Cross-seat row dispositions
 
@@ -63,6 +71,16 @@ comparison for it. Task `task_1787735414502_98348643` owns the shared PR13b
 capability and a consuming follow-up that returns this chargeback equality with
 the leasing communications-window and BD day-mode rows. Its casualty must prove
 151/401 rejects against owner 150/400; PR9 never guesses by raw prose equality.
+
+The exact-head bot also identified a second owner/value split at SEAM-1.
+Until PR13b can extract typed values at pointer grain, the local
+`/deposit_return_days` row remains sourced from the pointer's declared holding
+question A6. A structural casualty pins that equality so the local config and
+held pointer cannot silently drift to different accounting answers. Task
+`task_1787735414502_98348643` gains the consuming follow-up: maintenance A3
+must become the typed runtime authority when present, with absent-peer and
+divergent 31-vs-30 casualties. PR9 does not fabricate a prose-to-integer pointer
+conversion the current engine cannot express.
 
 The existing POLICY_DIVERGE rows SEAM-8, SEAM-11, SEAM-12, and SEAM-17
 remain report-only comparisons and never auto-unify prose. SEAM-1 remains at
@@ -112,7 +130,7 @@ artifact rather than being coerced into a dishonest integer domain.
   labeled timeline and a money threshold, and unresolved B1 rejection before
   any output write.
 - Provenance source/destination hashes recomputed for every classroom file.
-- Accounting 22/22, engine 92/92, sibling editions 26/5/20/13, zero-touch
+- Accounting 23/23, engine 92/92, sibling editions 26/5/20/13, zero-touch
   28/28, review sweeps 6/6, plus manifest, hygiene, leak, and exact-head CI.
 
 ## Shared-file boundary
