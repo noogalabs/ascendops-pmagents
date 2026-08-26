@@ -5,6 +5,10 @@ from pathlib import Path
 
 TOKEN = re.compile(r"\{\{([a-zA-Z0-9_]+)\}\}")
 PRESERVED_RUNTIME_TOKENS = {"CTX_ROOT"}
+SUPPORTED_EXTRACTORS = {
+    "currency", "emergency_minutes", "first_integer", "first_person",
+    "identity", "literal", "maintenance_platform", "window_end", "window_start",
+}
 
 
 class PlaceholderRejected(RuntimeError):
@@ -46,6 +50,14 @@ def load_mapping(path: Path):
             failures.append((f"mapping.config_keys.{row.get('path')}", "value_from must be pointer"))
         if row.get("value_from") == "pointer" and not isinstance(row.get("pointer_name"), str):
             failures.append((f"mapping.config_keys.{row.get('path')}", "pointer_name is required"))
+        if row.get("value_from") != "pointer":
+            extractor = row.get("extractor")
+            if extractor not in SUPPORTED_EXTRACTORS:
+                failures.append((f"mapping.config_keys.{row.get('path')}",
+                                 f"unknown extractor {extractor!r}"))
+            if extractor == "literal" and not isinstance(row.get("value"), str):
+                failures.append((f"mapping.config_keys.{row.get('path')}",
+                                 "literal extractor requires a string value"))
     if schema_version >= 2:
         timezone_rows = [row for row in config_rows if row.get("path") == "/timezone"]
         if len(timezone_rows) != 1:
@@ -60,6 +72,13 @@ def load_mapping(path: Path):
             failures.append(("mapping.config_keys./timezone",
                              "timezone row must source cover.timezone or a declared pointer as a string"))
     for row in rows:
+        extractor = row.get("extractor")
+        if extractor not in SUPPORTED_EXTRACTORS:
+            failures.append((f"mapping.{row.get('placeholder')}",
+                             f"unknown extractor {extractor!r}"))
+        if extractor == "literal" and not isinstance(row.get("value"), str):
+            failures.append((f"mapping.{row.get('placeholder')}",
+                             "literal extractor requires a string value"))
         sites = row.get("sites")
         if sites is None:
             continue
@@ -91,12 +110,18 @@ def _number(value):
 
 
 def extract(row, cover, answers, core):
+    kind = row["extractor"]
+    if kind == "literal":
+        return row["value"]
     source = row["source"]
     raw = cover[source.split(".", 1)[1]] if source.startswith("cover.") else answers[source]
     value = core.provenance_value(raw, source)
-    kind = row["extractor"]
     if kind == "identity": return value
     if kind == "currency": return _number(value)
+    if kind == "first_integer":
+        match = re.search(r"[-+]?\d[\d,]*", value)
+        if not match: raise ValueError("integer value not found")
+        return match.group(0).replace(",", "")
     if kind == "emergency_minutes":
         match = re.search(r"Emergency\s+dispatch(?:\s+within)?\s+(\d+)\s+minutes?", value, re.I)
         if not match: raise ValueError("Emergency dispatch minutes not found")

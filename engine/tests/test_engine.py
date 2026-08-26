@@ -226,6 +226,76 @@ class GlueEngineTests(unittest.TestCase):
         self.assertIn("AWS key", caught.exception.render())
         self.assertFalse(output.exists())
 
+    def test_named_mapping_production_entry_supports_literal_and_first_integer(self):
+        print("ARMED: mapping production entry supports literal and first_integer extractors")
+        cases = (
+            ("literal", {"source": "B1", "value": "day"}, "day"),
+            ("first_integer", {"source": "B1"}, "450"),
+        )
+        for kind, extra, expected in cases:
+            with self.subTest(extractor=kind):
+                seat = f"test-{kind}"
+                source = self.tmp / f"{seat}-source"
+                shutil.copytree(self.source, source)
+                (source / "configured.txt").write_text("value={{configured_value}}\n")
+                mapping_path = self.tmp / f"{seat}-mapping.json"
+                mapping_path.write_text(json.dumps({
+                    "schema_version": 1,
+                    "placeholders": [{
+                        "placeholder": "configured_value",
+                        "extractor": kind,
+                        **extra,
+                    }],
+                    "config_keys": [],
+                }))
+                engine.SUPPORTED[seat] = {
+                    "library_id": f"{seat}-2026-08-26",
+                    "answers": self.answers,
+                    "library": DEMO / "library-src",
+                    "mapping": mapping_path,
+                    "question_ids": list(engine.load_core().QUESTION_IDS),
+                    "runner": "mapping",
+                }
+                try:
+                    output = self.tmp / f"{seat}-output"
+                    engine.configure(source, self.answers, output, seat)
+                    self.assertIn(expected, (output / "configured.txt").read_text())
+                finally:
+                    engine.SUPPORTED.pop(seat, None)
+
+    def test_named_unknown_mapping_extractor_fails_closed_before_output(self):
+        print("ARMED: unknown mapping extractor fails closed before output")
+        seat = "test-unknown-extractor"
+        mapping_path = self.tmp / "unknown-extractor-mapping.json"
+        mapping_path.write_text(json.dumps({
+            "schema_version": 1,
+            "placeholders": [{
+                "placeholder": "configured_value",
+                "source": "B1",
+                "extractor": "future_unreviewed_extractor",
+            }],
+            "config_keys": [],
+        }))
+        engine.SUPPORTED[seat] = {
+            "library_id": "test-unknown-2026-08-26",
+            "answers": self.answers,
+            "library": DEMO / "library-src",
+            "mapping": mapping_path,
+            "question_ids": list(engine.load_core().QUESTION_IDS),
+            "runner": "mapping",
+        }
+        try:
+            with self.assertRaises(engine.IntakeRejected) as load_caught:
+                engine.load_seat_mapping(seat)
+            self.assertIn("unknown extractor", load_caught.exception.render())
+            output = self.tmp / "unknown-extractor-never-created"
+            with self.assertRaises(engine.IntakeRejected) as caught:
+                engine.configure(self.source, self.answers, output, seat)
+            self.assertIn("unknown extractor", caught.exception.render())
+            self.assertFalse(output.exists())
+        finally:
+            engine.SUPPORTED.pop(seat, None)
+
 
 if __name__ == "__main__":
     print("ARMED: Lane 1 file intake, atomic rejection, sealed-core round-trip, and no-clobber rerun")
