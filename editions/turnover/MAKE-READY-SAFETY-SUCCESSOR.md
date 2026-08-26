@@ -7,7 +7,13 @@ the merged turnover edition. The reviewed subject is the shipped
 ## Closed findings
 
 1. **Evidence-backed certification:** a verified must-fix or re-key item with a
-   blank evidence reference remains open and names the affected task.
+   blank evidence reference remains open and names the affected task. Evidence
+   is gate-consumed reference data: only a genuine nonblank string is valid;
+   present non-string values remain aggregated as `INVALID EVIDENCE` items
+   naming the task, Python type, and raw value. This deliberately preserves the
+   pre-round-6 fail-closed behavior that Piper proved differentially between
+   `5e7c8844` and `0f5c513e`, without weakening None-only coalescing for IDs,
+   dates, or descriptive fields.
 2. **Re-key finality:** certification requires re-key to begin only after every
    other scheduled task ends, regardless of classification. Independent early
    re-key, must-fix work after re-key, and cosmetic work after re-key all fail
@@ -46,7 +52,7 @@ the merged turnover edition. The reviewed subject is the shipped
 
 ## Running guards
 
-`editions.turnover.tests.test_make_ready` carries twenty-five named casualties covering
+`editions.turnover.tests.test_make_ready` carries thirty named casualties covering
 the five original review directions, four live-review recut directions, both
 future-anchor directions, the missing-stage-entry rejection, and configured CLI default. The turnover
 configurator suite remains unchanged and green; the source template and sealed

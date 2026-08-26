@@ -53,6 +53,46 @@ class MakeReadySafetyTests(unittest.TestCase):
         self.assertTrue(any("MISSING EVIDENCE must-fix" in item and "repair" in item
                             for item in open_items))
 
+    def _assert_invalid_evidence(self, *, role, value):
+        rows = scheduled([
+            task("repair", evidence=value if role == "must-fix" else "proof.jpg"),
+            task("rekey", depends=("repair",), rekey=True,
+                 evidence=value if role == "re-key" else "proof.jpg"),
+        ])
+        ok, open_items = make_ready.certify_gate(rows)
+        self.assertFalse(ok)
+        expected_type = type(value).__name__
+        self.assertTrue(any(
+            f"INVALID EVIDENCE {role}" in item
+            and expected_type in item
+            and repr(value) in item
+            for item in open_items
+        ), open_items)
+
+    def test_named_false_must_fix_evidence_is_invalid(self):
+        print("ARMED: False cannot certify as a must-fix evidence reference")
+        self._assert_invalid_evidence(role="must-fix", value=False)
+
+    def test_named_zero_must_fix_evidence_is_invalid(self):
+        print("ARMED: zero cannot certify as a must-fix evidence reference")
+        self._assert_invalid_evidence(role="must-fix", value=0)
+
+    def test_named_false_rekey_evidence_is_invalid(self):
+        print("ARMED: False cannot certify as a re-key evidence reference")
+        self._assert_invalid_evidence(role="re-key", value=False)
+
+    def test_named_zero_rekey_evidence_is_invalid(self):
+        print("ARMED: zero cannot certify as a re-key evidence reference")
+        self._assert_invalid_evidence(role="re-key", value=0)
+
+    def test_named_nonblank_string_evidence_still_certifies(self):
+        print("ARMED: genuine nonblank string evidence remains valid")
+        ok, open_items = make_ready.certify_gate(scheduled([
+            task("repair", evidence="repair-proof.jpg"),
+            task("rekey", depends=("repair",), rekey=True, evidence="rekey-proof.jpg"),
+        ]))
+        self.assertTrue(ok, open_items)
+
     def test_named_rekey_must_be_scheduled_after_every_required_task(self):
         print("ARMED: early re-key and work scheduled after re-key both fail certification")
         for rows in (

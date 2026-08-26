@@ -85,6 +85,19 @@ def parse_bool(value: object) -> bool:
     return str(none_coalesce(value, "")).strip().lower() in {"1", "true", "yes", "y"}
 
 
+def strict_evidence_reference(value: object, task: Task, role: str) -> Optional[str]:
+    """Return a gate item unless evidence is a genuine nonblank string reference."""
+    task_label = f"{task.get('name')} (id: {task.get('id')})"
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return f"MISSING EVIDENCE {role}: {task_label}"
+    if not isinstance(value, str):
+        return (
+            f"INVALID EVIDENCE {role}: {task_label}; "
+            f"expected nonblank string, got {type(value).__name__} {value!r}"
+        )
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Dependency-ordered topological sort (Kahn's algorithm)
 # ---------------------------------------------------------------------------
@@ -183,7 +196,9 @@ def schedule_tasks(
             "is_dry_cure_block": parse_bool(task.get("is_dry_cure_block")),
             "must_fix": parse_bool(task.get("must_fix")),
             "verified_done": parse_bool(task.get("verified_done")),
-            "evidence": str(none_coalesce(task.get("evidence"), "")),
+            # Evidence is gate-consumed reference data. Preserve its input type so
+            # certify_gate can distinguish a missing string from an invalid scalar.
+            "evidence": task.get("evidence"),
             "duration_days": duration_days,
             "depends_on": list(task["depends_on"]),
             "start_date": start.isoformat(),
@@ -250,8 +265,10 @@ def certify_gate(scheduled: List[Dict[str, object]]) -> Tuple[bool, List[str]]:
     for s in must_fixes:
         if not s["verified_done"]:
             open_items.append(f"UNVERIFIED must-fix: {s['name']} (trade: {s['trade']})")
-        elif not str(none_coalesce(s.get("evidence"), "")).strip():
-            open_items.append(f"MISSING EVIDENCE must-fix: {s['name']} (id: {s['id']})")
+        else:
+            evidence_item = strict_evidence_reference(s.get("evidence"), s, "must-fix")
+            if evidence_item:
+                open_items.append(evidence_item)
 
     if not rekeyed:
         open_items.append("MISSING: re-key task not found in punch list — re-key is mandatory")
@@ -259,8 +276,10 @@ def certify_gate(scheduled: List[Dict[str, object]]) -> Tuple[bool, List[str]]:
         for r in rekeyed:
             if not r["verified_done"]:
                 open_items.append(f"UNVERIFIED re-key: {r['name']}")
-            elif not str(none_coalesce(r.get("evidence"), "")).strip():
-                open_items.append(f"MISSING EVIDENCE re-key: {r['name']} (id: {r['id']})")
+            else:
+                evidence_item = strict_evidence_reference(r.get("evidence"), r, "re-key")
+                if evidence_item:
+                    open_items.append(evidence_item)
             for required in scheduled:
                 if required["id"] == r["id"] or required.get("is_rekey"):
                     continue
