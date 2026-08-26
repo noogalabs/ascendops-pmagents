@@ -1,0 +1,304 @@
+{
+  "schema_version": 2,
+  "seat": "accounting",
+  "library_id": "accounting-2026-08-25",
+  "source_table": "mapping-tables/accounting.md",
+  "source_table_sha256": "67c6f6e972994ba3fb05633c99441cf5f5f1d604ca7eae4d1bf295a3d4f882d2",
+  "structured_answers_file": "accounting-config.json",
+  "placeholders": [
+    {
+      "placeholder": "accounting_platform",
+      "source": "D1",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "after_hours_escalation_channel",
+      "source": "D8",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "agent_name",
+      "source": "cover.org_short_name",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "backup_decision_maker",
+      "source": "C4",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "board_location",
+      "source": "D6",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "bookkeeper_name",
+      "source": "C3",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "broker_name",
+      "source": "C2",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "company_name",
+      "source": "cover.company_name",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "contractor_license_threshold",
+      "source": "A15",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "cpa_of_record",
+      "source": "C6",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "decision_log_location",
+      "source": "D6",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "decision_log_retention_years",
+      "source": "A16",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "deposit_cap",
+      "source": "A9",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "deposit_chargeback_per_line",
+      "source": "B13",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "deposit_chargeback_per_unit",
+      "source": "B13",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "deposit_clock_trigger",
+      "source": "A6",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "deposit_interest_required",
+      "source": "A8",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "deposit_return_days",
+      "source": "A6",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "deposit_trust_separate",
+      "source": "D3",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "dual_auth_threshold",
+      "source": "B2",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "eviction_attorney",
+      "source": "C5",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "eviction_filing_decision_days",
+      "source": "A11",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "forward_email",
+      "source": "cover.forward_email",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "late_fee_cap",
+      "source": "A2",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "late_fee_grace_days",
+      "source": "A1",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "license_required_trades",
+      "source": "A15",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "money_escalation_channel",
+      "source": "D8",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "nonpayment_notice_days",
+      "source": "A3",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "nonpayment_notice_type",
+      "source": "A4",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "nsf_fee_cap",
+      "source": "A10",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "org",
+      "source": "cover.org_short_name",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "org_name",
+      "source": "cover.org_short_name",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "owner_disbursement_statutory_deadline",
+      "source": "A12",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "owner_draw_deadline_day",
+      "source": "B8",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "owner_draw_target_day",
+      "source": "B8",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "owner_statement_release_day",
+      "source": "B10",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "partial_payment_voids_notice",
+      "source": "A17",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "payment_application_order",
+      "source": "B7",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "positive_pay_enrolled",
+      "source": "D4",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "property_manager_name",
+      "source": "C1",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "reconciliation_variance_threshold",
+      "source": "B5",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "reserve_floor",
+      "source": "B3",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "second_person_verifier",
+      "source": "C7",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "separate_deposit_account_required",
+      "source": "A7",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "state_1099_filing_required",
+      "source": "A14",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "suspense_account",
+      "source": "D5",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "timezone",
+      "source": "cover.timezone",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "trust_audit_regulator",
+      "source": "A13",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "trust_reconciliation_cadence",
+      "source": "A13",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "trust_reconciliation_signer",
+      "source": "A13",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "trust_record_retention_years",
+      "source": "A13",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "unidentified_payment_escalation_threshold",
+      "source": "B4",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "variance_alert_age_days",
+      "source": "B6",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "variance_alert_amount",
+      "source": "B6",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "vendor_bill_approval_threshold",
+      "source": "B1",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "vendor_payment_run_dates",
+      "source": "B9",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "w9_storage_location",
+      "source": "D9",
+      "extractor": "identity"
+    }
+  ],
+  "config_keys": [
+    {
+      "path": "/timezone",
+      "source": "cover.timezone",
+      "extractor": "identity",
+      "value_type": "string",
+      "mode": "replace"
+    }
+  ]
+}

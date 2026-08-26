@@ -1,0 +1,131 @@
+{
+  "_schema": "accounting-seat/1",
+  "_doctrine": "Every threshold, clock, state marker, and named role this agent enforces lives here. No skill and no bootstrap file hardcodes a company value. Each entry carries the questionnaire id it came from in its `q` field; keep it. An entry whose `value` is still a placeholder is UNANSWERED, its dependent check is DISABLED, and it appears in `unanswered`. A Group A entry with `confirmed: false` is a legal value that has not been through counsel: the agent flags on it, never acts on it.",
+  "_questionnaire": "Bookkeeping Agent Setup Questionnaire (46 questions, Groups A-D) plus the shared 4-field configuration cover sheet",
+
+  "shadow_mode": true,
+  "shadow_mode_exit_rule": "Two consecutive weeks of calibration digests matching reality, ended explicitly by the property manager. Source: questionnaire, What Happens Next.",
+
+  "company": {
+    "company_name": { "value": "{{company_name}}", "q": "cover-sheet:Company name" },
+    "org_short_name": { "value": "{{org}}", "q": "cover-sheet:Org short-name" },
+    "forward_email": { "value": "{{forward_email}}", "q": "cover-sheet:Forward email" },
+    "timezone": { "value": "{{timezone}}", "q": "cover-sheet:Timezone" }
+  },
+
+  "state_rules": {
+    "late_fee_grace_days": { "value": "{{late_fee_grace_days}}", "q": "A1", "confirmed": false },
+    "late_fee_cap": { "value": "{{late_fee_cap}}", "q": "A2", "confirmed": false },
+    "nonpayment_notice_days": { "value": "{{nonpayment_notice_days}}", "q": "A3", "confirmed": false },
+    "nonpayment_notice_type": { "value": "{{nonpayment_notice_type}}", "q": "A4", "confirmed": false, "allowed": ["pay-or-quit", "unconditional-quit"] },
+    "partial_payment_voids_notice": { "value": "{{partial_payment_voids_notice}}", "q": "A5", "confirmed": false, "working_rule_until_answered": "Every payment on a noticed account is flagged to the property manager before it is applied." },
+    "deposit_return_days": { "value": "{{deposit_return_days}}", "q": "A6", "confirmed": false },
+    "deposit_clock_trigger": { "value": "{{deposit_clock_trigger}}", "q": "A6", "confirmed": false, "note": "move-out, termination of tenancy, and key return are different days" },
+    "separate_deposit_account_required": { "value": "{{separate_deposit_account_required}}", "q": "A7", "confirmed": false },
+    "deposit_interest_required": { "value": "{{deposit_interest_required}}", "q": "A8", "confirmed": false },
+    "deposit_cap": { "value": "{{deposit_cap}}", "q": "A9", "confirmed": false },
+    "nsf_fee_cap": { "value": "{{nsf_fee_cap}}", "q": "A10", "confirmed": false, "note": "confirm whether it applies to ACH returns as well as checks" },
+    "eviction_filing_decision_days": { "value": "{{eviction_filing_decision_days}}", "q": "A11", "confirmed": false },
+    "owner_disbursement_statutory_deadline": { "value": "{{owner_disbursement_statutory_deadline}}", "q": "A12", "confirmed": false, "note": "many states set none, in which case the management agreement governs" },
+    "trust_reconciliation_cadence": { "value": "{{trust_reconciliation_cadence}}", "q": "A13", "confirmed": false },
+    "trust_reconciliation_signer": { "value": "{{trust_reconciliation_signer}}", "q": "A13", "confirmed": false },
+    "trust_record_retention_years": { "value": "{{trust_record_retention_years}}", "q": "A13", "confirmed": false },
+    "trust_audit_regulator": { "value": "{{trust_audit_regulator}}", "q": "A13", "confirmed": false },
+    "state_1099_filing_required": { "value": "{{state_1099_filing_required}}", "q": "A14", "confirmed": false, "note": "re-confirm with the CPA annually; state rules change" },
+    "contractor_license_threshold": { "value": "{{contractor_license_threshold}}", "q": "A15", "confirmed": false },
+    "license_required_trades": { "value": "{{license_required_trades}}", "q": "A15", "confirmed": false, "note": "trades requiring a licensed contractor at any amount" },
+    "decision_log_retention_years": { "value": "{{decision_log_retention_years}}", "q": "A16", "confirmed": false },
+    "jurisdiction_statute_map": { "value": [], "q": "A17", "confirmed": false, "shape": "[{jurisdiction, statute, notes}]", "note": "per-county in some states; deadline clocks are per-property when the portfolio spans jurisdictions" }
+  },
+
+  "thresholds": {
+    "vendor_bill_approval_threshold": { "value": "{{vendor_bill_approval_threshold}}", "q": "B1", "common_range": "$300-$500" },
+    "dual_auth_threshold": { "value": "{{dual_auth_threshold}}", "q": "B2", "common_range": "$1,000-$2,500" },
+    "reserve_floor": { "value": "{{reserve_floor}}", "q": "B3", "common_range": "$300-$500" },
+    "reserve_floor_owner_overrides": { "value": [], "q": "B3", "shape": "[{owner, reserve_floor, source_agreement}]", "note": "the management agreement governs; list every per-owner override" },
+    "unidentified_payment_escalation_threshold": { "value": "{{unidentified_payment_escalation_threshold}}", "q": "B4", "suggested": "$500" },
+    "reconciliation_variance_threshold": { "value": "{{reconciliation_variance_threshold}}", "q": "B5", "example": "$25", "note": "splits a small reconciliation difference from a large one" },
+    "variance_alert_amount": { "value": "{{variance_alert_amount}}", "q": "B6", "example": "$5" },
+    "variance_alert_age_days": { "value": "{{variance_alert_age_days}}", "q": "B6", "example": 3 }
+  },
+
+  "chargeback_gates": {
+    "_note": "Deliberately NOT under thresholds{}. B13 gates deposit-deduction authority; B1 gates repair-spend authority. Adjacency confusion between the two is a known failure mode.",
+    "per_line": { "value": "{{deposit_chargeback_per_line}}", "q": "B13" },
+    "per_unit": { "value": "{{deposit_chargeback_per_unit}}", "q": "B13" }
+  },
+
+  "policy": {
+    "payment_application_order": { "value": "{{payment_application_order}}", "q": "B7", "common_baseline": "fees, then past-due rent, then current rent", "note": "VERIFY against the platform's actual configuration; do not record the assumption" },
+    "owner_draw_deadline_day": { "value": "{{owner_draw_deadline_day}}", "q": "B8" },
+    "owner_draw_target_day": { "value": "{{owner_draw_target_day}}", "q": "B8" },
+    "vendor_payment_run_dates": { "value": "{{vendor_payment_run_dates}}", "q": "B9", "note": "fixed run dates are what make invoice-aging alerts meaningful" },
+    "owner_statement_release_day": { "value": "{{owner_statement_release_day}}", "q": "B10", "hard_rule": "statements never release while the trust account is unreconciled" },
+    "waiver_and_writeoff_authority": { "value": "property manager, in writing", "q": "B12", "note": "default; no waiver or write-off on a verbal" }
+  },
+
+  "retention": {
+    "_q": "B11",
+    "_note": "Where a range is offered, default to the long end until counsel and the CPA set the final numbers.",
+    "rent_records_years": { "value": null, "q": "B11", "common": "7-10" },
+    "vendor_bills_years": { "value": null, "q": "B11", "common": "7-10" },
+    "deposit_dispositions_years": { "value": null, "q": "B11", "common": "3-7 after tenancy ends" },
+    "reconciliations_years": { "value": null, "q": "B11", "common": "matches trust_record_retention_years (A13)" },
+    "records_1099_years": { "value": null, "q": "B11", "common": "7 (IRS)" }
+  },
+
+  "roles": {
+    "property_manager_of_record": { "value": "{{property_manager_name}}", "q": "C1" },
+    "principal_or_managing_broker": { "value": "{{broker_name}}", "q": "C2" },
+    "human_bookkeeper": { "value": "{{bookkeeper_name}}", "q": "C3", "note": "the daily digest recipient — whoever actually posts and pays" },
+    "backup_decision_maker": { "value": "{{backup_decision_maker}}", "q": "C4", "note": "no answer here is a company structure problem, not a config gap" },
+    "eviction_attorney": { "value": "{{eviction_attorney}}", "q": "C5" },
+    "cpa_of_record": { "value": "{{cpa_of_record}}", "q": "C6" },
+    "second_person_verifier": { "value": "{{second_person_verifier}}", "q": "C7", "constraint": "must not be the person who processed the vendor banking change" }
+  },
+
+  "platform": {
+    "accounting_platform": { "value": "{{accounting_platform}}", "q": "D1" },
+    "has_builtin_trust_reconciliation": { "value": null, "q": "D1" },
+    "has_platform_1099_filing": { "value": null, "q": "D1" },
+    "account_inventory": { "value": [], "q": "D2", "shape": "[{purpose, bank, label}]", "hard_rule": "NEVER store account or routing numbers here or in any tracked file" },
+    "deposit_trust_separate": { "value": "{{deposit_trust_separate}}", "q": "D3", "phase_zero_if": "false while state_rules.separate_deposit_account_required is true" },
+    "positive_pay_enrolled": { "value": "{{positive_pay_enrolled}}", "q": "D4" },
+    "suspense_account": { "value": "{{suspense_account}}", "q": "D5", "phase_zero_if": "false — there is nowhere legitimate to park an unidentified payment" },
+    "board_location": { "value": "{{board_location}}", "q": "D6" },
+    "decision_log_location": { "value": "{{decision_log_location}}", "q": "D6" },
+    "read_only_access_paths": { "value": [], "q": "D7", "note": "the agent is read-only by construction; a statement drop into a shared folder is a valid day-one answer" },
+    "money_escalation_channel": { "value": "{{money_escalation_channel}}", "q": "D8" },
+    "after_hours_escalation_channel": { "value": "{{after_hours_escalation_channel}}", "q": "D8", "note": "suspected fraud needs a channel that works outside business hours" },
+    "w9_storage_location": { "value": "{{w9_storage_location}}", "q": "D9" },
+    "tracker_1099_exists": { "value": null, "q": "D9", "phase_zero_if": "false — building one is a task ahead of year-end" }
+  },
+
+  "federal_constants": {
+    "_note": "Not questionnaire values. Federal rules, recorded here so no skill hardcodes them and so a change has one place to land.",
+    "form_1099_nec_threshold_usd": 600,
+    "form_1099_nec_due": "January 31",
+    "w9_required_before": "first payment to any vendor"
+  },
+
+  "cross_seat": {
+    "_note": "Values this seat reads but does not own. A pointer resolves against the owner seat's config when that seat is installed; when the owner seat is absent the value is held locally and marked held_pending_seat.",
+    "deposit_chargeback_per_line": { "owner_seat": "turnover", "owner_question_id": "turnover:C-group deposit chargeback", "local_question_id": "B13", "held_pending_seat": true },
+    "deposit_chargeback_per_unit": { "owner_seat": "turnover", "owner_question_id": "turnover:C-group deposit chargeback", "local_question_id": "B13", "held_pending_seat": true }
+  },
+
+  "cross_seat_checks": [
+    {
+      "pair": "accounting:B13 vs turnover:deposit chargeback threshold",
+      "type": "POLICY",
+      "rule": "Must match. Surface a mismatch to the contradiction report; never auto-unify and never pick a winner."
+    },
+    {
+      "pair": "accounting:B1 vendor-bill approval threshold vs maintenance:approval threshold",
+      "type": "POLICY",
+      "rule": "Related but distinct authorities — repair-spend vs bill-payment. Surface a divergence for eyeball; do not collapse."
+    }
+  ],
+
+  "unanswered": []
+}

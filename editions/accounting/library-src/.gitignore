@@ -1,0 +1,7 @@
+local/
+.env
+memory/
+*.log
+.cache/
+statements/
+exports/
