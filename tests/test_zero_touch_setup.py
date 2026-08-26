@@ -236,6 +236,8 @@ class ZeroTouchSetupTests(unittest.TestCase):
                 "  Owner draw target day: 10",
                 answers.read_text(),
             )
+            self.assertIn("### What Happens Next", answers.read_text())
+            self.assertIn("Keep the answers current", answers.read_text())
         finally:
             setup.SEATS = original_seats
             setup.engine.SUPPORTED.pop(seat, None)

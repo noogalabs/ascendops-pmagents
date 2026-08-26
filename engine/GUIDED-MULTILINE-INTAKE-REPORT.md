@@ -7,6 +7,8 @@ rows may require multiple separately labeled lines from one answer.
 The shared setup wrapper now collects every guided answer until a blank line,
 preserves continuation lines in the questionnaire, and reads only the answer
 line plus indented continuations when deciding whether a field is complete.
+Replacement is bounded to that same answer span, so the next section heading
+and final questionnaire guidance remain byte-present.
 Single-line answers use the same protocol with an immediate blank terminator.
 Correction prompts use the identical collector, so the retry path cannot
 reintroduce the one-line limitation.

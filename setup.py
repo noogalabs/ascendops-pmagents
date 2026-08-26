@@ -89,12 +89,11 @@ def set_answer(text: str, field: PromptField, value: str) -> str:
     if field.key.startswith("cover."):
         return re.sub(field.marker, f"{field.label}: {value}", text, count=1, flags=re.M)
     pattern = (
-        rf"(^({re.escape(field.key)})\..*?^Answer:)\s*.*?"
-        rf"(?=^{engine.intake.QUESTION_ID_PATTERN}\. |\Z)"
+        rf"(^({re.escape(field.key)})\..*?^Answer:)[^\n]*"
+        rf"(?:\n[ \t]+\S[^\n]*)*"
     )
     rendered = value.rstrip().replace("\n", "\n  ")
-    suffix = "\n\n" if re.search(pattern, text, flags=re.M | re.S) else ""
-    return re.sub(pattern, lambda match: f"{match.group(1)} {rendered}{suffix}",
+    return re.sub(pattern, lambda match: f"{match.group(1)} {rendered}",
                   text, count=1, flags=re.M | re.S)
 
 
