@@ -166,7 +166,7 @@ class PlaceholderTests(unittest.TestCase):
             }],
         }
         (self.root / "IDENTITY.md").write_text("{{company_name}}")
-        answers = dict(self.answers, B1="$12 base threshold")
+        answers = dict(self.answers, B1="$12.00 base threshold")
         manifest = engine.placeholders.apply_initial(
             self.root, mapping, self.cover, answers, self.core
         )
@@ -211,6 +211,78 @@ class PlaceholderTests(unittest.TestCase):
                 self.core, updated,
             )
         self.assertEqual(path.read_bytes(), before)
+
+    def test_named_currency_integral_decimal_configures_without_rounding_fractional_value(self):
+        path = self.root / "config.json"
+        path.write_text(json.dumps({"threshold": 1}))
+        mapping = {
+            "placeholders": [],
+            "config_keys": [{
+                "path": "/threshold", "source": "B1", "extractor": "currency",
+                "value_type": "integer",
+            }],
+        }
+        manifest = engine.placeholders.apply_initial(
+            self.root, mapping, self.cover, dict(self.answers, B1="$30.00"), self.core
+        )
+        self.assertEqual(json.loads(path.read_text())["threshold"], 30)
+        path.write_text(json.dumps({"threshold": 1}))
+        with self.assertRaises(engine.placeholders.PlaceholderRejected) as caught:
+            engine.placeholders.apply_initial(
+                self.root, mapping, self.cover, dict(self.answers, B1="$30.50"), self.core
+            )
+        self.assertIn("threshold must be stated in whole dollars", str(caught.exception.failures))
+        self.assertEqual(json.loads(path.read_text())["threshold"], 1)
+        with self.assertRaises(engine.placeholders.PlaceholderRejected) as malformed:
+            engine.placeholders.apply_initial(
+                self.root, mapping, self.cover, dict(self.answers, B1="$30.00.50"), self.core
+            )
+        self.assertIn("currency value not found", str(malformed.exception.failures))
+        self.assertEqual(json.loads(path.read_text())["threshold"], 1)
+        with self.assertRaises(engine.placeholders.PlaceholderRejected) as trailing_digit:
+            engine.placeholders.apply_initial(
+                self.root, mapping, self.cover, dict(self.answers, B1="$30.001"), self.core
+            )
+        self.assertIn("threshold must be stated in whole dollars",
+                      str(trailing_digit.exception.failures))
+        self.assertEqual(json.loads(path.read_text())["threshold"], 1)
+        with self.assertRaises(engine.placeholders.PlaceholderRejected) as malformed_commas:
+            engine.placeholders.apply_initial(
+                self.root, mapping, self.cover, dict(self.answers, B1="$3,0,0"), self.core
+            )
+        self.assertIn("standard comma grouping", str(malformed_commas.exception.failures))
+        self.assertEqual(json.loads(path.read_text())["threshold"], 1)
+        grouped_manifest = engine.placeholders.apply_initial(
+            self.root, mapping, self.cover, dict(self.answers, B1="$1,250"), self.core
+        )
+        self.assertEqual(json.loads(path.read_text())["threshold"], 1250)
+        self.assertEqual(next(row for row in manifest if row["row_type"] == "config_key")["value"], 30)
+        self.assertEqual(next(row for row in grouped_manifest
+                             if row["row_type"] == "config_key")["value"], 1250)
+
+    def test_named_every_integer_currency_consumer_uses_strict_shared_token_path(self):
+        print("ARMED: every mapped integer currency consumer rejects malformed decimals")
+        consumers = []
+        for mapping_path in sorted((HERE / "mappings").glob("*.json")):
+            mapping = json.loads(mapping_path.read_text())
+            for section in ("placeholders", "config_keys"):
+                for row in mapping.get(section, []):
+                    if (row.get("extractor") == "currency"
+                            and row.get("value_type", "string") == "integer"):
+                        consumers.append((mapping_path.name, row.get("path") or row.get("placeholder")))
+        self.assertGreaterEqual(len(consumers), 2)
+        self.assertIn(("accounting.json", "/vendor_bill_approval_threshold"), consumers)
+        self.assertIn(("turnover-coordinator.json", "/approval_threshold"), consumers)
+        for consumer in consumers:
+            with self.subTest(consumer=consumer):
+                self.assertEqual(engine.placeholders._number("$30.00", integer=True), "30")
+                with self.assertRaisesRegex(ValueError, "currency value not found"):
+                    engine.placeholders._number("$30.00.50", integer=True)
+                with self.assertRaisesRegex(ValueError, "whole dollars"):
+                    engine.placeholders._number("$30.001", integer=True)
+                with self.assertRaisesRegex(ValueError, "standard comma grouping"):
+                    engine.placeholders._number("$3,0,0", integer=True)
+                self.assertEqual(engine.placeholders._number("$1,250", integer=True), "1250")
 
     def test_named_config_key_replace_missing_rejects_but_explicit_create_works(self):
         path = self.root / "config.json"

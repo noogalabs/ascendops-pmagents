@@ -126,6 +126,90 @@ also rejects duplicate exact labels instead of taking the first match. Task
 `task_1787744582233_11673934` owns the
 per-jurisdiction keyed carrier, questionnaire extension, and consuming rows.
 
+The single-jurisdiction limitation now recognizes only explicit scope-bearing
+clock forms. Explanatory prose such as counsel confirming the configured grace
+period no longer masquerades as a second jurisdiction, while duplicate labels,
+jurisdiction-prefixed labels, and generic labeled clock lines such as
+`Georgia: 10 days` still refuse activation regardless of whether the place name
+contains `county`, `city`, or another jurisdiction noun. This is a fail-closed
+UX correction, not an early implementation of the future keyed carrier.
+The same normalized structural guard intentionally refuses any additional
+labeled day-count line using a colon, hyphen, en dash, or em dash separator,
+including `Label: N day`, `Label - N days`, and optional
+`calendar` or `business` qualifiers. That covers an unrelated
+`Payment window: 30 days` aside as well as named jurisdiction clocks. The
+same normalized grammar admits an optional run from the closed terminal set:
+period, comma, semicolon, colon, exclamation, question mark, closing
+parenthesis/bracket/brace, straight or curly closing quotes, and ellipsis.
+Thus `Georgia: 10 calendar days.`, `Georgia: 10 days!`, and
+`Georgia: 10 days)` cannot evade the refusal and be silently flattened to the
+canonical clock; repeated punctuation such as `Georgia: 10 days..` is covered
+by the same terminal run. Nothing containing a letter or digit after the unit belongs
+to this grammar: `Payment: 10 days later we bill.` remains prose by contract,
+as does the qualified-duration prose sentence with terminal punctuation. A
+mutation removing terminal punctuation support kills the punctuation matrix;
+colon and dash separator variants are likewise exercised through production.
+One classification-local preprocessing pass removes harmless terminal
+punctuation and whitespace before canonical or scoped clock counting. Raw A1
+bytes remain untouched for storage and extraction. Thus a punctuated duplicate
+such as `Late fee grace days: 10.` is counted as a conflicting second clock,
+while a single `Late fee grace days: 6.` passes the guard and then refuses
+loudly at raw labeled-integer extraction rather than silently rewriting input.
+The artifact-grain custody casualty also reads `accounting-config.json` after a
+successful configure and proves punctuation in the raw A1 counsel line survives
+unchanged in the persisted `answers.A1` value.
+Currency extraction accepts an integral decimal such as `$30.00` as 30, rejects
+non-integral `$30.50` on integer fields without rounding, and rejects malformed
+chained decimals such as `$30.00.50` rather than silently truncating the token.
+The mapping-derived currency-consumer sweep applies the same three arms to
+every integer-backed currency row across all editions, including rejection of
+the trailing-digit `$30.001` form. Complete-token validation also rejects
+noncanonical comma placement such as `$3,0,0`, while canonical `$1,250`
+configures as 1250.
+Canonical-label qualifier classification is position-independent: prefix,
+suffix (`for Georgia`), and parenthetical (`(Georgia)`) qualifiers with a
+numeric value are scoped conflicts and reject rather than falling through.
+Prose-form clocks use a union classifier. One branch rejects any noncanonical
+line combining the literal late-fee-grace concept with a numeric day count; the
+other rejects any line combining a recognized US jurisdiction subject, a grace
+concept, and an integer day duration in any order. The jurisdiction vocabulary
+covers all 50 states, DC, Puerto Rico, and US territories, plus explicit
+county/parish/city/state/jurisdiction nouns. Exclusive casualties prove that
+`Riverside late fee grace period is 10 days.` is caught by the phrase branch
+and `Georgia grace period is 10 days.` by the vocabulary branch; DC, Puerto
+Rico, and Guam are also armed. One-leg-absent prose remains valid.
+`Riverside grace period is 10 days.` is an accepted residual because an
+unlisted place name without the literal late-fee phrase is indistinguishable
+from benign prose without the deferred per-jurisdiction carrier.
+The fleet member-hygiene gate treats any report named in the member-visible
+manifest as member content: the `-REPORT.md` exemption applies only to internal
+reports, and a planted task id in a visible report kills the gate.
+The questionnaire hint and diagnostic state the same contract: exactly one
+structured `Late fee grace days: NN` line; all other timing details belong in
+plain prose. Numeric prose without the labeled colon shape remains valid.
+The diagnostic calls additional labeled day lines ambiguous and points to the
+tracked per-jurisdiction capability without leaking the internal task ID into
+the member-facing surface. It does not falsely claim that every rejected
+structured duration is a second jurisdiction clock.
+The fleet member-hygiene gate now rejects `task_<digits>` identifiers in every
+tracked shipped file except internal `*-REPORT.md` evidence, where durable task
+custody belongs. A planted task ID in a member README kills the gate; removing
+the detector kills that casualty.
+
+The shared currency extractor normalizes conventional integral decimals such as
+`$30.00` to the integer `30` without rounding fractional values. A shared engine
+casualty proves `$30.00` configures and `$30.50` still refuses an integer target
+with a corrective instruction to state the threshold in whole dollars. A
+production guided-setup casualty enters `$30.50` through `collect_answer`, proves
+the same correction reaches the operator, and confirms zero configured output.
+
+The shared intake continuation grammar preserves indented blank separators
+inside completed multi-paragraph answers. The same canonical grammar drives
+both production reading and replacement spans: a round-trip casualty proves
+both paragraphs survive parsing, then correction consumes the complete old
+answer instead of leaving a stale trailing paragraph. Reverting to the former
+nonblank-only grammar kills that production casualty.
+
 ## Inherited platform laws
 
 - `AGENTS.md` gates session start on `.onboarded` and reads the declared
@@ -162,8 +246,9 @@ per-jurisdiction keyed carrier, questionnaire extension, and consuming rows.
   before any output write.
 - Provenance source/destination hashes recomputed for every accounting product
   row, including every adapted destination.
-- Accounting 30/30, engine 92/92, sibling editions 26/5/20/13, zero-touch
-  28/28, review sweeps 6/6, plus manifest, hygiene, leak, and exact-head CI.
+- Accounting 34/34, engine 93/93, sibling editions 26/5/20/47, zero-touch
+  31/31, review sweeps 6/6, plus manifest, hygiene, leak, and exact-head CI.
+  The hygiene unit suite is 6/6, including the task-ID surface casualty.
 
 ## Shared-file boundary
 

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import datetime
+import ast
 import hashlib
 import importlib.util
 import io
@@ -17,6 +18,26 @@ SPEC = importlib.util.spec_from_file_location("pmagents_setup", ROOT / "setup.py
 setup = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader
 SPEC.loader.exec_module(setup)
+PRODUCTION_INTAKE_CONSUMER_MANIFEST = {
+    "setup.py": {"kind": "shared"},
+    "engine/intake.py": {"kind": "shared"},
+    "editions/maintenance/configure_agent.py": {
+        "kind": "sealed",
+        "sha256": "0540ea08aa8d47ecb1aebbb7f51db85c5a67ab252172804e9ba24e56c2403551",
+    },
+}
+
+
+def production_intake_consumer_sets(root: Path, supported):
+    on_disk = {
+        str(path.relative_to(root))
+        for path in root.glob("editions/*/configure_agent.py")
+    }
+    registry_sealed = {
+        str((entry["answers"].parent / "configure_agent.py").relative_to(root))
+        for entry in supported.values() if entry.get("runner") == "sealed"
+    }
+    return {"setup.py", "engine/intake.py", *on_disk}, registry_sealed, on_disk
 
 
 def tree_digest(root: Path):
@@ -27,6 +48,99 @@ def tree_digest(root: Path):
 
 
 class ZeroTouchSetupTests(unittest.TestCase):
+    def test_named_every_intake_text_consumer_uses_shared_multiline_surface(self):
+        print("ARMED: intake-format readers and writers cannot fork a single-line value grammar")
+        discovered_consumers, registry_sealed, on_disk = production_intake_consumer_sets(
+            ROOT, setup.engine.SUPPORTED)
+        self.assertEqual(on_disk, registry_sealed,
+                         "edition configurator exists outside the sealed registry")
+        self.assertEqual(discovered_consumers, set(PRODUCTION_INTAKE_CONSUMER_MANIFEST),
+                         "production intake consumer manifest is incomplete")
+        sources = {
+            path: (ROOT / path).read_text()
+            for path, row in PRODUCTION_INTAKE_CONSUMER_MANIFEST.items()
+            if row["kind"] == "shared"
+        }
+        framing_allowlist = {
+            ("setup.py", "answer_values", "cover-label-frame"):
+                "matches only the cover label; indented_value consumes its value",
+            ("setup.py", "answer_values", "question-heading-frame"):
+                "selects the question id; indented_value consumes the Answer block",
+            ("engine/intake.py", "preflight", "cover-label-frame"):
+                "matches only the cover label; indented_value consumes its value",
+            ("engine/intake.py", "preflight", "question-heading-frame"):
+                "selects the question id; indented_value consumes the Answer block",
+        }
+        discovered = []
+        private_grammars = []
+        for module, source in sources.items():
+            tree = ast.parse(source)
+            parents = {}
+            for parent in ast.walk(tree):
+                for child in ast.iter_child_nodes(parent):
+                    parents[child] = parent
+            def owning_function(node):
+                while node in parents:
+                    node = parents[node]
+                    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        return node.name
+                return "<module>"
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                    if (r"^[ \t]+(?:\S[^\n]*)?$" in node.value or
+                            r"[^\n]*(?:\n[ \t]+[^\n]*)*" in node.value):
+                        private_grammars.append((module, node.lineno, node.value))
+                if not isinstance(node, ast.Call):
+                    continue
+                function = owning_function(node)
+                segment = ast.get_source_segment(source, node) or ""
+                if "indented_value(" in segment:
+                    discovered.append((module, function, "shared-reader"))
+                elif "collect_answer(" in segment:
+                    discovered.append((module, function, "shared-interactive-collector"))
+                elif ("re.escape(label)" in segment
+                      and ("re.match" in segment or "re.findall" in segment)):
+                    discovered.append((module, function, "cover-label-frame"))
+                elif "QUESTION_LINE.match" in segment:
+                    discovered.append((module, function, "question-heading-frame"))
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Attribute) and node.attr == "INTAKE_VALUE_SPAN":
+                    function = owning_function(node)
+                    discovered.append((module, function, "shared-writer-span"))
+
+        canonical_grammars = [row for row in private_grammars if row[0] == "engine/intake.py"]
+        self.assertEqual(len(canonical_grammars), 2, canonical_grammars)
+        self.assertFalse([row for row in private_grammars if row[0] != "engine/intake.py"])
+        unclassified = [row for row in discovered
+                        if not row[2].startswith("shared-") and row not in framing_allowlist]
+        self.assertFalse(unclassified, f"unclassified intake consumers: {unclassified}")
+        self.assertEqual({row for row in discovered if row[2].endswith("-frame")},
+                         set(framing_allowlist))
+        for path, row in PRODUCTION_INTAKE_CONSUMER_MANIFEST.items():
+            if row["kind"] != "sealed":
+                continue
+            self.assertIn(path, registry_sealed)
+            self.assertEqual(hashlib.sha256((ROOT / path).read_bytes()).hexdigest(),
+                             row["sha256"],
+                             f"sealed intake consumer {path} changed without census review")
+        self.assertGreaterEqual(sum(row[2] == "shared-reader" for row in discovered), 4)
+        self.assertGreaterEqual(sum(row[2] == "shared-writer-span" for row in discovered), 2)
+        self.assertGreaterEqual(sum(row[2] == "shared-interactive-collector" for row in discovered), 2)
+
+    def test_named_unmanifested_edition_configurator_dies(self):
+        print("ARMED: an edition configurator outside the production manifest kills the census")
+        root = Path(tempfile.mkdtemp(prefix="pmagents-consumer-census-"))
+        self.addCleanup(shutil.rmtree, root)
+        (root / "setup.py").write_text("")
+        (root / "engine").mkdir()
+        (root / "engine/intake.py").write_text("")
+        edition = root / "editions" / "rogue"
+        edition.mkdir(parents=True)
+        (edition / "configure_agent.py").write_text("def parse_answers(path): pass\n")
+        discovered, registry_sealed, on_disk = production_intake_consumer_sets(root, {})
+        self.assertNotEqual(on_disk, registry_sealed)
+        self.assertNotEqual(discovered, set(PRODUCTION_INTAKE_CONSUMER_MANIFEST))
+
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="pmagents-zero-touch-"))
         self.source = self.tmp / "source"
@@ -243,6 +357,30 @@ class ZeroTouchSetupTests(unittest.TestCase):
         finally:
             setup.SEATS = original_seats
             setup.engine.SUPPORTED.pop(seat, None)
+
+    def test_named_indented_blank_preserves_and_replaces_answer_paragraphs(self):
+        print("ARMED: indented blank separators preserve and replace full answer paragraphs")
+        fixture = ROOT / "editions" / "maintenance" / "fixtures" / "ridgeline-maintenance-answers.md"
+        answers = self.tmp / "paragraph-answers.md"
+        field = next(
+            item for item in setup.questionnaire_fields(fixture.read_text())
+            if item.key == "A1"
+        )
+        value = "[documented] First paragraph.\n\nSecond paragraph."
+        rendered = setup.set_answer(fixture.read_text(), field, value)
+        answers.write_text(rendered)
+        self.assertIn(
+            "Answer: [documented] First paragraph.\n  \n  Second paragraph.",
+            rendered,
+        )
+        self.assertEqual(setup.answer_values(rendered)["A1"], value)
+        parsed = setup.engine.intake.preflight(answers, setup.engine.load_core().QUESTION_IDS)
+        self.assertEqual(parsed.raw_answers["A1"], value)
+
+        replacement = "[documented] Replacement paragraph."
+        corrected = setup.set_answer(rendered, field, replacement)
+        self.assertNotIn("Second paragraph.", corrected)
+        self.assertEqual(setup.answer_values(corrected)["A1"], replacement)
 
     def test_named_create_then_reconfigure_succeeds_through_wrapper(self):
         print("ARMED: wrapper create then reconfigure uses the production rerun entry")

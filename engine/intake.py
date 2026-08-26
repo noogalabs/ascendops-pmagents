@@ -17,7 +17,50 @@ QUESTION_ID_PATTERN = r"[A-Z]\d+"
 QUESTION_ID = re.compile(rf"^{QUESTION_ID_PATTERN}$")
 QUESTION_LINE = re.compile(rf"^({QUESTION_ID_PATTERN})\.\s")
 QUESTION_HEADING = re.compile(rf"^({QUESTION_ID_PATTERN})\.\s+(.+)$", re.M)
+CONTINUATION_LINE = re.compile(r"^[ \t]+(?:\S[^\n]*)?$")
+INTAKE_VALUE_SPAN = r"[^\n]*(?:\n[ \t]+[^\n]*)*"
+TERMINAL_PUNCTUATION_RUN = r"[.,;:!?)\]}\"'’”…]*"
+STRUCTURED_DAY_COUNT_LINE = re.compile(
+    r"\s*[^:\n]+?\s*(?::|[-–—])\s*\d+\s+(?:(?:calendar|business)\s+)?days?"
+    r"\s*",
+    re.I,
+)
+US_JURISDICTION_NAMES = (
+    "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado",
+    "Connecticut", "Delaware", "Florida", "Georgia", "Hawaii", "Idaho",
+    "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana",
+    "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota",
+    "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada",
+    "New Hampshire", "New Jersey", "New Mexico", "New York",
+    "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon",
+    "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota",
+    "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington",
+    "West Virginia", "Wisconsin", "Wyoming", "District of Columbia",
+    "Puerto Rico", "American Samoa", "Guam", "Northern Mariana Islands",
+    "United States Virgin Islands", "US Virgin Islands", "U.S. Virgin Islands",
+    "United States Minor Outlying Islands",
+)
+US_JURISDICTION_NAME = re.compile(
+    rf"(?<!\w)(?:{'|'.join(re.escape(name) for name in US_JURISDICTION_NAMES)}|D\.?C\.?)(?!\w)",
+    re.I,
+)
+def _normalize_accounting_clock_answer(answer: str) -> str:
+    return "\n".join(
+        re.sub(rf"\s*{TERMINAL_PUNCTUATION_RUN}\s*$", "", line)
+        for line in answer.splitlines()
+    )
 
+
+def _is_closed_vocabulary_grace_clock(line: str) -> bool:
+    has_jurisdiction_subject = bool(
+        US_JURISDICTION_NAME.search(line)
+        or re.search(r"\b(?:county|parish|city|state|jurisdiction)\b", line, re.I)
+    )
+    has_grace_concept = bool(re.search(r"\bgrace\b", line, re.I))
+    has_integer_duration = bool(
+        re.search(r"\b\d+\s+(?:(?:calendar|business)\s+)?days?\b", line, re.I)
+    )
+    return has_jurisdiction_subject and has_grace_concept and has_integer_duration
 
 class IntakeRejected(RuntimeError):
     def __init__(self, failures: list[tuple[str, str]]):
@@ -39,6 +82,16 @@ class IntakeResult:
     raw_cover: dict[str, str]
     raw_answers: dict[str, str]
     provenance: dict[str, str]
+
+
+def indented_value(lines: list[str], index: int, initial: str) -> str:
+    """Read one intake value plus its canonical indented continuation lines."""
+    value_lines = [initial.strip()]
+    cursor = index + 1
+    while cursor < len(lines) and CONTINUATION_LINE.match(lines[cursor]):
+        value_lines.append(lines[cursor].strip())
+        cursor += 1
+    return "\n".join(value_lines).strip()
 
 
 def _tagged(raw: str, field: str, failures: list[tuple[str, str]]):
@@ -114,20 +167,32 @@ def _validate_semantics(answers: dict[str, str], raw: dict[str, str], failures: 
 
 def _validate_accounting_scope(answers: dict[str, str], failures: list[tuple[str, str]]):
     answer = answers.get("A1", "")
-    clock_lines = [
-        line for line in answer.splitlines()
-        if (re.search(r"\bgrace\b.*\d|\d.*\bgrace\b", line, re.I)
-            or re.fullmatch(r"\s*[^:\n]+:\s*\d+\s+days\s*", line, re.I))
-    ]
-    canonical = [line for line in clock_lines if re.fullmatch(
-        r"\s*Late fee grace days\s*:\s*\d+\s*", line, re.I
+    lines = _normalize_accounting_clock_answer(answer).splitlines()
+    canonical_pattern = re.compile(r"\s*Late fee grace days\s*:\s*\d+\s*", re.I)
+    canonical = [line for line in lines if canonical_pattern.fullmatch(line)]
+    scoped = [line for line in lines if (
+        (re.search(r"\blate fee grace days\b", line, re.I)
+         and re.search(r":\s*\d+\s*$", line)
+         and not canonical_pattern.fullmatch(line))
+        or (re.search(r"\blate fee grace\b", line, re.I)
+            and re.search(r"\b\d+\b", line)
+            and re.search(r"\bdays?\b", line, re.I)
+            and not canonical_pattern.fullmatch(line))
+        or _is_closed_vocabulary_grace_clock(line)
+        or STRUCTURED_DAY_COUNT_LINE.fullmatch(line)
+        or re.fullmatch(
+            r"\s*.+\b(?:county|parish|city|state|jurisdiction)\s*:\s*\d+\s+days\s*",
+            line,
+            re.I,
+        )
     )]
-    if len(clock_lines) > 1 or (clock_lines and len(canonical) != 1):
+    if len(canonical) != 1 or scoped:
         failures.append((
             "A1",
-            "multiple jurisdiction grace clocks are not supported by this edition; "
-            "do not choose one clock—use the tracked per-jurisdiction capability "
-            "before configuration",
+            "A1 accepts exactly one structured day-count line (Late fee grace days: NN). "
+            "Additional label: N day(s) lines, including calendar/business qualifiers, "
+            "are ambiguous—state other timing details as "
+            "plain prose, or wait for the tracked per-jurisdiction capability.",
         ))
 
 
@@ -148,12 +213,7 @@ def preflight(path: Path, question_ids: list[str], *, cover_fields=None,
             match = re.match(rf"^{re.escape(label)}:\s*(.*)$", line)
             if not match:
                 continue
-            value_lines = [match.group(1).strip()]
-            cursor = index + 1
-            while cursor < len(lines) and re.match(r"^[ \t]+\S", lines[cursor]):
-                value_lines.append(lines[cursor].strip())
-                cursor += 1
-            hits.append("\n".join(value_lines).strip())
+            hits.append(indented_value(lines, index, match.group(1)))
         if len(hits) != 1 or not (hits[0].strip(" _") if hits else ""):
             failures.append((f"cover.{label}", "required exactly once with a nonblank value"))
         elif hits:
@@ -162,15 +222,17 @@ def preflight(path: Path, question_ids: list[str], *, cover_fields=None,
     raw_answers: dict[str, str] = {}
     counts: dict[str, int] = {}
     current = None
-    for line in text.splitlines():
+    lines = text.splitlines()
+    for index, line in enumerate(lines):
         question = QUESTION_LINE.match(line)
         if question:
             current = question.group(1)
         elif current and line.startswith("Answer:"):
             counts[current] = counts.get(current, 0) + 1
-            raw_answers.setdefault(current, line.partition(":")[2].strip())
-        elif current and line.startswith("  ") and current in raw_answers:
-            raw_answers[current] += "\n" + line[2:]
+            raw_answers.setdefault(
+                current,
+                indented_value(lines, index, line.partition(":")[2]),
+            )
     declared_questions = set(question_ids)
     for question in sorted(set(counts) - declared_questions):
         failures.append((question, "question id is not declared for this edition"))

@@ -412,6 +412,31 @@ class AccountingConfiguratorTests(unittest.TestCase):
         self.assertIn("Answer: [documented] Owner draw deadline day: 15\n"
                       "  Owner draw target day: 10", rendered)
 
+    def test_named_accounting_guided_fractional_currency_refuses_with_whole_dollar_fix(self):
+        print("ARMED: guided fractional currency refuses with a whole-dollar correction")
+        parsed = engine.validate(FIXTURE, "accounting")
+        answers = self.tmp / "guided-fractional-currency.md"
+        output = self.tmp / "guided-fractional-currency-output"
+        responses = list(parsed.raw_cover.values()) + [
+            "$30.50" if question == "B1" else parsed.raw_answers[question]
+            for question in engine.SUPPORTED["accounting"]["question_ids"]
+        ]
+        terminated = [item for response in responses for item in (response, "")]
+        seat_number = next(number for number, row in enumerate(setup.SEATS, 1)
+                           if row["id"] == "accounting")
+        scripted = iter([
+            str(seat_number), str(self.source), str(output), "1", str(answers),
+            *terminated,
+            "",
+        ])
+        stderr = io.StringIO()
+        self.assertEqual(setup.run_setup(
+            ask=lambda _prompt: next(scripted), out=io.StringIO(), err=stderr,
+            clock=lambda: datetime.date(2026, 8, 26),
+        ), 2)
+        self.assertIn("threshold must be stated in whole dollars", stderr.getvalue())
+        self.assertFalse(output.exists())
+
     def test_named_accounting_onboarding_wiring_is_identical_across_surfaces(self):
         print("ARMED: accounting first boot carries the complete Telegram wiring triple")
         required = {"BOT_TOKEN", "CHAT_ID", "ALLOWED_USER"}
@@ -451,7 +476,38 @@ class AccountingConfiguratorTests(unittest.TestCase):
         answers = (
             "Late fee grace days: 5\n  Late fee grace days: 10\n  Counsel confirmed both jurisdictions.",
             "Late fee grace days: 5\n  Georgia late fee grace days: 10\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Late fee grace days for Georgia: 10\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Late fee grace days (Georgia): 10\n  Counsel confirmed both jurisdictions.",
             "Pine Basin County: 5 days\n  Cedar Mesa County: 7 days\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 10 days\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 1 day\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 10 calendar days\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Riverside Parish: 10 business days\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 10 calendar days.\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 10 days,\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 10 calendar days;\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 10 business days:\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 10 days!\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 1 day?\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 10 days)\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 10 days]\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 10 days}\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 10 days\"\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 10 days'\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 10 days”\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 10 days’\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 10 days…\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 10 days..\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia - 10 days\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia – 10 calendar days.\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia — 10 business days)\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Late fee grace days: 10.\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Late fee grace days: 10)\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Late fee grace days: 10..\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Late fee grace days: 10!\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Late fee grace days: 10?\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Late fee grace days: 10   \n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5!\n  Late fee grace days: 10?\n  Counsel confirmed both jurisdictions.",
         )
         for index, answer in enumerate(answers, 1):
             with self.subTest(answer=answer):
@@ -459,16 +515,156 @@ class AccountingConfiguratorTests(unittest.TestCase):
                 fixture = self.fixture_variant("A1", answer)
                 with self.assertRaises(engine.IntakeRejected) as caught:
                     engine.configure(self.source, fixture, output, "accounting", seat_registry={})
-                self.assertIn("multiple jurisdiction grace clocks are not supported",
+                self.assertIn("A1 accepts exactly one structured day-count line",
                               caught.exception.render())
-                self.assertIn("per-jurisdiction capability", caught.exception.render())
+                self.assertIn("tracked per-jurisdiction capability", caught.exception.render())
+                self.assertNotIn("task_", caught.exception.render())
                 self.assertFalse(output.exists())
 
+    def test_named_accounting_structured_duration_aside_refuses_with_honest_a1_contract(self):
+        print("ARMED: unrelated structured duration refuses with the honest A1 contract")
+        output = self.tmp / "structured-duration-aside"
+        fixture = self.fixture_variant(
+            "A1",
+            "Late fee grace days: 6\n  Payment window: 30 days\n"
+            "  Counsel confirmed the one supported clock.",
+        )
+        with self.assertRaises(engine.IntakeRejected) as caught:
+            engine.configure(self.source, fixture, output, "accounting", seat_registry={})
+        message = caught.exception.render()
+        self.assertIn("A1 accepts exactly one structured day-count line", message)
+        self.assertIn("Additional label: N day(s) lines", message)
+        self.assertIn("calendar/business qualifiers", message)
+        self.assertIn("state other timing details as plain prose", message)
+        self.assertNotIn("multiple jurisdiction grace clocks", message)
+        self.assertFalse(output.exists())
+        hint = (ROOT / "editions" / "accounting" / "answers-format.md").read_text()
+        self.assertIn("A1 accepts exactly one structured day-count line", hint)
+        self.assertIn("every other timing detail as plain prose", hint)
+        self.assertIn("Label: N calendar days", hint)
+        self.assertIn("Label: N business days", hint)
+
     def test_named_accounting_single_jurisdiction_clock_configures_exactly(self):
-        print("ARMED: one counsel-confirmed grace clock configures exactly")
+        print("ARMED: one counsel-confirmed grace clock with explanatory prose configures exactly")
         output = self.tmp / "single-jurisdiction-clock"
         engine.configure(self.source, self.fixture_variant(
-            "A1", "Late fee grace days: 6\n  Counsel confirmed the one supported clock."
+            "A1", "Late fee grace days: 6\n  Counsel confirms this 6-day grace for the supported jurisdiction."
+        ), output, "accounting", seat_registry={})
+        self.assertEqual(json.loads((output / "config.json").read_text())[
+            "late_fee_grace_days"], 6)
+
+    def test_named_accounting_prose_form_jurisdiction_clock_rejects_loudly(self):
+        print("ARMED: prose-form jurisdiction grace clock cannot silently flatten")
+        for index, conflict in enumerate((
+            "Georgia late fee grace period is 10 days.",
+            "For Georgia, the late fee grace period is 10 calendar days.",
+            "10 days late fee grace for Georgia.",
+            "Late fee grace period is 10 days in Georgia.",
+        ), 1):
+            with self.subTest(conflict=conflict):
+                output = self.tmp / f"prose-form-jurisdiction-clock-{index}"
+                fixture = self.fixture_variant(
+                    "A1",
+                    "Late fee grace days: 5\n"
+                    f"  {conflict}\n"
+                    "  Counsel confirmed both jurisdictions.",
+                )
+                with self.assertRaises(engine.IntakeRejected) as caught:
+                    engine.configure(self.source, fixture, output, "accounting",
+                                     seat_registry={})
+                self.assertIn("A1 accepts exactly one structured day-count line",
+                              caught.exception.render())
+                self.assertFalse(output.exists())
+
+    def test_named_accounting_clock_union_arms_each_exclusive_branch_and_extended_jurisdictions(self):
+        print("ARMED: phrase and jurisdiction-vocabulary clock branches each close exclusive gaps")
+        conflicts = (
+            "Georgia grace period is 10 days.",  # closed-vocabulary branch only
+            "Riverside late fee grace period is 10 days.",  # phrase branch only
+            "DC grace period is 10 days.",
+            "Puerto Rico grace period is 10 calendar days.",
+            "Guam grace period is 10 business days.",
+        )
+        for index, conflict in enumerate(conflicts, 1):
+            with self.subTest(conflict=conflict):
+                output = self.tmp / f"clock-union-exclusive-{index}"
+                with self.assertRaises(engine.IntakeRejected) as caught:
+                    engine.configure(self.source, self.fixture_variant(
+                        "A1", f"Late fee grace days: 5\n  {conflict}"
+                    ), output, "accounting", seat_registry={})
+                self.assertIn("A1 accepts exactly one structured day-count line",
+                              caught.exception.render())
+                self.assertFalse(output.exists())
+
+    def test_named_accounting_clock_union_requires_every_closed_vocabulary_leg(self):
+        print("ARMED: closed-vocabulary clock branch requires jurisdiction, grace, and days")
+        benign_lines = (
+            "Georgia requires a 10-day filing deadline.",
+            "Counsel confirms this 5-day grace period.",
+            "Counsel reviews the separate payment window within 30 business days.",
+        )
+        for index, benign in enumerate(benign_lines, 1):
+            with self.subTest(benign=benign):
+                output = self.tmp / f"clock-union-missing-leg-{index}"
+                engine.configure(self.source, self.fixture_variant(
+                    "A1", f"Late fee grace days: 6\n  {benign}"
+                ), output, "accounting", seat_registry={})
+                self.assertEqual(json.loads((output / "config.json").read_text())[
+                    "late_fee_grace_days"], 6)
+
+    def test_named_accounting_unlisted_place_without_late_fee_phrase_is_accepted_residual(self):
+        print("ARMED: unlisted place without late-fee phrase remains an accepted residual")
+        output = self.tmp / "unlisted-place-residual"
+        engine.configure(self.source, self.fixture_variant(
+            "A1", "Late fee grace days: 6\n  Riverside grace period is 10 days."
+        ), output, "accounting", seat_registry={})
+        self.assertEqual(json.loads((output / "config.json").read_text())[
+            "late_fee_grace_days"], 6)
+
+    def test_named_accounting_single_punctuated_clock_preserves_raw_then_refuses_extraction(self):
+        print("ARMED: punctuated canonical passes guard without rewriting raw extraction bytes")
+        answer = "Late fee grace days: 6.\n  Counsel confirmed the one supported clock."
+        fixture = self.fixture_variant("A1", answer)
+        parsed = engine.validate(fixture, "accounting")
+        parsed_answer = "Late fee grace days: 6.\nCounsel confirmed the one supported clock."
+        self.assertEqual(parsed.raw_answers["A1"], parsed_answer)
+        self.assertEqual(parsed.answers["A1"], parsed_answer)
+        output = self.tmp / "single-punctuated-clock"
+        with self.assertRaises(engine.IntakeRejected) as caught:
+            engine.configure(self.source, fixture, output, "accounting", seat_registry={})
+        self.assertIn("labeled integer line 'Late fee grace days': NN not found",
+                      caught.exception.render())
+        self.assertFalse(output.exists())
+
+    def test_named_accounting_punctuated_prose_survives_persisted_artifact_exactly(self):
+        print("ARMED: persisted accounting answers retain operator punctuation byte-for-byte")
+        answer = (
+            "Late fee grace days: 6\n"
+            "  Counsel confirmed this rule (Georgia)."
+        )
+        expected = "Late fee grace days: 6\nCounsel confirmed this rule (Georgia)."
+        output = self.tmp / "punctuated-prose-persistence"
+        engine.configure(self.source, self.fixture_variant("A1", answer), output,
+                         "accounting", seat_registry={})
+        persisted = json.loads((output / "accounting-config.json").read_text())
+        self.assertEqual(persisted["answers"]["A1"], expected)
+
+    def test_named_accounting_unstructured_qualified_duration_prose_configures_exactly(self):
+        print("ARMED: qualified duration prose without labeled clock shape remains valid")
+        output = self.tmp / "qualified-duration-prose"
+        engine.configure(self.source, self.fixture_variant(
+            "A1", "Late fee grace days: 6\n"
+            "  Counsel reviews the separate payment window within 30 business days."
+        ), output, "accounting", seat_registry={})
+        self.assertEqual(json.loads((output / "config.json").read_text())[
+            "late_fee_grace_days"], 6)
+
+    def test_named_accounting_labeled_duration_with_trailing_words_remains_prose(self):
+        print("ARMED: letters after a labeled duration keep the line outside the clock grammar")
+        output = self.tmp / "labeled-duration-trailing-prose"
+        engine.configure(self.source, self.fixture_variant(
+            "A1", "Late fee grace days: 6\n"
+            "  Payment: 10 days later we bill."
         ), output, "accounting", seat_registry={})
         self.assertEqual(json.loads((output / "config.json").read_text())[
             "late_fee_grace_days"], 6)

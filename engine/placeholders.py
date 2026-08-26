@@ -1,5 +1,6 @@
 """Mapping-table-driven managed placeholder application and rerun."""
 from __future__ import annotations
+from decimal import Decimal, InvalidOperation
 import json, math, re
 from pathlib import Path
 
@@ -131,12 +132,31 @@ def load_mapping(path: Path):
     return data
 
 
-def _number(value):
-    match = re.search(r"\$([0-9][0-9,]*(?:\.\d+)?)", value)
+def _number(value, *, integer=False):
+    match = re.search(r"\$([0-9][0-9,]*(?:\.\d+)?)(?!\.\d|\d)", value)
     if not match:
-        match = re.search(r"([0-9][0-9,]*(?:\.\d+)?)\s*(?:base\s+)?threshold", value, re.I)
+        match = re.search(
+            r"([0-9][0-9,]*(?:\.\d+)?)(?!\.\d|\d)\s*(?:base\s+)?threshold",
+            value,
+            re.I,
+        )
     if not match: raise ValueError("currency value not found")
-    return match.group(1).replace(",", "")
+    # A comma immediately after the amount may be sentence punctuation; internal
+    # commas remain part of the token and must use canonical thousands grouping.
+    raw_token = match.group(1).rstrip(",")
+    integer_token = raw_token.partition(".")[0]
+    if "," in integer_token and not re.fullmatch(r"\d{1,3}(?:,\d{3})*", integer_token):
+        raise ValueError("currency value must use standard comma grouping")
+    token = raw_token.replace(",", "")
+    try:
+        number = Decimal(token)
+    except InvalidOperation:
+        return token
+    if number == number.to_integral_value():
+        return str(int(number))
+    if integer:
+        raise ValueError("currency threshold must be stated in whole dollars")
+    return token
 
 
 def extract(row, cover, answers, core):
@@ -147,7 +167,7 @@ def extract(row, cover, answers, core):
     raw = cover[source.split(".", 1)[1]] if source.startswith("cover.") else answers[source]
     value = core.provenance_value(raw, source)
     if kind == "identity": return value
-    if kind == "currency": return _number(value)
+    if kind == "currency": return _number(value, integer=row.get("value_type") == "integer")
     if kind == "first_integer":
         match = re.search(r"[-+]?\d[\d,]*", value)
         if not match: raise ValueError("integer value not found")

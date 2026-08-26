@@ -11,6 +11,21 @@ Replacement is bounded to that same answer span, so the next section heading
 and final questionnaire guidance remain byte-present.
 Cover fields use the same indented-continuation representation and the shared
 intake parser preserves those continuations instead of silently truncating them.
+The read and write consumers now share `indented_value`, `CONTINUATION_LINE`,
+and `INTAKE_VALUE_SPAN` from `engine.intake`; `setup.py` no longer carries a
+private single-line or continuation grammar. Dane requested the class census
+before PR19 merged, but the request arrived through the delayed queue after the
+merge; PR21 therefore closes that review debt on the same intake boundary. Its
+named AST census discovers the answer and cover collection sites in `setup.py`
+and `engine/intake.py`, accepts shared multiline readers, writers, and guided
+collectors, and carries reasoned exemptions only for cover-label and
+question-heading framing. An explicit production-consumer manifest is checked
+against shared entry points, every sealed runner derived from the live edition
+registry, and every `editions/*/configure_agent.py` found on disk. Each sealed
+consumer is a reasoned exemption pinned to its exact SHA-256; an unregistered
+configurator or any sealed-byte change fails the census until the registry,
+seal, and census are reviewed together. A future intake consumer that forks the value grammar
+therefore fails the census instead of waiting for another instance report.
 Single-line answers use the same protocol with an immediate blank terminator.
 Correction prompts use the identical collector, so the retry path cannot
 reintroduce the one-line limitation.
