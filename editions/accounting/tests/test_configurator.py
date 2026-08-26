@@ -476,6 +476,8 @@ class AccountingConfiguratorTests(unittest.TestCase):
         answers = (
             "Late fee grace days: 5\n  Late fee grace days: 10\n  Counsel confirmed both jurisdictions.",
             "Late fee grace days: 5\n  Georgia late fee grace days: 10\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Late fee grace days for Georgia: 10\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Late fee grace days (Georgia): 10\n  Counsel confirmed both jurisdictions.",
             "Pine Basin County: 5 days\n  Cedar Mesa County: 7 days\n  Counsel confirmed both jurisdictions.",
             "Late fee grace days: 5\n  Georgia: 10 days\n  Counsel confirmed both jurisdictions.",
             "Late fee grace days: 5\n  Georgia: 1 day\n  Counsel confirmed both jurisdictions.",
@@ -495,6 +497,17 @@ class AccountingConfiguratorTests(unittest.TestCase):
             "Late fee grace days: 5\n  Georgia: 10 days”\n  Counsel confirmed both jurisdictions.",
             "Late fee grace days: 5\n  Georgia: 10 days’\n  Counsel confirmed both jurisdictions.",
             "Late fee grace days: 5\n  Georgia: 10 days…\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 10 days..\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia - 10 days\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia – 10 calendar days.\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia — 10 business days)\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Late fee grace days: 10.\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Late fee grace days: 10)\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Late fee grace days: 10..\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Late fee grace days: 10!\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Late fee grace days: 10?\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Late fee grace days: 10   \n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5!\n  Late fee grace days: 10?\n  Counsel confirmed both jurisdictions.",
         )
         for index, answer in enumerate(answers, 1):
             with self.subTest(answer=answer):
@@ -539,6 +552,21 @@ class AccountingConfiguratorTests(unittest.TestCase):
         ), output, "accounting", seat_registry={})
         self.assertEqual(json.loads((output / "config.json").read_text())[
             "late_fee_grace_days"], 6)
+
+    def test_named_accounting_single_punctuated_clock_preserves_raw_then_refuses_extraction(self):
+        print("ARMED: punctuated canonical passes guard without rewriting raw extraction bytes")
+        answer = "Late fee grace days: 6.\n  Counsel confirmed the one supported clock."
+        fixture = self.fixture_variant("A1", answer)
+        parsed = engine.validate(fixture, "accounting")
+        parsed_answer = "Late fee grace days: 6.\nCounsel confirmed the one supported clock."
+        self.assertEqual(parsed.raw_answers["A1"], parsed_answer)
+        self.assertEqual(parsed.answers["A1"], parsed_answer)
+        output = self.tmp / "single-punctuated-clock"
+        with self.assertRaises(engine.IntakeRejected) as caught:
+            engine.configure(self.source, fixture, output, "accounting", seat_registry={})
+        self.assertIn("labeled integer line 'Late fee grace days': NN not found",
+                      caught.exception.render())
+        self.assertFalse(output.exists())
 
     def test_named_accounting_unstructured_qualified_duration_prose_configures_exactly(self):
         print("ARMED: qualified duration prose without labeled clock shape remains valid")

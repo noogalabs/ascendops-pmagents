@@ -134,7 +134,8 @@ jurisdiction-prefixed labels, and generic labeled clock lines such as
 contains `county`, `city`, or another jurisdiction noun. This is a fail-closed
 UX correction, not an early implementation of the future keyed carrier.
 The same normalized structural guard intentionally refuses any additional
-labeled day-count line, including `Label: N day`, `Label: N days`, and optional
+labeled day-count line using a colon, hyphen, en dash, or em dash separator,
+including `Label: N day`, `Label - N days`, and optional
 `calendar` or `business` qualifiers. That covers an unrelated
 `Payment window: 30 days` aside as well as named jurisdiction clocks. The
 same normalized grammar admits an optional run from the closed terminal set:
@@ -142,11 +143,24 @@ period, comma, semicolon, colon, exclamation, question mark, closing
 parenthesis/bracket/brace, straight or curly closing quotes, and ellipsis.
 Thus `Georgia: 10 calendar days.`, `Georgia: 10 days!`, and
 `Georgia: 10 days)` cannot evade the refusal and be silently flattened to the
-canonical clock. Nothing containing a letter or digit after the unit belongs
+canonical clock; repeated punctuation such as `Georgia: 10 days..` is covered
+by the same terminal run. Nothing containing a letter or digit after the unit belongs
 to this grammar: `Payment: 10 days later we bill.` remains prose by contract,
 as does the qualified-duration prose sentence with terminal punctuation. A
-mutation removing terminal punctuation support kills all three punctuation
-variants in the production casualty.
+mutation removing terminal punctuation support kills the punctuation matrix;
+colon and dash separator variants are likewise exercised through production.
+One classification-local preprocessing pass removes harmless terminal
+punctuation and whitespace before canonical or scoped clock counting. Raw A1
+bytes remain untouched for storage and extraction. Thus a punctuated duplicate
+such as `Late fee grace days: 10.` is counted as a conflicting second clock,
+while a single `Late fee grace days: 6.` passes the guard and then refuses
+loudly at raw labeled-integer extraction rather than silently rewriting input.
+Canonical-label qualifier classification is position-independent: prefix,
+suffix (`for Georgia`), and parenthetical (`(Georgia)`) qualifiers with a
+numeric value are scoped conflicts and reject rather than falling through.
+The fleet member-hygiene gate treats any report named in the member-visible
+manifest as member content: the `-REPORT.md` exemption applies only to internal
+reports, and a planted task id in a visible report kills the gate.
 The questionnaire hint and diagnostic state the same contract: exactly one
 structured `Late fee grace days: NN` line; all other timing details belong in
 plain prose. Numeric prose without the labeled colon shape remains valid.

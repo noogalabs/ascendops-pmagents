@@ -19,11 +19,19 @@ QUESTION_LINE = re.compile(rf"^({QUESTION_ID_PATTERN})\.\s")
 QUESTION_HEADING = re.compile(rf"^({QUESTION_ID_PATTERN})\.\s+(.+)$", re.M)
 CONTINUATION_LINE = re.compile(r"^[ \t]+(?:\S[^\n]*)?$")
 INTAKE_VALUE_SPAN = r"[^\n]*(?:\n[ \t]+[^\n]*)*"
+TERMINAL_PUNCTUATION_RUN = r"[.,;:!?)\]}\"'’”…]*"
 STRUCTURED_DAY_COUNT_LINE = re.compile(
-    r"\s*[^:\n]+\s*:\s*\d+\s+(?:(?:calendar|business)\s+)?days?"
-    r"\s*[.,;:!?)\]}\"'’”…]*\s*",
+    r"\s*[^:\n]+?\s*(?::|[-–—])\s*\d+\s+(?:(?:calendar|business)\s+)?days?"
+    r"\s*",
     re.I,
 )
+
+
+def _normalize_accounting_clock_answer(answer: str) -> str:
+    return "\n".join(
+        re.sub(rf"\s*{TERMINAL_PUNCTUATION_RUN}\s*$", "", line)
+        for line in answer.splitlines()
+    )
 
 
 class IntakeRejected(RuntimeError):
@@ -131,12 +139,13 @@ def _validate_semantics(answers: dict[str, str], raw: dict[str, str], failures: 
 
 def _validate_accounting_scope(answers: dict[str, str], failures: list[tuple[str, str]]):
     answer = answers.get("A1", "")
-    lines = answer.splitlines()
-    canonical = [line for line in lines if re.fullmatch(
-        r"\s*Late fee grace days\s*:\s*\d+\s*", line, re.I
-    )]
+    lines = _normalize_accounting_clock_answer(answer).splitlines()
+    canonical_pattern = re.compile(r"\s*Late fee grace days\s*:\s*\d+\s*", re.I)
+    canonical = [line for line in lines if canonical_pattern.fullmatch(line)]
     scoped = [line for line in lines if (
-        re.fullmatch(r"\s*.+\s+late fee grace days\s*:\s*\d+\s*", line, re.I)
+        (re.search(r"\blate fee grace days\b", line, re.I)
+         and re.search(r":\s*\d+\s*$", line)
+         and not canonical_pattern.fullmatch(line))
         or STRUCTURED_DAY_COUNT_LINE.fullmatch(line)
         or re.fullmatch(
             r"\s*.+\b(?:county|parish|city|state|jurisdiction)\s*:\s*\d+\s+days\s*",

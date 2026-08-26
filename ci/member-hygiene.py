@@ -85,7 +85,8 @@ def scan(root: Path) -> list[str]:
                 failures.append(f"{relative}:{number}: private identity token")
             if banned_re.search(line):
                 failures.append(f"{relative}:{number}: banned sales token")
-            if TASK_ID_RE.search(line) and not relative.endswith("-REPORT.md"):
+            if (TASK_ID_RE.search(line)
+                    and (not relative.endswith("-REPORT.md") or relative in visible)):
                 failures.append(f"{relative}:{number}: internal task id on shipped member surface")
             for match in codename_re.finditer(line):
                 if relative in visible:

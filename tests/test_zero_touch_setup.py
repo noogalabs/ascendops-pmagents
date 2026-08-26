@@ -18,6 +18,26 @@ SPEC = importlib.util.spec_from_file_location("pmagents_setup", ROOT / "setup.py
 setup = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader
 SPEC.loader.exec_module(setup)
+PRODUCTION_INTAKE_CONSUMER_MANIFEST = {
+    "setup.py": {"kind": "shared"},
+    "engine/intake.py": {"kind": "shared"},
+    "editions/maintenance/configure_agent.py": {
+        "kind": "sealed",
+        "sha256": "0540ea08aa8d47ecb1aebbb7f51db85c5a67ab252172804e9ba24e56c2403551",
+    },
+}
+
+
+def production_intake_consumer_sets(root: Path, supported):
+    on_disk = {
+        str(path.relative_to(root))
+        for path in root.glob("editions/*/configure_agent.py")
+    }
+    registry_sealed = {
+        str((entry["answers"].parent / "configure_agent.py").relative_to(root))
+        for entry in supported.values() if entry.get("runner") == "sealed"
+    }
+    return {"setup.py", "engine/intake.py", *on_disk}, registry_sealed, on_disk
 
 
 def tree_digest(root: Path):
@@ -30,9 +50,16 @@ def tree_digest(root: Path):
 class ZeroTouchSetupTests(unittest.TestCase):
     def test_named_every_intake_text_consumer_uses_shared_multiline_surface(self):
         print("ARMED: intake-format readers and writers cannot fork a single-line value grammar")
+        discovered_consumers, registry_sealed, on_disk = production_intake_consumer_sets(
+            ROOT, setup.engine.SUPPORTED)
+        self.assertEqual(on_disk, registry_sealed,
+                         "edition configurator exists outside the sealed registry")
+        self.assertEqual(discovered_consumers, set(PRODUCTION_INTAKE_CONSUMER_MANIFEST),
+                         "production intake consumer manifest is incomplete")
         sources = {
-            "setup.py": (ROOT / "setup.py").read_text(),
-            "engine/intake.py": (ROOT / "engine" / "intake.py").read_text(),
+            path: (ROOT / path).read_text()
+            for path, row in PRODUCTION_INTAKE_CONSUMER_MANIFEST.items()
+            if row["kind"] == "shared"
         }
         framing_allowlist = {
             ("setup.py", "answer_values", "cover-label-frame"):
@@ -71,7 +98,8 @@ class ZeroTouchSetupTests(unittest.TestCase):
                     discovered.append((module, function, "shared-reader"))
                 elif "collect_answer(" in segment:
                     discovered.append((module, function, "shared-interactive-collector"))
-                elif "re.escape(label)" in segment and "re.match" in segment:
+                elif ("re.escape(label)" in segment
+                      and ("re.match" in segment or "re.findall" in segment)):
                     discovered.append((module, function, "cover-label-frame"))
                 elif "QUESTION_LINE.match" in segment:
                     discovered.append((module, function, "question-heading-frame"))
@@ -88,9 +116,30 @@ class ZeroTouchSetupTests(unittest.TestCase):
         self.assertFalse(unclassified, f"unclassified intake consumers: {unclassified}")
         self.assertEqual({row for row in discovered if row[2].endswith("-frame")},
                          set(framing_allowlist))
+        for path, row in PRODUCTION_INTAKE_CONSUMER_MANIFEST.items():
+            if row["kind"] != "sealed":
+                continue
+            self.assertIn(path, registry_sealed)
+            self.assertEqual(hashlib.sha256((ROOT / path).read_bytes()).hexdigest(),
+                             row["sha256"],
+                             f"sealed intake consumer {path} changed without census review")
         self.assertGreaterEqual(sum(row[2] == "shared-reader" for row in discovered), 4)
         self.assertGreaterEqual(sum(row[2] == "shared-writer-span" for row in discovered), 2)
         self.assertGreaterEqual(sum(row[2] == "shared-interactive-collector" for row in discovered), 2)
+
+    def test_named_unmanifested_edition_configurator_dies(self):
+        print("ARMED: an edition configurator outside the production manifest kills the census")
+        root = Path(tempfile.mkdtemp(prefix="pmagents-consumer-census-"))
+        self.addCleanup(shutil.rmtree, root)
+        (root / "setup.py").write_text("")
+        (root / "engine").mkdir()
+        (root / "engine/intake.py").write_text("")
+        edition = root / "editions" / "rogue"
+        edition.mkdir(parents=True)
+        (edition / "configure_agent.py").write_text("def parse_answers(path): pass\n")
+        discovered, registry_sealed, on_disk = production_intake_consumer_sets(root, {})
+        self.assertNotEqual(on_disk, registry_sealed)
+        self.assertNotEqual(discovered, set(PRODUCTION_INTAKE_CONSUMER_MANIFEST))
 
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="pmagents-zero-touch-"))

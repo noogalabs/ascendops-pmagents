@@ -19,7 +19,12 @@ merge; PR21 therefore closes that review debt on the same intake boundary. Its
 named AST census discovers the answer and cover collection sites in `setup.py`
 and `engine/intake.py`, accepts shared multiline readers, writers, and guided
 collectors, and carries reasoned exemptions only for cover-label and
-question-heading framing. A future intake consumer that forks the value grammar
+question-heading framing. An explicit production-consumer manifest is checked
+against shared entry points, every sealed runner derived from the live edition
+registry, and every `editions/*/configure_agent.py` found on disk. Each sealed
+consumer is a reasoned exemption pinned to its exact SHA-256; an unregistered
+configurator or any sealed-byte change fails the census until the registry,
+seal, and census are reviewed together. A future intake consumer that forks the value grammar
 therefore fails the census instead of waiting for another instance report.
 Single-line answers use the same protocol with an immediate blank terminator.
 Correction prompts use the identical collector, so the retry path cannot
