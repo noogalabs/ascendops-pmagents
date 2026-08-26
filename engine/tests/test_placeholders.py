@@ -239,7 +239,35 @@ class PlaceholderTests(unittest.TestCase):
             )
         self.assertIn("currency value not found", str(malformed.exception.failures))
         self.assertEqual(json.loads(path.read_text())["threshold"], 1)
+        with self.assertRaises(engine.placeholders.PlaceholderRejected) as trailing_digit:
+            engine.placeholders.apply_initial(
+                self.root, mapping, self.cover, dict(self.answers, B1="$30.001"), self.core
+            )
+        self.assertIn("threshold must be stated in whole dollars",
+                      str(trailing_digit.exception.failures))
+        self.assertEqual(json.loads(path.read_text())["threshold"], 1)
         self.assertEqual(next(row for row in manifest if row["row_type"] == "config_key")["value"], 30)
+
+    def test_named_every_integer_currency_consumer_uses_strict_shared_token_path(self):
+        print("ARMED: every mapped integer currency consumer rejects malformed decimals")
+        consumers = []
+        for mapping_path in sorted((HERE / "mappings").glob("*.json")):
+            mapping = json.loads(mapping_path.read_text())
+            for section in ("placeholders", "config_keys"):
+                for row in mapping.get(section, []):
+                    if (row.get("extractor") == "currency"
+                            and row.get("value_type", "string") == "integer"):
+                        consumers.append((mapping_path.name, row.get("path") or row.get("placeholder")))
+        self.assertGreaterEqual(len(consumers), 2)
+        self.assertIn(("accounting.json", "/vendor_bill_approval_threshold"), consumers)
+        self.assertIn(("turnover-coordinator.json", "/approval_threshold"), consumers)
+        for consumer in consumers:
+            with self.subTest(consumer=consumer):
+                self.assertEqual(engine.placeholders._number("$30.00", integer=True), "30")
+                with self.assertRaisesRegex(ValueError, "currency value not found"):
+                    engine.placeholders._number("$30.00.50", integer=True)
+                with self.assertRaisesRegex(ValueError, "whole dollars"):
+                    engine.placeholders._number("$30.001", integer=True)
 
     def test_named_config_key_replace_missing_rejects_but_explicit_create_works(self):
         path = self.root / "config.json"

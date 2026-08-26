@@ -161,6 +161,9 @@ unchanged in the persisted `answers.A1` value.
 Currency extraction accepts an integral decimal such as `$30.00` as 30, rejects
 non-integral `$30.50` on integer fields without rounding, and rejects malformed
 chained decimals such as `$30.00.50` rather than silently truncating the token.
+The mapping-derived currency-consumer sweep applies the same three arms to
+every integer-backed currency row across all editions, including rejection of
+the trailing-digit `$30.001` form.
 Canonical-label qualifier classification is position-independent: prefix,
 suffix (`for Georgia`), and parenthetical (`(Georgia)`) qualifiers with a
 numeric value are scoped conflicts and reject rather than falling through.
