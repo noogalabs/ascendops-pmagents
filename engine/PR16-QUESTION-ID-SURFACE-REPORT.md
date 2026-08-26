@@ -21,7 +21,9 @@ edition authority.
   is absent from the declared set;
 - production `guided_answers` discovers, asks, and writes a synthetic edition's `E1` answer;
 - the promise sectioner attributes an `E1` promise to `E1`, never the preceding subject;
-- a custody test bans the old `[A-D]` spelling from all five consumers;
+- a git-tracked repo-wide custody sweep bans question-ID range regex definitions outside
+  canonical intake, with explicit historical exceptions only for the byte-sealed maintenance
+  configurator and its direct test helper;
 - the existing maintenance, PM-assist, and leasing suites remain the regression bar.
 
 The sealed maintenance configurator remains byte-identical.

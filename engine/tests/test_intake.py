@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import importlib.util
 import re
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -88,13 +89,23 @@ class IntakeTests(unittest.TestCase):
         )
 
     def test_named_question_id_consumers_use_the_canonical_surface(self):
-        print("ARMED: question-id consumers cannot regress to an A-D spelling")
-        for path in [
-            HERE / "intake.py",
-            HERE.parent / "setup.py",
-            HERE.parent / "tests" / "test_review_sweeps.py",
-        ]:
-            self.assertNotIn("[A-D]", path.read_text(), str(path))
+        print("ARMED: no tracked consumer can fork the canonical question-id regex")
+        allowed = {
+            "engine/intake.py",
+            "editions/maintenance/configure_agent.py",
+            "editions/maintenance/tests/test_configurator.py",
+        }
+        tracked = subprocess.check_output(
+            ["git", "ls-files", "*.py"], cwd=HERE.parent, text=True
+        ).splitlines()
+        range_token = re.compile(r"\[[A-Z]-[A-Z]\](?:\\d|\[0-9\])\+")
+        violations = []
+        for relative in tracked:
+            if relative in allowed:
+                continue
+            for match in range_token.finditer((HERE.parent / relative).read_text()):
+                violations.append((relative, match.group(0)))
+        self.assertEqual(violations, [], "question-id regex fork outside canonical intake")
 
 
 if __name__ == "__main__":
