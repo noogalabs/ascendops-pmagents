@@ -18,6 +18,17 @@ therefore compare at platform grain, while a different platform still surfaces
 the existing contradiction result. Unsupported measures reject rather than
 quietly reverting to raw-text equality.
 
+The shared platform extractor deliberately retains the pre-existing
+single-token grammar in this engine-only shard. A multi-word name such as
+`Rent Manager for maintenance` currently extracts `Manager`; successor task
+`task_1787757982072_93367381` owns a fail-closed multi-word identity grammar.
+That inherited bound is recorded here rather than expanded inside this PR.
+
+The David-locked Gap Rule passes at the content-origin leg: this shard contains
+only structural resolution, extraction, validation, and comparison plumbing.
+It introduces no property-management numbers, thresholds, scripts, workflows,
+or judgment calls and therefore requires no invented domain-practice content.
+
 The named casualties cover both owner and absent-owner pointer resolution, a
 production configuration from a changed live communications-window answer,
 same-platform/different-prose equality, different-platform disagreement, and
