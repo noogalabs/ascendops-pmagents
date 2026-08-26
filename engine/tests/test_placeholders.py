@@ -235,6 +235,50 @@ class PlaceholderTests(unittest.TestCase):
         engine.placeholders.apply_initial(self.root, mapping, self.cover, self.answers, self.core)
         self.assertEqual(json.loads(path.read_text())["timezone"], "America/Denver")
 
+    def test_named_numeric_domain_schema_rejects_invalid_declarations(self):
+        base = {
+            "path": "/turn_target_days", "source": "B1", "extractor": "first_integer",
+            "value_type": "integer", "mode": "create",
+        }
+        cases = (
+            ({**base, "minimum": "one"}, "minimum must be a number"),
+            ({**base, "minimum": 5, "maximum": 4}, "minimum must not exceed maximum"),
+            ({**base, "minimum": float("inf")}, "minimum must be finite"),
+            ({**base, "value_type": "string", "minimum": 1},
+             "minimum is only valid for numeric value types"),
+        )
+        for row, message in cases:
+            with self.subTest(message=message):
+                path = self.tmp / (message.split()[0] + ".json")
+                path.write_text(json.dumps({
+                    "placeholders": [{
+                        "placeholder": "company_name", "source": "cover.company_name",
+                        "extractor": "identity",
+                    }],
+                    "config_keys": [row],
+                }))
+                with self.assertRaises(engine.placeholders.PlaceholderRejected) as caught:
+                    engine.placeholders.load_mapping(path)
+                self.assertIn(message, str(caught.exception.failures))
+
+    def test_named_labeled_integer_requires_declared_anchor(self):
+        row = {"source": "B1", "extractor": "labeled_integer", "label": "Notice days"}
+        answers = dict(self.answers, B1="Use 2 delivery methods.\nNotice days: 60")
+        self.assertEqual(engine.placeholders.extract(row, self.cover, answers, self.core), "60")
+        with self.assertRaises(ValueError) as caught:
+            engine.placeholders.extract(row, self.cover,
+                                        dict(answers, B1="Use 2 delivery methods; 60 days"),
+                                        self.core)
+        self.assertIn("Notice days", str(caught.exception))
+
+    def test_named_numeric_domain_honors_zero_and_optional_maximum(self):
+        row = {"value_type": "integer", "minimum": 0, "maximum": 3}
+        self.assertEqual(engine.placeholders._typed_value(row, "0"), 0)
+        self.assertEqual(engine.placeholders._typed_value(row, "3"), 3)
+        with self.assertRaises(ValueError) as caught:
+            engine.placeholders._typed_value(row, "4")
+        self.assertIn("above maximum 3", str(caught.exception))
+
 
 if __name__ == "__main__":
     print("ARMED: mapping-table two-direction integrity and managed-surface locators")

@@ -242,6 +242,13 @@ def stamp(staged: Path, seat: str, managed_surfaces, preserved_tokens, provenanc
 def configure(source: Path, answers: Path, output: Path, seat: str,
               *, clock=datetime.date.today, seat_registry=None):
     parsed_intake = validate(answers, seat)  # complete validation before staging or writes
+    mapping = load_seat_mapping(seat)
+    try:
+        placeholders.validate_consumed_values(
+            mapping, parsed_intake.raw_cover, parsed_intake.raw_answers
+        )
+    except placeholders.PlaceholderRejected as exc:
+        raise IntakeRejected(exc.failures) from exc
     core = load_core()
     if output.exists() and not output.is_dir():
         raise IntakeRejected([("output", "existing output must be an agent directory")])
@@ -265,7 +272,6 @@ def configure(source: Path, answers: Path, output: Path, seat: str,
             raise IntakeRejected(exc.failures) from exc
         cover, parsed, raw_cover, raw_answers = (parsed_intake.cover, parsed_intake.answers,
                                                   parsed_intake.raw_cover, parsed_intake.raw_answers)
-        mapping = load_seat_mapping(seat)
         try:
             structured_filename = cross_seat.structured_answers_filename(mapping)
         except cross_seat.CrossSeatRejected as exc:
@@ -466,7 +472,11 @@ def main():
     parser.add_argument("--seat", default="maintenance-coordinator")
     args = parser.parse_args()
     try:
-        configure(*(p.resolve() for p in (args.source_agent_dir, args.answers_file, args.output_dir)), args.seat)
+        configure(
+            *(p.resolve() for p in (args.source_agent_dir, args.answers_file, args.output_dir)),
+            args.seat,
+            seat_registry={},
+        )
     except IntakeRejected as exc:
         print(exc.render(), file=sys.stderr)
         return 2
