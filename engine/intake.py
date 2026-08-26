@@ -114,10 +114,15 @@ def _validate_semantics(answers: dict[str, str], raw: dict[str, str], failures: 
 
 def _validate_accounting_scope(answers: dict[str, str], failures: list[tuple[str, str]]):
     answer = answers.get("A1", "")
-    jurisdiction_clocks = re.findall(
-        r"(?im)^\s*(?!Late fee grace days\s*:)[^:\n]+:\s*\d+\s+days\s*$", answer
-    )
-    if len(jurisdiction_clocks) > 1:
+    clock_lines = [
+        line for line in answer.splitlines()
+        if (re.search(r"\bgrace\b.*\d|\d.*\bgrace\b", line, re.I)
+            or re.fullmatch(r"\s*[^:\n]+:\s*\d+\s+days\s*", line, re.I))
+    ]
+    canonical = [line for line in clock_lines if re.fullmatch(
+        r"\s*Late fee grace days\s*:\s*\d+\s*", line, re.I
+    )]
+    if len(clock_lines) > 1 or (clock_lines and len(canonical) != 1):
         failures.append((
             "A1",
             "multiple jurisdiction grace clocks are not supported by this edition; "

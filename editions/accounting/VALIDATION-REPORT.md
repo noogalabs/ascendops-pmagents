@@ -119,7 +119,11 @@ intake boundary rejects an answer containing multiple labeled jurisdiction
 clocks, names the limitation, and directs the operator to the tracked
 per-jurisdiction capability instead of flattening the first number into
 `/late_fee_grace_days`. A paired production casualty proves a single labeled
-clock still configures exactly. Task `task_1787744582233_11673934` owns the
+clock still configures exactly. The refusal is armed against duplicate
+canonical labels, jurisdiction-prefixed label variants, and generic
+`Jurisdiction: N days` lines. At extractor grain, every `labeled_integer` row
+also rejects duplicate exact labels instead of taking the first match. Task
+`task_1787744582233_11673934` owns the
 per-jurisdiction keyed carrier, questionnaire extension, and consuming rows.
 
 ## Inherited platform laws

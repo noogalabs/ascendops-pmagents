@@ -448,15 +448,21 @@ class AccountingConfiguratorTests(unittest.TestCase):
 
     def test_named_accounting_multiple_jurisdiction_clocks_reject_loudly(self):
         print("ARMED: multi-jurisdiction clocks reject instead of flattening to one value")
-        output = self.tmp / "multiple-jurisdiction-clocks"
-        fixture = self.fixture_variant(
-            "A1", "Pine Basin County: 5 days\n  Cedar Mesa County: 7 days\n  Counsel confirmed both."
+        answers = (
+            "Late fee grace days: 5\n  Late fee grace days: 10\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia late fee grace days: 10\n  Counsel confirmed both jurisdictions.",
+            "Pine Basin County: 5 days\n  Cedar Mesa County: 7 days\n  Counsel confirmed both jurisdictions.",
         )
-        with self.assertRaises(engine.IntakeRejected) as caught:
-            engine.configure(self.source, fixture, output, "accounting", seat_registry={})
-        self.assertIn("multiple jurisdiction grace clocks are not supported", caught.exception.render())
-        self.assertIn("per-jurisdiction capability", caught.exception.render())
-        self.assertFalse(output.exists())
+        for index, answer in enumerate(answers, 1):
+            with self.subTest(answer=answer):
+                output = self.tmp / f"multiple-jurisdiction-clocks-{index}"
+                fixture = self.fixture_variant("A1", answer)
+                with self.assertRaises(engine.IntakeRejected) as caught:
+                    engine.configure(self.source, fixture, output, "accounting", seat_registry={})
+                self.assertIn("multiple jurisdiction grace clocks are not supported",
+                              caught.exception.render())
+                self.assertIn("per-jurisdiction capability", caught.exception.render())
+                self.assertFalse(output.exists())
 
     def test_named_accounting_single_jurisdiction_clock_configures_exactly(self):
         print("ARMED: one counsel-confirmed grace clock configures exactly")
