@@ -36,3 +36,13 @@ delegate to the reviewed engine without changing its output bytes or the sealed
 maintenance configurator. Their review custody is the PMAgents pull request and
 exact-head CI; they do not claim an org-side source hash in the imported-source
 TSV.
+
+## Business Development edition
+
+The Business Development edition is derived from the owner-reviewed 2026-08-21
+BDM questionnaire and its fictional-only template package, with the reviewed BD
+mapping table and Ridgeline fixture as semantic authorities. The wrapper adapter
+is seat-generic: no new sealed seat core exists, and the maintenance core remains
+byte-identical at `0540ea08aa8d47ecb1aebbb7f51db85c5a67ab252172804e9ba24e56c2403551`.
+The member package permanently uses question-led-selling terminology; the banned
+sales token is absent from every edition surface.

@@ -23,7 +23,8 @@ From the repository root, run this one command:
 python3 setup.py
 ```
 
-The setup interview offers the installed edition, asks where the clean template
+The setup interview offers the installed edition, including the Business Development
+seat, asks where the clean template
 and configured agent should live, and then walks the questionnaire in plain
 language. Enter `unsure` to mark an answer for later confirmation; the generated
 agent skips features that depend on it. If setup stops, run the same command and
