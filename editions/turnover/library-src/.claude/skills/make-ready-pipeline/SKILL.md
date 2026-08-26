@@ -34,8 +34,8 @@ This skill plans and certifies. It does not dispatch vendors, send messages, dec
 
 Before issuing any rent-ready certification, confirm ALL of the following:
 1. Every must-fix item in the punch list has `verified_done = True`
-2. Re-key is in the punch list, sequenced last, and has `verified_done = True`
-3. A completion record exists with evidence references per must-fix item
+2. Every verified must-fix has a nonblank evidence reference
+3. Re-key is in the punch list, begins only after every other must-fix ends, has `verified_done = True`, and has nonblank evidence
 
 If any condition is false: the unit is `UNVERIFIED` and cannot be certified. Surface the open items to the property manager.
 
@@ -95,8 +95,15 @@ python3 .claude/skills/make-ready-pipeline/make_ready.py \
   --tasks tasks.json \
   --possession-date 2026-07-01 \
   --target-days 10 \
+  --stale-stage-alert-days 2 \
   --json
 ```
+
+Each task ID must be unique and nonblank, and every `depends_on` ID must name a
+declared task. Each task also carries `stage_entered_date`; unfinished must-fix
+tasks may carry `last_progress_date`. Staleness is measured from the last progress
+date when present, otherwise from the visible stage-entry date. A missing stage-entry
+date rejects the analysis rather than substituting a planned end date.
 
 ---
 

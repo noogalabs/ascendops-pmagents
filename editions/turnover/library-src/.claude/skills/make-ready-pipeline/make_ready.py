@@ -7,10 +7,10 @@ import argparse
 import datetime as dt
 import json
 import sys
-from typing import Dict, List, Optional, Set, Tuple
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
 TURN_TARGET_DAYS = 10
-STALE_STAGE_ALERT_DAYS = 2
 
 Task = Dict[str, object]
 
@@ -48,9 +48,25 @@ def parse_bool(value: object) -> bool:
 
 def topo_sort(tasks: List[Task]) -> List[Task]:
     """Return tasks in valid dependency order (raises ValueError on cycle)."""
-    by_id: Dict[str, Task] = {str(t["id"]): t for t in tasks}
-    in_degree: Dict[str, int] = {str(t["id"]): 0 for t in tasks}
-    adj: Dict[str, List[str]] = {str(t["id"]): [] for t in tasks}
+    ids = [str(task.get("id") or "").strip() for task in tasks]
+    empty = [index for index, tid in enumerate(ids) if not tid]
+    if empty:
+        raise ValueError(f"Task IDs must be nonempty; missing at rows {empty}")
+    duplicates = sorted({tid for tid in ids if ids.count(tid) > 1})
+    if duplicates:
+        raise ValueError(f"Duplicate task IDs: {', '.join(duplicates)}")
+    declared = set(ids)
+    dangling = sorted({
+        str(dep).strip()
+        for task in tasks for dep in (task.get("depends_on") or [])
+        if not str(dep).strip() or str(dep).strip() not in declared
+    })
+    if dangling:
+        raise ValueError(f"Undeclared dependency task IDs: {', '.join(repr(item) for item in dangling)}")
+
+    by_id: Dict[str, Task] = dict(zip(ids, tasks))
+    in_degree: Dict[str, int] = {tid: 0 for tid in ids}
+    adj: Dict[str, List[str]] = {tid: [] for tid in ids}
 
     for task in tasks:
         for dep in task.get("depends_on") or []:
@@ -108,6 +124,8 @@ def schedule_tasks(
             "name": task.get("name", ""),
             "trade": task.get("trade", ""),
             "stage": task.get("stage", ""),
+            "stage_entered_date": str(task.get("stage_entered_date") or ""),
+            "last_progress_date": str(task.get("last_progress_date") or ""),
             "is_rekey": parse_bool(task.get("is_rekey")),
             "is_critical_path": False,
             "is_dry_cure_block": parse_bool(task.get("is_dry_cure_block")),
@@ -130,46 +148,37 @@ def schedule_tasks(
 # ---------------------------------------------------------------------------
 
 def find_critical_path(scheduled: List[Dict[str, object]]) -> Tuple[List[str], dt.date]:
-    """Return (critical_path_ids, latest_end_date) using backward-pass longest-path."""
-    by_id = {s["id"]: s for s in scheduled}
-    # Latest finish per task (forward pass already done in schedule_tasks)
-    latest_finish: Dict[str, dt.date] = {s["id"]: parse_date(s["end_date"]) for s in scheduled}
-    max_finish = max(latest_finish.values()) if latest_finish else dt.date.today()
+    """Return zero-slack task IDs and project finish via a real backward pass."""
+    if not scheduled:
+        return [], dt.date.today()
+    by_id = {str(task["id"]): task for task in scheduled}
+    starts = {tid: parse_date(task["start_date"]) for tid, task in by_id.items()}
+    ends = {tid: parse_date(task["end_date"]) for tid, task in by_id.items()}
+    if any(value is None for value in [*starts.values(), *ends.values()]):
+        raise ValueError("Scheduled task dates must be valid before critical-path analysis")
+    project_finish = max(ends.values())
+    dependents: Dict[str, List[str]] = {tid: [] for tid in by_id}
+    for tid, task in by_id.items():
+        for dependency in task.get("depends_on") or []:
+            dependents[str(dependency)].append(tid)
 
-    # Backward pass: trace which tasks are on the critical path
-    # A task is on the CP if it has the longest chain to the latest finish
-    # Simple approach: for each task, its CP contribution = its end_date == max_finish in its chain
-    # We use a memoized "chain_end" per node
-    chain_end: Dict[str, dt.date] = {}
+    latest_start: Dict[str, dt.date] = {}
+    for task in reversed(scheduled):
+        tid = str(task["id"])
+        duration = dt.timedelta(days=parse_int(task.get("duration_days"), 1))
+        latest_finish = (
+            min(latest_start[child] for child in dependents[tid])
+            if dependents[tid] else project_finish
+        )
+        latest_start[tid] = latest_finish - duration
 
-    def get_chain_end(tid: str, seen: Optional[Set[str]] = None) -> dt.date:
-        if tid in chain_end:
-            return chain_end[tid]
-        if seen is None:
-            seen = set()
-        if tid in seen:
-            return parse_date(by_id[tid]["end_date"])
-        seen.add(tid)
-        task_end = parse_date(by_id[tid]["end_date"])
-        # Find tasks that depend on this one
-        dependents = [s["id"] for s in scheduled if tid in (s.get("depends_on") or [])]
-        if not dependents:
-            chain_end[tid] = task_end
-        else:
-            chain_end[tid] = max(get_chain_end(d, seen) for d in dependents)
-        return chain_end[tid]
-
-    for s in scheduled:
-        get_chain_end(s["id"])
-
-    # Tasks on critical path: those whose chain_end equals max_finish
-    cp_ids = [s["id"] for s in scheduled if chain_end.get(s["id"]) == max_finish]
+    cp_ids = [tid for tid in by_id if starts[tid] == latest_start[tid]]
 
     # Mark in scheduled
     for s in scheduled:
         s["is_critical_path"] = s["id"] in cp_ids
 
-    return cp_ids, max_finish
+    return cp_ids, project_finish
 
 
 # ---------------------------------------------------------------------------
@@ -189,6 +198,8 @@ def certify_gate(scheduled: List[Dict[str, object]]) -> Tuple[bool, List[str]]:
     for s in must_fixes:
         if not s["verified_done"]:
             open_items.append(f"UNVERIFIED must-fix: {s['name']} (trade: {s['trade']})")
+        elif not str(s.get("evidence") or "").strip():
+            open_items.append(f"MISSING EVIDENCE must-fix: {s['name']} (id: {s['id']})")
 
     if not rekeyed:
         open_items.append("MISSING: re-key task not found in punch list — re-key is mandatory")
@@ -196,6 +207,18 @@ def certify_gate(scheduled: List[Dict[str, object]]) -> Tuple[bool, List[str]]:
         for r in rekeyed:
             if not r["verified_done"]:
                 open_items.append(f"UNVERIFIED re-key: {r['name']}")
+            elif not str(r.get("evidence") or "").strip():
+                open_items.append(f"MISSING EVIDENCE re-key: {r['name']} (id: {r['id']})")
+            for required in must_fixes:
+                if required["id"] == r["id"] or required.get("is_rekey"):
+                    continue
+                required_end = parse_date(required["end_date"])
+                rekey_start = parse_date(r["start_date"])
+                if required_end and rekey_start and required_end > rekey_start:
+                    open_items.append(
+                        f"RE-KEY NOT LAST: {r['name']} starts {r['start_date']} before "
+                        f"required task {required['name']} ends {required['end_date']}"
+                    )
 
     return len(open_items) == 0, open_items
 
@@ -213,22 +236,22 @@ def demo_tasks() -> Tuple[List[Task], dt.date]:
 
     # Unit A: smooth turn — all must-fix verified, re-key last and verified
     unit_a: List[Task] = [
-        {"id": "A1", "name": "Trash-out", "trade": "labor", "stage": "3", "must_fix": True, "duration_days": 1, "depends_on": [], "verified_done": True, "evidence": "photo-A1.jpg", "is_rekey": False, "is_dry_cure_block": False, "classification": "must_fix", "wear_vs_damage": "normal_wear"},
-        {"id": "A2", "name": "Drywall repair (hole, hallway)", "trade": "handyman", "stage": "3", "must_fix": True, "duration_days": 1, "depends_on": ["A1"], "verified_done": True, "evidence": "photo-A2.jpg", "is_rekey": False, "is_dry_cure_block": False, "classification": "must_fix", "wear_vs_damage": "tenant_damage"},
-        {"id": "A3", "name": "Paint — full unit", "trade": "paint", "stage": "3", "must_fix": True, "duration_days": 2, "depends_on": ["A2"], "verified_done": True, "evidence": "photo-A3.jpg", "is_rekey": False, "is_dry_cure_block": False, "classification": "must_fix", "wear_vs_damage": "normal_wear"},
-        {"id": "A3d", "name": "Paint dry time", "trade": "none", "stage": "3", "must_fix": False, "duration_days": 1, "depends_on": ["A3"], "verified_done": True, "evidence": "", "is_rekey": False, "is_dry_cure_block": True, "classification": "cosmetic", "wear_vs_damage": "normal_wear"},
-        {"id": "A4", "name": "LVP flooring — living + bedrooms", "trade": "flooring", "stage": "3", "must_fix": True, "duration_days": 2, "depends_on": ["A3d"], "verified_done": True, "evidence": "photo-A4.jpg", "is_rekey": False, "is_dry_cure_block": False, "classification": "must_fix", "wear_vs_damage": "normal_wear"},
-        {"id": "A5", "name": "Deep clean", "trade": "cleaning", "stage": "3", "must_fix": True, "duration_days": 1, "depends_on": ["A4"], "verified_done": True, "evidence": "photo-A5.jpg", "is_rekey": False, "is_dry_cure_block": False, "classification": "must_fix", "wear_vs_damage": "normal_wear"},
-        {"id": "A6", "name": "Re-key all entry locks", "trade": "locksmith", "stage": "3", "must_fix": True, "duration_days": 1, "depends_on": ["A5"], "verified_done": True, "evidence": "photo-A6.jpg", "is_rekey": True, "is_dry_cure_block": False, "classification": "must_fix", "wear_vs_damage": "normal_wear"},
+        {"id": "A1", "name": "Trash-out", "trade": "labor", "stage": "3", "stage_entered_date": "2026-07-01", "must_fix": True, "duration_days": 1, "depends_on": [], "verified_done": True, "evidence": "photo-A1.jpg", "is_rekey": False, "is_dry_cure_block": False, "classification": "must_fix", "wear_vs_damage": "normal_wear"},
+        {"id": "A2", "name": "Drywall repair (hole, hallway)", "trade": "handyman", "stage": "3", "stage_entered_date": "2026-07-01", "must_fix": True, "duration_days": 1, "depends_on": ["A1"], "verified_done": True, "evidence": "photo-A2.jpg", "is_rekey": False, "is_dry_cure_block": False, "classification": "must_fix", "wear_vs_damage": "tenant_damage"},
+        {"id": "A3", "name": "Paint — full unit", "trade": "paint", "stage": "3", "stage_entered_date": "2026-07-01", "must_fix": True, "duration_days": 2, "depends_on": ["A2"], "verified_done": True, "evidence": "photo-A3.jpg", "is_rekey": False, "is_dry_cure_block": False, "classification": "must_fix", "wear_vs_damage": "normal_wear"},
+        {"id": "A3d", "name": "Paint dry time", "trade": "none", "stage": "3", "stage_entered_date": "2026-07-01", "must_fix": False, "duration_days": 1, "depends_on": ["A3"], "verified_done": True, "evidence": "", "is_rekey": False, "is_dry_cure_block": True, "classification": "cosmetic", "wear_vs_damage": "normal_wear"},
+        {"id": "A4", "name": "LVP flooring — living + bedrooms", "trade": "flooring", "stage": "3", "stage_entered_date": "2026-07-01", "must_fix": True, "duration_days": 2, "depends_on": ["A3d"], "verified_done": True, "evidence": "photo-A4.jpg", "is_rekey": False, "is_dry_cure_block": False, "classification": "must_fix", "wear_vs_damage": "normal_wear"},
+        {"id": "A5", "name": "Deep clean", "trade": "cleaning", "stage": "3", "stage_entered_date": "2026-07-01", "must_fix": True, "duration_days": 1, "depends_on": ["A4"], "verified_done": True, "evidence": "photo-A5.jpg", "is_rekey": False, "is_dry_cure_block": False, "classification": "must_fix", "wear_vs_damage": "normal_wear"},
+        {"id": "A6", "name": "Re-key all entry locks", "trade": "locksmith", "stage": "3", "stage_entered_date": "2026-07-01", "must_fix": True, "duration_days": 1, "depends_on": ["A5"], "verified_done": True, "evidence": "photo-A6.jpg", "is_rekey": True, "is_dry_cure_block": False, "classification": "must_fix", "wear_vs_damage": "normal_wear"},
     ]
 
     # Unit B: at-risk turn — one must-fix unverified, re-key not yet done
     unit_b: List[Task] = [
-        {"id": "B1", "name": "Trash-out", "trade": "labor", "stage": "3", "must_fix": True, "duration_days": 1, "depends_on": [], "verified_done": True, "evidence": "photo-B1.jpg", "is_rekey": False, "is_dry_cure_block": False, "classification": "must_fix", "wear_vs_damage": "normal_wear"},
-        {"id": "B2", "name": "HVAC filter + coil clean (AC not cooling)", "trade": "hvac", "stage": "3", "must_fix": True, "duration_days": 1, "depends_on": ["B1"], "verified_done": False, "evidence": "", "is_rekey": False, "is_dry_cure_block": False, "classification": "must_fix", "wear_vs_damage": "normal_wear"},
-        {"id": "B3", "name": "Paint — touch-up", "trade": "paint", "stage": "3", "must_fix": False, "duration_days": 1, "depends_on": ["B2"], "verified_done": True, "evidence": "photo-B3.jpg", "is_rekey": False, "is_dry_cure_block": False, "classification": "cosmetic", "wear_vs_damage": "normal_wear"},
-        {"id": "B4", "name": "Deep clean", "trade": "cleaning", "stage": "3", "must_fix": True, "duration_days": 1, "depends_on": ["B3"], "verified_done": True, "evidence": "photo-B4.jpg", "is_rekey": False, "is_dry_cure_block": False, "classification": "must_fix", "wear_vs_damage": "normal_wear"},
-        {"id": "B5", "name": "Re-key all entry locks", "trade": "locksmith", "stage": "3", "must_fix": True, "duration_days": 1, "depends_on": ["B4"], "verified_done": False, "evidence": "", "is_rekey": True, "is_dry_cure_block": False, "classification": "must_fix", "wear_vs_damage": "normal_wear"},
+        {"id": "B1", "name": "Trash-out", "trade": "labor", "stage": "3", "stage_entered_date": "2026-07-01", "must_fix": True, "duration_days": 1, "depends_on": [], "verified_done": True, "evidence": "photo-B1.jpg", "is_rekey": False, "is_dry_cure_block": False, "classification": "must_fix", "wear_vs_damage": "normal_wear"},
+        {"id": "B2", "name": "HVAC filter + coil clean (AC not cooling)", "trade": "hvac", "stage": "3", "stage_entered_date": "2026-07-01", "must_fix": True, "duration_days": 1, "depends_on": ["B1"], "verified_done": False, "evidence": "", "is_rekey": False, "is_dry_cure_block": False, "classification": "must_fix", "wear_vs_damage": "normal_wear"},
+        {"id": "B3", "name": "Paint — touch-up", "trade": "paint", "stage": "3", "stage_entered_date": "2026-07-01", "must_fix": False, "duration_days": 1, "depends_on": ["B2"], "verified_done": True, "evidence": "photo-B3.jpg", "is_rekey": False, "is_dry_cure_block": False, "classification": "cosmetic", "wear_vs_damage": "normal_wear"},
+        {"id": "B4", "name": "Deep clean", "trade": "cleaning", "stage": "3", "stage_entered_date": "2026-07-01", "must_fix": True, "duration_days": 1, "depends_on": ["B3"], "verified_done": True, "evidence": "photo-B4.jpg", "is_rekey": False, "is_dry_cure_block": False, "classification": "must_fix", "wear_vs_damage": "normal_wear"},
+        {"id": "B5", "name": "Re-key all entry locks", "trade": "locksmith", "stage": "3", "stage_entered_date": "2026-07-01", "must_fix": True, "duration_days": 1, "depends_on": ["B4"], "verified_done": False, "evidence": "", "is_rekey": True, "is_dry_cure_block": False, "classification": "must_fix", "wear_vs_damage": "normal_wear"},
     ]
 
     return [
@@ -245,8 +268,12 @@ def analyze_turn(
     tasks: List[Task],
     possession_date: dt.date,
     target_days: int,
+    stale_stage_alert_days: int,
     unit_label: str = "unit",
+    as_of_date: Optional[dt.date] = None,
 ) -> Dict[str, object]:
+    if stale_stage_alert_days < 1:
+        raise ValueError("stale_stage_alert_days must be at least 1")
     ordered = topo_sort(tasks)
     scheduled = schedule_tasks(ordered, possession_date)
     cp_ids, ready_date = find_critical_path(scheduled)
@@ -258,13 +285,22 @@ def analyze_turn(
     slack_or_gap = (target_date - ready_date).days  # positive = slack, negative = gap
 
     stale_flags = []
+    today = as_of_date or dt.date.today()
     for s in scheduled:
         stage_num = str(s.get("stage", ""))
         if not s["verified_done"] and s["must_fix"]:
-            # A crude stale check: if the task's end_date has passed by stale threshold
-            end = parse_date(s["end_date"])
-            if end and (dt.date.today() - end).days >= STALE_STAGE_ALERT_DAYS:
-                stale_flags.append(f"Stage {stage_num} task '{s['name']}' stale: end_date {s['end_date']}")
+            stage_entered = parse_date(s.get("stage_entered_date"))
+            if stage_entered is None:
+                raise ValueError(f"Task {s['id']} ({s['name']}) is missing stage_entered_date")
+            last_progress = parse_date(s.get("last_progress_date"))
+            anchor = last_progress or stage_entered
+            age = (today - anchor).days
+            if age >= stale_stage_alert_days:
+                state = "last progress" if last_progress else "no progress recorded; stage entry"
+                stale_flags.append(
+                    f"Stage {stage_num} task '{s['name']}' stale: {state} {anchor.isoformat()} "
+                    f"is {age} days old (configured threshold {stale_stage_alert_days})"
+                )
 
     return {
         "unit": unit_label,
@@ -273,6 +309,7 @@ def analyze_turn(
         "ready_date": ready_date.isoformat(),
         "day_count": day_count,
         "target_days": target_days,
+        "stale_stage_alert_days": stale_stage_alert_days,
         "on_track": on_track,
         "slack_or_gap_days": slack_or_gap,
         "verdict": "on_track_with_slack" if (on_track and slack_or_gap > 0) else ("on_track" if on_track else "at_risk_with_gap"),
@@ -336,7 +373,16 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--tasks", help="JSON file with list of task objects.")
     parser.add_argument("--possession-date", help="Possession date as YYYY-MM-DD.")
     parser.add_argument("--target-days", type=int, default=TURN_TARGET_DAYS, help=f"Target days to rent-ready (default {TURN_TARGET_DAYS}).")
+    parser.add_argument("--stale-stage-alert-days", type=int, help="No-progress threshold; defaults to the configured agent value.")
     args = parser.parse_args(argv)
+
+    stale_days = args.stale_stage_alert_days
+    if stale_days is None:
+        config_path = Path(__file__).resolve().parents[3] / "config.json"
+        try:
+            stale_days = int(json.loads(config_path.read_text())["stale_stage_alert_days"])
+        except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+            parser.error(f"configured stale_stage_alert_days is unavailable: {exc}")
 
     if args.demo:
         turns, possession_date = demo_tasks()
@@ -346,6 +392,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 tasks=turn["tasks"],
                 possession_date=possession_date,
                 target_days=args.target_days,
+                stale_stage_alert_days=stale_days,
                 unit_label=turn["unit"],
             ))
     elif args.tasks:
@@ -357,11 +404,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         # Support either a flat list of tasks or a list of {unit, tasks} dicts
         if raw and isinstance(raw[0], dict) and "tasks" in raw[0]:
             results = [
-                analyze_turn(r["tasks"], possession_date, args.target_days, r.get("unit", f"unit-{i}"))
+                analyze_turn(r["tasks"], possession_date, args.target_days, stale_days, r.get("unit", f"unit-{i}"))
                 for i, r in enumerate(raw)
             ]
         else:
-            results = [analyze_turn(raw, possession_date, args.target_days)]
+            results = [analyze_turn(raw, possession_date, args.target_days, stale_days)]
     else:
         parser.error("Either --demo or --tasks is required.")
 
