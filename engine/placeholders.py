@@ -141,7 +141,13 @@ def _number(value, *, integer=False):
             re.I,
         )
     if not match: raise ValueError("currency value not found")
-    token = match.group(1).replace(",", "")
+    # A comma immediately after the amount may be sentence punctuation; internal
+    # commas remain part of the token and must use canonical thousands grouping.
+    raw_token = match.group(1).rstrip(",")
+    integer_token = raw_token.partition(".")[0]
+    if "," in integer_token and not re.fullmatch(r"\d{1,3}(?:,\d{3})*", integer_token):
+        raise ValueError("currency value must use standard comma grouping")
+    token = raw_token.replace(",", "")
     try:
         number = Decimal(token)
     except InvalidOperation:

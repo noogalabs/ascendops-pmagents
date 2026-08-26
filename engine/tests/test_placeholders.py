@@ -246,7 +246,19 @@ class PlaceholderTests(unittest.TestCase):
         self.assertIn("threshold must be stated in whole dollars",
                       str(trailing_digit.exception.failures))
         self.assertEqual(json.loads(path.read_text())["threshold"], 1)
+        with self.assertRaises(engine.placeholders.PlaceholderRejected) as malformed_commas:
+            engine.placeholders.apply_initial(
+                self.root, mapping, self.cover, dict(self.answers, B1="$3,0,0"), self.core
+            )
+        self.assertIn("standard comma grouping", str(malformed_commas.exception.failures))
+        self.assertEqual(json.loads(path.read_text())["threshold"], 1)
+        grouped_manifest = engine.placeholders.apply_initial(
+            self.root, mapping, self.cover, dict(self.answers, B1="$1,250"), self.core
+        )
+        self.assertEqual(json.loads(path.read_text())["threshold"], 1250)
         self.assertEqual(next(row for row in manifest if row["row_type"] == "config_key")["value"], 30)
+        self.assertEqual(next(row for row in grouped_manifest
+                             if row["row_type"] == "config_key")["value"], 1250)
 
     def test_named_every_integer_currency_consumer_uses_strict_shared_token_path(self):
         print("ARMED: every mapped integer currency consumer rejects malformed decimals")
@@ -268,6 +280,9 @@ class PlaceholderTests(unittest.TestCase):
                     engine.placeholders._number("$30.00.50", integer=True)
                 with self.assertRaisesRegex(ValueError, "whole dollars"):
                     engine.placeholders._number("$30.001", integer=True)
+                with self.assertRaisesRegex(ValueError, "standard comma grouping"):
+                    engine.placeholders._number("$3,0,0", integer=True)
+                self.assertEqual(engine.placeholders._number("$1,250", integer=True), "1250")
 
     def test_named_config_key_replace_missing_rejects_but_explicit_create_works(self):
         path = self.root / "config.json"
