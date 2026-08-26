@@ -92,6 +92,50 @@
         "D10": {"gate_surface": "questionnaire permanent copilot statement", "named_test": "test_named_shadow_mode_never_promises_unshipped_autonomy"}
       }
     },
+    "accounting": {
+      "edition": "accounting",
+      "mapping": "accounting.json",
+      "mapping_driven": true,
+      "companions": [],
+      "companion_claim": "No separate companion documents ship in this edition. The configured bootstrap library and its accounting skills are the complete shipped surface.",
+      "banned_companion_claims": ["five generic bookkeeping documents", "Bookkeeping Tracking Board in this folder", "PM Decision Log Template"],
+      "promise_subject_sha256": {
+        "INTRO": "84ccad3b5c4db4a28d3c75be346e9be7bd92fe048341f0ceca4b7e87ef25ccfe",
+        "A1": "1d0390052cdd5a44e665f74a76e651b6522aea8582b89a1026266f5dd518c36b",
+        "A4": "58141e33c41ea20987874f6a0204fd03f9f729f7d20ba6e3554167a80a4320e7",
+        "A5": "df822a2185168151b824a31744777ea9f4620ecd2bdc793dd07231d5e903e600",
+        "A7": "954c130c35b43f6b8e8f883608b91f72814d5bdef058ea47adcf29c831a130e5",
+        "A11": "456c59e21fac639411c6930e0920493398adc027d10561e5189cbf2d4e731c5a",
+        "A17": "ae818a561594048210f6d7540cb585f86af119092548ff18611d5ed1271100cf",
+        "B3": "9d1608043eb5a8ab32445f03e794906f2e616dd26826c4e66e31fb81fc933a5d",
+        "B8": "61453d7b9b2ae96108e3bc7769df4611fe3752ef854d2eff64868b2eb47b1430",
+        "B11": "4fd134fbf56a8e138cbc9960d12b6987909833ca94c909f5eebad26172edf190",
+        "C1": "4bf0241c3f140be54c5a7fe86a4ebbbff81dfbf5a206898d24b8402d859f57a5",
+        "C6": "ec0ba28f7408cc459f53c69c6dca5809a519929f801e0e56f8fcb714ae5fbd2f",
+        "D2": "f07dd0e3ecd098f40689566dec3853eff0154b59a5ddb643db7a13f594595d92",
+        "D5": "60e79c53b1ecd8b87d7601880bd8d327b4a8c72bfec374b0af09434cf3737dd2",
+        "D8": "96ab5c16c9c654e09d3f30d8ec5d5ba61f8920233bce360cccb28f08dfb1fbe8",
+        "D9": "1149995dc7c4ad3d43ed5208c72a6bcaa5bbf48a858b9a1c0dc539babf14b6bb"
+      },
+      "promise_ledger": {
+        "INTRO": {"no_gate_reason": "format, legal-review disclosure, shipped-library truth, and permanent human gate statement"},
+        "A1": {"no_gate_reason": "question collects the jurisdiction-specific late-fee clock"},
+        "A4": {"no_gate_reason": "question collects the jurisdiction-specific notice type"},
+        "A5": {"no_gate_reason": "question records the counsel-confirmed partial-payment effect for configured policy custody"},
+        "A7": {"no_gate_reason": "question records jurisdiction-specific deposit-account and disclosure requirements"},
+        "A11": {"no_gate_reason": "question collects the human eviction filing decision window"},
+        "A17": {"no_gate_reason": "question collects the per-jurisdiction statute map"},
+        "B3": {"no_gate_reason": "question records the configured reserve floor and per-owner agreement overrides"},
+        "B8": {"no_gate_reason": "question collects configured owner-draw target and deadline dates"},
+        "B11": {"no_gate_reason": "question collects record-retention periods by item class"},
+        "C1": {"no_gate_reason": "question collects the human owner-money decision authority"},
+        "C6": {"no_gate_reason": "question collects the CPA routing contact"},
+        "D2": {"no_gate_reason": "question inventories account purposes while explicitly excluding account numbers"},
+        "D5": {"no_gate_reason": "question inventories the configured suspense-account location and access boundary"},
+        "D8": {"no_gate_reason": "question records configured accounting escalation channels and response windows"},
+        "D9": {"no_gate_reason": "question inventories W-9 storage and tracker readiness"}
+      }
+    },
     "turnover-coordinator": {
       "edition": "turnover",
       "mapping": "turnover-coordinator.json",

@@ -1,0 +1,353 @@
+{
+  "schema_version": 2,
+  "seat": "accounting",
+  "library_id": "accounting-2026-08-25",
+  "source_table": "mapping-tables/accounting.md",
+  "source_table_sha256": "67c6f6e972994ba3fb05633c99441cf5f5f1d604ca7eae4d1bf295a3d4f882d2",
+  "structured_answers_file": "accounting-config.json",
+  "placeholders": [
+    {
+      "placeholder": "agent_name",
+      "source": "cover.org_short_name",
+      "extractor": "literal",
+      "value": "accounting"
+    },
+    {
+      "placeholder": "company_name",
+      "source": "cover.company_name",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "operator_name",
+      "source": "C1",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "owner_name",
+      "source": "C2",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "timezone",
+      "source": "cover.timezone",
+      "extractor": "identity"
+    },
+    {
+      "placeholder": "maintenance_agent_name",
+      "source": "C3",
+      "extractor": "literal",
+      "value": "the maintenance team"
+    },
+    {
+      "placeholder": "leasing_agent_name",
+      "source": "C3",
+      "extractor": "literal",
+      "value": "the leasing team"
+    }
+  ],
+  "config_keys": [
+    {
+      "path": "/late_fee_grace_days",
+      "source": "A1",
+      "extractor": "labeled_integer",
+      "label": "Late fee grace days",
+      "value_type": "integer",
+      "minimum": 1,
+      "mode": "create"
+    },
+    {
+      "path": "/nonpayment_notice_days",
+      "source": "A3",
+      "extractor": "labeled_integer",
+      "label": "Nonpayment notice days",
+      "value_type": "integer",
+      "minimum": 1,
+      "mode": "create"
+    },
+    {
+      "path": "/deposit_return_days",
+      "source": "A6",
+      "extractor": "labeled_integer",
+      "label": "Deposit return days",
+      "value_type": "integer",
+      "minimum": 1,
+      "mode": "create"
+    },
+    {
+      "path": "/nsf_fee_cap",
+      "source": "A10",
+      "extractor": "currency",
+      "value_type": "integer",
+      "minimum": 1,
+      "mode": "create"
+    },
+    {
+      "path": "/file_or_hold_decision_days",
+      "source": "A11",
+      "extractor": "labeled_integer",
+      "label": "File-or-hold decision days",
+      "value_type": "integer",
+      "minimum": 1,
+      "mode": "create"
+    },
+    {
+      "path": "/trust_record_retention_years",
+      "source": "A13",
+      "extractor": "labeled_integer",
+      "label": "Trust record retention years",
+      "value_type": "integer",
+      "minimum": 1,
+      "mode": "create"
+    },
+    {
+      "path": "/contractor_license_threshold",
+      "source": "A15",
+      "extractor": "currency",
+      "value_type": "integer",
+      "minimum": 1,
+      "mode": "create"
+    },
+    {
+      "path": "/decision_log_retention_years",
+      "source": "A16",
+      "extractor": "labeled_integer",
+      "label": "Decision log retention years",
+      "value_type": "integer",
+      "minimum": 1,
+      "mode": "create"
+    },
+    {
+      "path": "/vendor_bill_approval_threshold",
+      "source": "B1",
+      "extractor": "currency",
+      "value_type": "integer",
+      "minimum": 0,
+      "mode": "create"
+    },
+    {
+      "path": "/dual_auth_threshold",
+      "source": "B2",
+      "extractor": "currency",
+      "value_type": "integer",
+      "minimum": 1,
+      "mode": "create"
+    },
+    {
+      "path": "/reserve_floor",
+      "source": "B3",
+      "extractor": "labeled_integer",
+      "label": "Base reserve",
+      "value_type": "integer",
+      "minimum": 1,
+      "mode": "create"
+    },
+    {
+      "path": "/unidentified_payment_escalation_threshold",
+      "source": "B4",
+      "extractor": "currency",
+      "value_type": "integer",
+      "minimum": 1,
+      "mode": "create"
+    },
+    {
+      "path": "/reconciliation_variance_threshold",
+      "source": "B5",
+      "extractor": "currency",
+      "value_type": "integer",
+      "minimum": 1,
+      "mode": "create"
+    },
+    {
+      "path": "/variance_alert_amount",
+      "source": "B6",
+      "extractor": "currency",
+      "value_type": "integer",
+      "minimum": 1,
+      "mode": "create"
+    },
+    {
+      "path": "/variance_alert_age_days",
+      "source": "B6",
+      "extractor": "labeled_integer",
+      "label": "Variance alert days",
+      "value_type": "integer",
+      "minimum": 1,
+      "mode": "create"
+    },
+    {
+      "path": "/owner_draw_deadline_day",
+      "source": "B8",
+      "extractor": "labeled_integer",
+      "label": "Owner draw deadline day",
+      "value_type": "integer",
+      "minimum": 1,
+      "maximum": 31,
+      "mode": "create"
+    },
+    {
+      "path": "/owner_draw_target_day",
+      "source": "B8",
+      "extractor": "labeled_integer",
+      "label": "Owner draw target day",
+      "value_type": "integer",
+      "minimum": 1,
+      "maximum": 31,
+      "mode": "create"
+    },
+    {
+      "path": "/owner_statement_release_day",
+      "source": "B10",
+      "extractor": "labeled_integer",
+      "label": "Owner statement release day",
+      "value_type": "integer",
+      "minimum": 1,
+      "maximum": 31,
+      "mode": "create"
+    },
+    {
+      "path": "/deposit_chargeback_per_line",
+      "source": "B13",
+      "extractor": "labeled_integer",
+      "label": "Per-line chargeback",
+      "value_type": "integer",
+      "minimum": 1,
+      "mode": "create"
+    },
+    {
+      "path": "/deposit_chargeback_per_unit",
+      "source": "B13",
+      "extractor": "labeled_integer",
+      "label": "Per-unit chargeback",
+      "value_type": "integer",
+      "minimum": 1,
+      "mode": "create"
+    },
+    {
+      "path": "/timezone",
+      "source": "cover.timezone",
+      "extractor": "identity",
+      "value_type": "string",
+      "mode": "replace"
+    }
+  ],
+  "cross_seat": {
+    "pointers": [
+      {
+        "value_name": "deposit_disposition_deadline",
+        "owner_seat": "maintenance-coordinator",
+        "owner_question_id": "A3",
+        "holding_question_id": "A6",
+        "owner_value_path": "/answers/A3"
+      },
+      {
+        "value_name": "deposit_clock_trigger",
+        "owner_seat": "leasing-coordinator",
+        "owner_question_id": "B1",
+        "holding_question_id": "A6",
+        "owner_value_path": "/answers/B1"
+      },
+      {
+        "value_name": "licensed_trades",
+        "owner_seat": "maintenance-coordinator",
+        "owner_question_id": "A7",
+        "holding_question_id": "A15",
+        "owner_value_path": "/answers/A7"
+      },
+      {
+        "value_name": "deposit_chargeback_threshold",
+        "owner_seat": "turnover-coordinator",
+        "owner_question_id": "C7",
+        "holding_question_id": "B13",
+        "owner_value_path": "/answers/C7"
+      },
+      {
+        "value_name": "eviction_attorney",
+        "owner_seat": "pm-assist",
+        "owner_question_id": "A4",
+        "holding_question_id": "C5",
+        "owner_value_path": "/answers/A4"
+      },
+      {
+        "value_name": "accounting_platform",
+        "owner_seat": "maintenance-coordinator",
+        "owner_question_id": "D1",
+        "holding_question_id": "D1",
+        "owner_value_path": "/answers/D1"
+      },
+      {
+        "value_name": "decision_log_location",
+        "owner_seat": "pm-assist",
+        "owner_question_id": "D7",
+        "holding_question_id": "D6",
+        "owner_value_path": "/answers/D7"
+      }
+    ],
+    "checks": [
+      {
+        "check_id": "SEAM-8",
+        "type": "POLICY_DIVERGE",
+        "local_ref": "/answers/B1",
+        "peer_seat": "maintenance-coordinator",
+        "peer_ref": "/answers/B1"
+      },
+      {
+        "check_id": "SEAM-11",
+        "type": "POLICY_DIVERGE",
+        "local_ref": "/answers/C1",
+        "peer_seat": "maintenance-coordinator",
+        "peer_ref": "/answers/C1"
+      },
+      {
+        "check_id": "SEAM-12",
+        "type": "POLICY_DIVERGE",
+        "local_ref": "/answers/C4",
+        "peer_seat": "maintenance-coordinator",
+        "peer_ref": "/answers/C9"
+      },
+      {
+        "check_id": "SEAM-17",
+        "type": "POLICY_DIVERGE",
+        "local_ref": "/answers/D8",
+        "peer_seat": "maintenance-coordinator",
+        "peer_ref": "/answers/D6"
+      }
+    ],
+    "never_graduate": [
+      {
+        "gate_id": "vendor_payment",
+        "question_id": "B1",
+        "reason": "human money release"
+      },
+      {
+        "gate_id": "owner_draw",
+        "question_id": "B8",
+        "reason": "human money release"
+      },
+      {
+        "gate_id": "deposit_disposition",
+        "question_id": "B13",
+        "reason": "human financial decision"
+      },
+      {
+        "gate_id": "trust_reconciliation",
+        "question_id": "A13",
+        "reason": "broker sign-off"
+      },
+      {
+        "gate_id": "ledger_adjustment",
+        "question_id": "B12",
+        "reason": "human ledger authority"
+      },
+      {
+        "gate_id": "vendor_banking_change",
+        "question_id": "C7",
+        "reason": "independent human verification"
+      },
+      {
+        "gate_id": "external_financial_send",
+        "question_id": "D8",
+        "reason": "human release"
+      }
+    ]
+  }
+}

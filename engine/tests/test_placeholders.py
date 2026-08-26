@@ -270,6 +270,12 @@ class PlaceholderTests(unittest.TestCase):
                                         dict(answers, B1="Use 2 delivery methods; 60 days"),
                                         self.core)
         self.assertIn("Notice days", str(caught.exception))
+        with self.assertRaises(ValueError) as duplicate:
+            engine.placeholders.extract(
+                row, self.cover,
+                dict(answers, B1="Notice days: 30\nNotice days: 60"), self.core,
+            )
+        self.assertIn("appears more than once", str(duplicate.exception))
 
     def test_named_numeric_domain_honors_zero_and_optional_maximum(self):
         row = {"value_type": "integer", "minimum": 0, "maximum": 3}

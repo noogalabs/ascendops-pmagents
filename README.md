@@ -11,6 +11,7 @@ The repository starts with the reviewed maintenance edition and the six-seat map
 - `editions/pm-assist/` — mapping-driven property-manager assistant edition.
 - `editions/leasing/` — mapping-driven leasing and renewals edition.
 - `editions/turnover/` — mapping-driven turnover questionnaire, fictional fixture, tests, and make-ready library.
+- `editions/accounting/` — mapping-driven accounting questionnaire, fictional fixture, tests, and reviewed accounting library.
 - `mapping-tables/` — the six authoritative mapping tables; collectively they are the cross-seat seam register.
 - `fixtures/ridgeline/` — fictional integration fixtures.
 - `provenance/` — source and destination hashes plus excluded-evidence custody.

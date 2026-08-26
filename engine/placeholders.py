@@ -154,14 +154,16 @@ def extract(row, cover, answers, core):
         return match.group(0).replace(",", "")
     if kind == "labeled_integer":
         label = row["label"]
-        match = re.search(
+        matches = list(re.finditer(
             rf"^\s*{re.escape(label)}\s*:\s*([-+]?\d[\d,]*)\s*$",
             value,
             re.I | re.M,
-        )
-        if not match:
+        ))
+        if not matches:
             raise ValueError(f"labeled integer line {label!r}: NN not found")
-        return match.group(1).replace(",", "")
+        if len(matches) > 1:
+            raise ValueError(f"labeled integer line {label!r}: NN appears more than once")
+        return matches[0].group(1).replace(",", "")
     if kind == "emergency_minutes":
         match = re.search(r"Emergency\s+dispatch(?:\s+within)?\s+(\d+)\s+minutes?", value, re.I)
         if not match: raise ValueError("Emergency dispatch minutes not found")

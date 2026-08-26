@@ -28,6 +28,7 @@ MAINTENANCE_EDITION = ROOT / "editions" / "maintenance"
 PM_ASSIST_EDITION = ROOT / "editions" / "pm-assist"
 LEASING_EDITION = ROOT / "editions" / "leasing"
 TURNOVER_EDITION = ROOT / "editions" / "turnover"
+ACCOUNTING_EDITION = ROOT / "editions" / "accounting"
 SEALED_CORE = MAINTENANCE_EDITION / "configure_agent.py"
 SEALED_CORE_SHA256 = "0540ea08aa8d47ecb1aebbb7f51db85c5a67ab252172804e9ba24e56c2403551"
 SUPPORTED = {
@@ -61,6 +62,14 @@ SUPPORTED = {
         "library": TURNOVER_EDITION / "library-src",
         "mapping": Path(__file__).resolve().parent / "mappings" / "turnover-coordinator.json",
         "question_ids": [*(f"A{i}" for i in range(1, 7)), *(f"B{i}" for i in range(1, 7)), *(f"C{i}" for i in range(1, 8)), *(f"D{i}" for i in range(1, 8)), *(f"E{i}" for i in range(1, 9))],
+        "runner": "mapping",
+    },
+    "accounting": {
+        "library_id": "accounting-2026-08-25",
+        "answers": ACCOUNTING_EDITION / "answers-format.md",
+        "library": ACCOUNTING_EDITION / "library-src",
+        "mapping": Path(__file__).resolve().parent / "mappings" / "accounting.json",
+        "question_ids": [*(f"A{i}" for i in range(1, 18)), *(f"B{i}" for i in range(1, 14)), *(f"C{i}" for i in range(1, 8)), *(f"D{i}" for i in range(1, 10))],
         "runner": "mapping",
     },
 }
@@ -162,7 +171,8 @@ def validate(path: Path, seat: str):
         path,
         SUPPORTED[seat]["question_ids"],
         cover_fields=cover_fields_for_seat(seat),
-        semantic_profile="maintenance" if seat == "maintenance-coordinator" else "structural",
+        semantic_profile=("maintenance" if seat == "maintenance-coordinator"
+                          else "accounting" if seat == "accounting" else "structural"),
     )
 
 

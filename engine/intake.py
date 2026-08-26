@@ -112,6 +112,25 @@ def _validate_semantics(answers: dict[str, str], raw: dict[str, str], failures: 
             failures.append(("D9", "report time is outside 00:00-23:59"))
 
 
+def _validate_accounting_scope(answers: dict[str, str], failures: list[tuple[str, str]]):
+    answer = answers.get("A1", "")
+    clock_lines = [
+        line for line in answer.splitlines()
+        if (re.search(r"\bgrace\b.*\d|\d.*\bgrace\b", line, re.I)
+            or re.fullmatch(r"\s*[^:\n]+:\s*\d+\s+days\s*", line, re.I))
+    ]
+    canonical = [line for line in clock_lines if re.fullmatch(
+        r"\s*Late fee grace days\s*:\s*\d+\s*", line, re.I
+    )]
+    if len(clock_lines) > 1 or (clock_lines and len(canonical) != 1):
+        failures.append((
+            "A1",
+            "multiple jurisdiction grace clocks are not supported by this edition; "
+            "do not choose one clock—use the tracked per-jurisdiction capability "
+            "before configuration",
+        ))
+
+
 def preflight(path: Path, question_ids: list[str], *, cover_fields=None,
               semantic_profile: str = "maintenance") -> IntakeResult:
     failures: list[tuple[str, str]] = []
@@ -170,6 +189,8 @@ def preflight(path: Path, question_ids: list[str], *, cover_fields=None,
         answers[question], provenance[question] = _tagged(value, question, failures)
     if semantic_profile == "maintenance":
         _validate_semantics(answers, raw_answers, failures)
+    elif semantic_profile == "accounting":
+        _validate_accounting_scope(answers, failures)
     if failures:
         raise IntakeRejected(failures)
     return IntakeResult(text, cover, answers, raw_cover, raw_answers, provenance)
