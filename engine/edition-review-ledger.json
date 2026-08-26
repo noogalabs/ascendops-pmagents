@@ -1,0 +1,93 @@
+{
+  "promise_wordlist": ["must", "blocker", "never", "each", "every", "graduate", "autonomous", "automatically"],
+  "editions": {
+    "maintenance-coordinator": {
+      "edition": "maintenance",
+      "mapping": "maintenance-coordinator.json",
+      "mapping_driven": false,
+      "companions": [
+        "coordinator-scope-playbook.md",
+        "invoice-review-example.md",
+        "maintenance-auto-send-message-library.md",
+        "maintenance-coordinator-judgment-guide.md",
+        "occupied-unit-maintenance-board.md",
+        "occupied-unit-maintenance-workflow.md"
+      ],
+      "companion_claim": "Companion documents shipped in this folder: Occupied Unit Maintenance Workflow, Occupied Unit Maintenance Board, Maintenance Auto-Send Message Library, Maintenance Coordinator Judgment Guide, Coordinator Scope Playbook, and Invoice Review Example.",
+      "banned_companion_claims": ["eight maintenance library docs", "Tenant-Caused Damage and Chargeback Notice Templates", "Maintenance Board Template spreadsheet"],
+      "promise_ledger": {
+        "INTRO": {"no_gate_reason": "format instructions, provenance behavior, and legal-review disclosure"},
+        "A2": {"no_gate_reason": "question collects the jurisdiction-specific entry rule"},
+        "A6": {"no_gate_reason": "question collects the approved lease-section source"},
+        "B1": {"no_gate_reason": "question collects owner approval thresholds and overrides"},
+        "B6": {"no_gate_reason": "question collects the confirmed agreement clause"},
+        "B10": {"no_gate_reason": "question asks the operator to declare escalation clocks"},
+        "C1": {"no_gate_reason": "question collects human decision ownership"},
+        "C5": {"no_gate_reason": "question collects the vendor roster"},
+        "C8": {"no_gate_reason": "question collects owner-contractor exclusions"},
+        "D1": {"no_gate_reason": "question identifies systems of record"},
+        "D8": {"no_gate_reason": "question collects the approved secure code store"},
+        "D9": {"successor_task": "promise-runtime audit required before any autonomy claim"}
+      }
+    },
+    "pm-assist": {
+      "edition": "pm-assist",
+      "mapping": "pm-assist.json",
+      "mapping_driven": true,
+      "companions": [],
+      "companion_claim": "No separate companion documents ship in this edition. The configured bootstrap library is the complete shipped surface.",
+      "banned_companion_claims": ["three Property Manager library docs", "three companion documents ship", "The Property Manager Seat, The PM Operating Board, and the PM Judgment and Lookup Guide"],
+      "promise_ledger": {
+        "INTRO": {"no_gate_reason": "format, provenance, legal-review, and seat-boundary disclosure"},
+        "A1": {"no_gate_reason": "question collects portfolio scale"},
+        "A2": {"no_gate_reason": "question collects the human PM and lane owners"},
+        "A3": {"no_gate_reason": "question collects broker escalation routing"},
+        "A5": {"no_gate_reason": "question collects jurisdiction-specific notice rules"},
+        "A7": {"no_gate_reason": "question collects the trust-account rule and deadline"},
+        "A9": {"no_gate_reason": "question collects inspection and retention cadence"},
+        "B1": {"no_gate_reason": "question collects approval thresholds"},
+        "B3": {"no_gate_reason": "question collects emergency authority and broker threshold"},
+        "C1": {"no_gate_reason": "question explicitly records now, later, or never delegation"},
+        "C2": {"successor_task": "message-class graduation requires runtime policy before activation"},
+        "C3": {"no_gate_reason": "question collects the owner-contact boundary"},
+        "C8": {"no_gate_reason": "question collects follow-through timing"},
+        "D1": {"no_gate_reason": "question identifies systems of record"},
+        "D3": {"no_gate_reason": "question identifies each lane board"},
+        "D4": {"no_gate_reason": "question inventories automatic and manual alerts"},
+        "D5": {"no_gate_reason": "question inventories audience channels"},
+        "D7": {"no_gate_reason": "question collects the decision-log destination"},
+        "D9": {"successor_task": "board-value and graduation promises require runtime-evidence audit"}
+      }
+    },
+    "leasing-coordinator": {
+      "edition": "leasing",
+      "mapping": "leasing-coordinator.json",
+      "mapping_driven": true,
+      "companions": ["Leasing Message Template Library.md", "Renewal and Rent-Increase Workflow.md"],
+      "companion_claim": "Companion documents shipped in this folder: Leasing Message Template Library and Renewal and Rent-Increase Workflow.",
+      "banned_companion_claims": ["Leasing Process End to End", "The Leasing Board Full System Design", "Leasing Coordinator Judgment Guide", "CMA Process and Owner Conversation Scripts", "Tenant Offer and Negotiation Scripts", "Leasing Board Template spreadsheet", "Pre-Move-Out Inspection Checklist", "Move-Out Inspection Checklist"],
+      "promise_ledger": {
+        "INTRO": {"no_gate_reason": "format, shipped-library truth, and legal-review disclosure"},
+        "A1": {"gate_surface": ".claude/skills/applicant-screening/SKILL.md", "named_test": "test_named_compliance_promises_reach_value_bound_runtime_gates"},
+        "A5": {"gate_surface": "cross_seat.never_graduate criminal_assessment", "named_test": "test_named_d7_and_cross_seat_contract_rows_match_authority"},
+        "A9": {"no_gate_reason": "question collects the deterministic application ordering rule"},
+        "A10": {"no_gate_reason": "question collects the assistance-animal routing policy"},
+        "A11": {"no_gate_reason": "question collects jurisdiction-specific voucher policy"},
+        "B2": {"no_gate_reason": "question collects jurisdiction-specific notice periods"},
+        "B3": {"gate_surface": "AGENTS.md RENEWAL CADENCE STOP", "named_test": "test_named_b3_labeled_notice_rejects_earlier_unbound_number"},
+        "B5": {"no_gate_reason": "question collects the retention period"},
+        "B7": {"no_gate_reason": "question collects the insufficient-notice routing boundary"},
+        "B8": {"gate_surface": ".claude/skills/lease-abstraction/SKILL.md", "named_test": "test_named_compliance_promises_reach_value_bound_runtime_gates"},
+        "C2": {"no_gate_reason": "question collects the approved self-show identity protocol"},
+        "C3": {"no_gate_reason": "question collects showing-resource confirmation"},
+        "D1": {"no_gate_reason": "question identifies the PM system of record"},
+        "D2": {"gate_surface": ".claude/skills/applicant-screening/SKILL.md", "named_test": "test_named_compliance_promises_reach_value_bound_runtime_gates"},
+        "D3": {"no_gate_reason": "question identifies the e-signature system"},
+        "D4": {"no_gate_reason": "question inventories syndication channels"},
+        "D5": {"no_gate_reason": "question inventories lead sources"},
+        "D7": {"gate_surface": "cross_seat.never_graduate housing_decision", "named_test": "test_named_d7_and_cross_seat_contract_rows_match_authority"},
+        "D10": {"gate_surface": "questionnaire permanent copilot statement", "named_test": "test_named_shadow_mode_never_promises_unshipped_autonomy"}
+      }
+    }
+  }
+}
