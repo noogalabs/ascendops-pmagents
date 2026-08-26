@@ -10,6 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 SCRIPT = ROOT / "editions" / "turnover" / "library-src" / ".claude" / "skills" / "make-ready-pipeline" / "make_ready.py"
+SKILL = SCRIPT.with_name("SKILL.md")
 SPEC = importlib.util.spec_from_file_location("turnover_make_ready", SCRIPT)
 make_ready = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader
@@ -72,6 +73,12 @@ class MakeReadySafetyTests(unittest.TestCase):
         self.assertFalse(ok)
         self.assertTrue(any("RE-KEY NOT LAST" in item and "cosmetic-touchup" in item
                             for item in open_items))
+
+    def test_named_rekey_contract_says_every_scheduled_task(self):
+        print("ARMED: skill contract requires re-key after every scheduled task")
+        text = SKILL.read_text()
+        self.assertIn("begins only after every other scheduled task ends", text)
+        self.assertNotIn("begins only after every other must-fix ends", text)
 
     def test_named_task_graph_rejects_empty_duplicate_and_undeclared_ids(self):
         print("ARMED: task graph validates identities and every dependency before Kahn")
@@ -147,6 +154,30 @@ class MakeReadySafetyTests(unittest.TestCase):
                 dt.date(2026, 8, 1), 10, 2, as_of_date=dt.date(2026, 8, 6),
             )
         self.assertNotIn("STALE_STAGE_ALERT_DAYS", SCRIPT.read_text())
+
+    def test_named_future_last_progress_date_rejects_by_task_field_and_date(self):
+        print("ARMED: year-typo future progress cannot flatter staleness")
+        with self.assertRaisesRegex(
+            ValueError,
+            "repair.*future last_progress_date 2027-08-01",
+        ):
+            make_ready.analyze_turn(
+                [task("repair", done=False, evidence="", progress="2027-08-01"),
+                 task("rekey", depends=("repair",), rekey=True)],
+                dt.date(2026, 8, 1), 10, 2, as_of_date=dt.date(2026, 8, 6),
+            )
+
+    def test_named_future_stage_entry_date_rejects_by_task_field_and_date(self):
+        print("ARMED: future stage entry cannot flatter staleness")
+        with self.assertRaisesRegex(
+            ValueError,
+            "repair.*future stage_entered_date 2027-08-01",
+        ):
+            make_ready.analyze_turn(
+                [task("repair", done=False, evidence="", stage_entered="2027-08-01"),
+                 task("rekey", depends=("repair",), rekey=True)],
+                dt.date(2026, 8, 1), 10, 2, as_of_date=dt.date(2026, 8, 6),
+            )
 
     def test_named_cli_defaults_to_configured_stale_threshold(self):
         print("ARMED: CLI reads the configured stale threshold when no flag overrides it")

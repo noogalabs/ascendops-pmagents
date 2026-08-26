@@ -11,7 +11,8 @@ the merged turnover edition. The reviewed subject is the shipped
 2. **Re-key finality:** certification requires re-key to begin only after every
    other scheduled task ends, regardless of classification. Independent early
    re-key, must-fix work after re-key, and cosmetic work after re-key all fail
-   closed by task name.
+   closed by task name. The member-facing skill contract carries the same
+   all-scheduled-task language and bans the narrower must-fix-only form.
 3. **Declared dependency graph:** task IDs must be unique and nonblank, and every
    `depends_on` value must name a declared task before topological sorting begins.
    IDs and dependencies are stripped once at ingestion and the canonical values
@@ -24,11 +25,13 @@ the merged turnover edition. The reviewed subject is the shipped
    `stale_stage_alert_days` unless explicitly overridden. Unfinished must-fix
    work measures staleness from `last_progress_date`, or visibly from required
    `stage_entered_date` when no progress exists. It never substitutes planned end.
+   Either anchor being in the future rejects loudly by task, field, and date
+   before staleness age is computed.
 
 ## Running guards
 
-`editions.turnover.tests.test_make_ready` carries nine named casualties covering
-the five original review directions, the two live-review recut directions, the
-missing-stage-entry rejection, and configured CLI default. The turnover
+`editions.turnover.tests.test_make_ready` carries twelve named casualties covering
+the five original review directions, four live-review recut directions, both
+future-anchor directions, the missing-stage-entry rejection, and configured CLI default. The turnover
 configurator suite remains unchanged and green; the source template and sealed
 maintenance core remain outside this patch.

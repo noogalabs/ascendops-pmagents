@@ -35,7 +35,7 @@ This skill plans and certifies. It does not dispatch vendors, send messages, dec
 Before issuing any rent-ready certification, confirm ALL of the following:
 1. Every must-fix item in the punch list has `verified_done = True`
 2. Every verified must-fix has a nonblank evidence reference
-3. Re-key is in the punch list, begins only after every other must-fix ends, has `verified_done = True`, and has nonblank evidence
+3. Re-key is in the punch list, begins only after every other scheduled task ends, has `verified_done = True`, and has nonblank evidence
 
 If any condition is false: the unit is `UNVERIFIED` and cannot be certified. Surface the open items to the property manager.
 

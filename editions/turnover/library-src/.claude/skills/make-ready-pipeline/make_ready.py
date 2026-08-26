@@ -302,6 +302,16 @@ def analyze_turn(
             if stage_entered is None:
                 raise ValueError(f"Task {s['id']} ({s['name']}) is missing stage_entered_date")
             last_progress = parse_date(s.get("last_progress_date"))
+            if stage_entered > today:
+                raise ValueError(
+                    f"Task {s['id']} ({s['name']}) has future stage_entered_date "
+                    f"{stage_entered.isoformat()}"
+                )
+            if last_progress is not None and last_progress > today:
+                raise ValueError(
+                    f"Task {s['id']} ({s['name']}) has future last_progress_date "
+                    f"{last_progress.isoformat()}"
+                )
             anchor = last_progress or stage_entered
             age = (today - anchor).days
             if age >= stale_stage_alert_days:
