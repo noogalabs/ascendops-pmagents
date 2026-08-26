@@ -18,6 +18,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import placeholders
 import cross_seat
+import credential_scan
 import intake
 import transaction
 
@@ -32,6 +33,8 @@ SUPPORTED = {
         "answers": MAINTENANCE_EDITION / "answers-format.md",
         "library": MAINTENANCE_EDITION / "library-src",
         "mapping": Path(__file__).resolve().parent / "mappings" / "maintenance-coordinator.json",
+        "question_ids": [*(f"A{i}" for i in range(1, 9)), *(f"B{i}" for i in range(1, 13)), *(f"C{i}" for i in range(1, 10)), *(f"D{i}" for i in range(1, 10))],
+        "runner": "sealed",
     }
 }
 
@@ -87,7 +90,34 @@ def run_sealed_core(core, source: Path, answers: Path, output: Path, library: Pa
 def validate(path: Path, seat: str):
     if seat not in SUPPORTED:
         raise IntakeRejected([("seat", f"no mapping table/library is installed for {seat!r}")])
-    return intake.preflight(path, load_core().QUESTION_IDS)
+    return intake.preflight(
+        path,
+        SUPPORTED[seat]["question_ids"],
+        semantic_profile="maintenance" if seat == "maintenance-coordinator" else "structural",
+    )
+
+
+def run_mapping_core(core, source: Path, answers: Path, output: Path, library: Path, clock, seat: str, parsed_intake):
+    """Materialize a mapping-driven seat without changing the sealed maintenance core."""
+    configuration_date = clock()
+    if not isinstance(configuration_date, datetime.date):
+        raise TypeError("configuration clock must return datetime.date")
+    core.copy_safe(source, output)
+    raw_cover, raw_answers = parsed_intake.raw_cover, parsed_intake.raw_answers
+    structured = output / "seat-config.json"
+    try:
+        payload = json.loads(structured.read_text())
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise IntakeRejected([("structured_answers_file", f"mapping-driven template needs valid seat-config.json: {exc}")]) from exc
+    payload["seat"] = seat
+    payload["cover_sheet"] = raw_cover
+    payload["answers"] = raw_answers
+    payload.setdefault("flags", {}).setdefault("unresolved", [])
+    structured.write_text(json.dumps(payload, indent=2) + "\n")
+    report = output / "contradiction-report.md"
+    if not report.exists():
+        report.write_text("# Contradiction review list\n\nGenerated cross-seat findings appear below.\n")
+    return configuration_date.isoformat()
 
 
 def copy_protected(source: Path, staged: Path):
@@ -145,6 +175,10 @@ def configure(source: Path, answers: Path, output: Path, seat: str,
             core.copy_safe(source, prepared)
         except (OSError, shutil.Error) as exc:
             raise IntakeRejected([("template", f"cannot copy source tree: {exc}")]) from exc
+        try:
+            credential_scan.scan_tree(prepared)
+        except credential_scan.CredentialScanRejected as exc:
+            raise IntakeRejected(exc.failures) from exc
         cover, parsed, raw_cover, raw_answers = (parsed_intake.cover, parsed_intake.answers,
                                                   parsed_intake.raw_cover, parsed_intake.raw_answers)
         try:
@@ -179,7 +213,7 @@ def configure(source: Path, answers: Path, output: Path, seat: str,
         try:
             if old_manifest:
                 managed = placeholders.apply_rerun(prepared, mapping, raw_cover, raw_answers, core, old_manifest)
-            elif old_seat.is_file():
+            elif old_seat.is_file() and (seat == "maintenance-coordinator" or old_engine):
                 residual = [(str(path.relative_to(prepared)), name) for path in placeholders._text_files(prepared)
                             for name in placeholders.TOKEN.findall(path.read_text())]
                 unknown = [(path, name) for path, name in residual if name not in placeholders.PRESERVED_RUNTIME_TOKENS]
@@ -196,9 +230,14 @@ def configure(source: Path, answers: Path, output: Path, seat: str,
         except placeholders.PlaceholderRejected as exc:
             raise IntakeRejected(exc.failures)
         try:
-            configuration_date = run_sealed_core(
-                core, prepared, answers, staged, SUPPORTED[seat]["library"], clock
-            )
+            if SUPPORTED[seat].get("runner") == "mapping":
+                configuration_date = run_mapping_core(
+                    core, prepared, answers, staged, SUPPORTED[seat]["library"], clock, seat, parsed_intake
+                )
+            else:
+                configuration_date = run_sealed_core(
+                    core, prepared, answers, staged, SUPPORTED[seat]["library"], clock
+                )
         except RuntimeError as exc:
             stage = str(exc).partition(":")[0]
             if stage in {"credential-scan", "parse", "merge"}:
@@ -282,6 +321,10 @@ def configure(source: Path, answers: Path, output: Path, seat: str,
             configuration_date,
             structured_filename,
         )
+        try:
+            credential_scan.scan_tree(staged)
+        except credential_scan.CredentialScanRejected as exc:
+            raise IntakeRejected(exc.failures) from exc
         shutil.rmtree(staging_root)
         result = transaction.replace_directory_transactional(staged, output, already_locked=True)
         if result.cleanup_warning:

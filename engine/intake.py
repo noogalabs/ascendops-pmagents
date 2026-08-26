@@ -108,7 +108,7 @@ def _validate_semantics(answers: dict[str, str], raw: dict[str, str], failures: 
             failures.append(("D9", "report time is outside 00:00-23:59"))
 
 
-def preflight(path: Path, question_ids: list[str]) -> IntakeResult:
+def preflight(path: Path, question_ids: list[str], *, semantic_profile: str = "maintenance") -> IntakeResult:
     failures: list[tuple[str, str]] = []
     try:
         text = path.read_text(encoding="utf-8")
@@ -148,7 +148,8 @@ def preflight(path: Path, question_ids: list[str]) -> IntakeResult:
         cover[key], provenance[f"cover.{key}"] = _tagged(value, f"cover.{key}", failures)
     for question, value in raw_answers.items():
         answers[question], provenance[question] = _tagged(value, question, failures)
-    _validate_semantics(answers, raw_answers, failures)
+    if semantic_profile == "maintenance":
+        _validate_semantics(answers, raw_answers, failures)
     if failures:
         raise IntakeRejected(failures)
     return IntakeResult(text, cover, answers, raw_cover, raw_answers, provenance)

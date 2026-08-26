@@ -163,6 +163,69 @@ class GlueEngineTests(unittest.TestCase):
         leftovers = [p.name for p in self.tmp.iterdir() if ".glue-scratch-" in p.name or ".glue-candidate-" in p.name]
         self.assertEqual(leftovers, [])
 
+    def test_named_mapping_registry_rejects_akia_answer_with_zero_output(self):
+        print("ARMED: every mapping registry seat rejects an AKIA answer with zero output")
+        engine.SUPPORTED["test-mapping"] = {
+            "library_id": "test-mapping-2026-08-25",
+            "answers": self.answers,
+            "library": DEMO / "library-src",
+            "mapping": engine.SUPPORTED["maintenance-coordinator"]["mapping"],
+            "question_ids": list(engine.load_core().QUESTION_IDS),
+            "runner": "mapping",
+        }
+        try:
+            mapping_seats = [seat for seat, row in engine.SUPPORTED.items()
+                             if row.get("runner") == "mapping"]
+            self.assertTrue(mapping_seats, "mapping-seat casualty must never be vacuous")
+            for seat in mapping_seats:
+                source = self.tmp / f"{seat}-source"
+                shutil.copytree(HERE / "tests" / "fixtures" / "raw-maintenance-template", source)
+                fixed_rows = {
+                    "agent_name": "maintenance",
+                    "org": "sample-org",
+                    "current_timestamp": "2026-08-24T00:00:00Z",
+                    "upstream_update_minute": "17",
+                }
+                for path in source.rglob("*"):
+                    if not path.is_file():
+                        continue
+                    try:
+                        text = path.read_text()
+                    except UnicodeDecodeError:
+                        continue
+                    for placeholder, value in fixed_rows.items():
+                        text = text.replace("{{" + placeholder + "}}", value)
+                    path.write_text(text)
+                (source / "seat-config.json").write_text('{}\n')
+                (source / "pre-template-secret.txt").write_text("AKIAABCDEFGHIJKLMNOP\n")
+                pre_output = self.tmp / f"{seat}-pre-never-created"
+                with self.assertRaises(engine.IntakeRejected) as pre_caught:
+                    engine.configure(source, self.answers, pre_output, seat, seat_registry={})
+                self.assertIn("credential-scan", pre_caught.exception.render())
+                self.assertIn("AWS key", pre_caught.exception.render())
+                self.assertFalse(pre_output.exists())
+                (source / "pre-template-secret.txt").unlink()
+                answers = self.tmp / f"{seat}-answers.md"
+                answers.write_text(replace_answer(self.answers.read_text(), "D8", "AKIAABCDEFGHIJKLMNOP"))
+                output = self.tmp / f"{seat}-never-created"
+                with self.assertRaises(engine.IntakeRejected) as caught:
+                    engine.configure(source, answers, output, seat, seat_registry={})
+                self.assertIn("credential-scan", caught.exception.render())
+                self.assertIn("AWS key", caught.exception.render())
+                self.assertFalse(output.exists())
+        finally:
+            engine.SUPPORTED.pop("test-mapping", None)
+
+    def test_named_sealed_path_still_rejects_akia_with_zero_output(self):
+        print("ARMED: sealed production entry retains AKIA rejection with zero output")
+        self.answers.write_text(replace_answer(self.answers.read_text(), "D8", "AKIAABCDEFGHIJKLMNOP"))
+        output = self.tmp / "sealed-never-created"
+        with self.assertRaises(engine.IntakeRejected) as caught:
+            engine.configure(self.source, self.answers, output, "maintenance-coordinator")
+        self.assertIn("credential-scan", caught.exception.render())
+        self.assertIn("AWS key", caught.exception.render())
+        self.assertFalse(output.exists())
+
 
 if __name__ == "__main__":
     print("ARMED: Lane 1 file intake, atomic rejection, sealed-core round-trip, and no-clobber rerun")

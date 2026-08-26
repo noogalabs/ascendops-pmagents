@@ -15,8 +15,9 @@ sys.path.insert(0, str(ROOT / "engine"))
 import engine  # noqa: E402
 
 
-SEATS = ({"id": "maintenance-coordinator", "label": "Maintenance coordinator"},)
-ANSWER_TEMPLATE = ROOT / "editions" / "maintenance" / "answers-format.md"
+SEAT_LABELS = {"maintenance-coordinator": "Maintenance coordinator"}
+SEATS = tuple({"id": seat, "label": SEAT_LABELS.get(seat, seat.replace("-", " ").title())}
+              for seat in engine.SUPPORTED)
 SKIP_WORDS = {"skip", "unsure", "?"}
 
 REJECTION_RULES = (
@@ -146,12 +147,12 @@ def fix_named_answer(
     return True
 
 
-def guided_answers(path: Path, ask: Callable[[str], str], out: TextIO) -> Path:
+def guided_answers(path: Path, ask: Callable[[str], str], out: TextIO, seat: str = "maintenance-coordinator") -> Path:
     if path.exists():
         text = path.read_text(encoding="utf-8")
         print(f"Resuming {path}", file=out)
     else:
-        text = ANSWER_TEMPLATE.read_text(encoding="utf-8")
+        text = engine.SUPPORTED[seat]["answers"].read_text(encoding="utf-8")
         atomic_text(path, text)
     complete = answer_values(text)
     fields = questionnaire_fields(text)
@@ -211,6 +212,7 @@ def run_setup(
                 Path(selected).expanduser().resolve() if selected else default_answers,
                 ask,
                 out,
+                seat,
             )
         elif mode == "2":
             answers = Path(ask("Completed answers file: ").strip()).expanduser().resolve()
