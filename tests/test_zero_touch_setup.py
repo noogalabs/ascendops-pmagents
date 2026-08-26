@@ -167,6 +167,153 @@ class ZeroTouchSetupTests(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmp)
 
+    def configure_completed(self, seat: str, output: Path, out=None):
+        fixtures = {
+            "turnover-coordinator": ROOT / "editions/turnover/fixtures/ridgeline-turnover-answers.md",
+            "accounting": ROOT / "editions/accounting/fixtures/ridgeline-accounting-answers.md",
+        }
+        seat_number = next(number for number, row in enumerate(setup.SEATS, 1)
+                           if row["id"] == seat)
+        scripted = iter([
+            str(seat_number), str(setup.engine.SUPPORTED[seat]["library"]),
+            str(output), "2", str(fixtures[seat]),
+        ])
+        rendered = io.StringIO() if out is None else out
+        self.assertEqual(setup.run_setup(
+            ask=lambda _prompt: next(scripted), out=rendered,
+            clock=lambda: datetime.date(2026, 8, 26),
+        ), 0)
+        return rendered
+
+    def structured_payload(self, seat: str, output: Path):
+        mapping = setup.engine.load_seat_mapping(seat)
+        filename = setup.engine.cross_seat.structured_answers_filename(mapping)
+        return json.loads((output / filename).read_text())
+
+    def test_named_sibling_discovery_resolves_live_turnover_owner_read_only(self):
+        print("ARMED: removing sibling discovery returns the accounting pointer to held")
+        installs = self.tmp / "installed"
+        turnover = installs / "turnover"
+        accounting = installs / "accounting"
+        self.configure_completed("turnover-coordinator", turnover)
+        peer_before = tree_digest(turnover)
+        stdout = self.configure_completed("accounting", accounting)
+        payload = self.structured_payload("accounting", accounting)
+        pointer = payload["cross_seat"]["pointers"]["deposit_chargeback_threshold"]
+        self.assertEqual(
+            (pointer["owner_seat"], pointer["owner_question_id"], pointer["state"]),
+            ("turnover-coordinator", "C7", "resolved"),
+        )
+        self.assertIsInstance(pointer["resolved_owner_schema"], int)
+        self.assertNotIn("deposit_chargeback_threshold", payload["cross_seat"]["held"])
+        self.assertIn(
+            "Connected pointer deposit_chargeback_threshold: resolved from turnover-coordinator",
+            stdout.getvalue(),
+        )
+        self.assertEqual(tree_digest(turnover), peer_before)
+
+    def test_named_sibling_discovery_is_order_independent_on_rerun(self):
+        print("ARMED: reverse-order installs resolve when the dependent seat reruns")
+        installs = self.tmp / "reverse-installed"
+        accounting = installs / "accounting"
+        turnover = installs / "turnover"
+        self.configure_completed("accounting", accounting)
+        first = self.structured_payload("accounting", accounting)
+        self.assertEqual(first["cross_seat"]["held"]["deposit_chargeback_threshold"][
+            "held_pending_seat"], "turnover-coordinator")
+        self.configure_completed("turnover-coordinator", turnover)
+        peer_before = tree_digest(turnover)
+        self.configure_completed("accounting", accounting)
+        second = self.structured_payload("accounting", accounting)
+        self.assertEqual(second["cross_seat"]["pointers"]["deposit_chargeback_threshold"][
+            "state"], "resolved")
+        self.assertEqual(tree_digest(turnover), peer_before)
+
+    def test_named_single_seat_install_keeps_pending_owner_visible(self):
+        print("ARMED: absent sibling owners stay explicitly held")
+        output = self.tmp / "single-installed" / "accounting"
+        stdout = self.configure_completed("accounting", output)
+        payload = self.structured_payload("accounting", output)
+        held = payload["cross_seat"]["held"]["deposit_chargeback_threshold"]
+        self.assertEqual(held["held_pending_seat"], "turnover-coordinator")
+        self.assertIn(
+            "Connected pointer deposit_chargeback_threshold: held pending turnover-coordinator",
+            stdout.getvalue(),
+        )
+
+    def test_named_incompatible_sibling_is_excluded_loudly(self):
+        print("ARMED: a newer peer cannot enter the member-run registry")
+        installs = self.tmp / "version-installed"
+        turnover = installs / "turnover"
+        accounting = installs / "accounting"
+        self.configure_completed("turnover-coordinator", turnover)
+        peer = self.structured_payload("turnover-coordinator", turnover)
+        peer["configuration_engine"]["version"] = "999.0.0"
+        (turnover / "turnover-config.json").write_text(json.dumps(peer, indent=2) + "\n")
+        peer_before = tree_digest(turnover)
+        stdout = self.configure_completed("accounting", accounting)
+        payload = self.structured_payload("accounting", accounting)
+        self.assertIn("deposit_chargeback_threshold", payload["cross_seat"]["held"])
+        self.assertIn("Excluded connected seat turnover-coordinator", stdout.getvalue())
+        self.assertIn("newer than reader", stdout.getvalue())
+        self.assertEqual(tree_digest(turnover), peer_before)
+
+    def test_named_incomplete_sibling_is_not_registered(self):
+        print("ARMED: neither half of a completed sibling can enter the registry alone")
+        installs = self.tmp / "incomplete-installed"
+        config_only = installs / "config-only"
+        config_only.mkdir(parents=True)
+        (config_only / "config.json").write_text("{}\n")
+        complete = self.tmp / "complete-turnover"
+        self.configure_completed("turnover-coordinator", complete)
+        artifact_only = installs / "artifact-only"
+        artifact_only.mkdir(parents=True)
+        shutil.copy2(complete / "turnover-config.json", artifact_only)
+        accounting = installs / "accounting"
+        self.configure_completed("accounting", accounting)
+        payload = self.structured_payload("accounting", accounting)
+        self.assertIn("deposit_chargeback_threshold", payload["cross_seat"]["held"])
+
+    def test_named_duplicate_complete_sibling_identity_rejects_before_output(self):
+        print("ARMED: removing duplicate identity detection silently selects a stale peer")
+        complete = self.tmp / "duplicate-source"
+        self.configure_completed("turnover-coordinator", complete)
+        installs = self.tmp / "duplicate-installed"
+        first = installs / "turnover-a"
+        second = installs / "turnover-b"
+        shutil.copytree(complete, first)
+        shutil.copytree(complete, second)
+        output = installs / "accounting"
+        seat_number = next(number for number, row in enumerate(setup.SEATS, 1)
+                           if row["id"] == "accounting")
+        fixture = ROOT / "editions/accounting/fixtures/ridgeline-accounting-answers.md"
+        scripted = iter([
+            str(seat_number), str(setup.engine.SUPPORTED["accounting"]["library"]),
+            str(output), "2", str(fixture),
+        ])
+        stderr = io.StringIO()
+        self.assertEqual(setup.run_setup(
+            ask=lambda _prompt: next(scripted), out=io.StringIO(), err=stderr,
+            clock=lambda: datetime.date(2026, 8, 26),
+        ), 2)
+        rendered = stderr.getvalue()
+        self.assertIn("duplicate connected seat turnover-coordinator", rendered)
+        self.assertIn(str(first), rendered)
+        self.assertIn(str(second), rendered)
+        self.assertFalse(output.exists())
+
+    def test_named_setup_constructs_sibling_registry_once_for_both_answer_modes(self):
+        print("ARMED: guided and completed modes cannot fork sibling discovery")
+        source = (ROOT / "setup.py").read_text()
+        tree = ast.parse(source)
+        calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call)
+                 and isinstance(node.func, ast.Name)
+                 and node.func.id == "discover_seat_registry"]
+        self.assertEqual(len(calls), 1)
+        run_setup = next(node for node in tree.body
+                         if isinstance(node, ast.FunctionDef) and node.name == "run_setup")
+        self.assertIn(calls[0], set(ast.walk(run_setup)))
+
     def test_named_guided_happy_path_equals_direct_configure_bytes(self):
         print("ARMED: wrapper artifact mutation dies against direct configure bytes")
         wrapped = self.tmp / "wrapped"
