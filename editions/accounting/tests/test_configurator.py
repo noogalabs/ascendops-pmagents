@@ -576,6 +576,42 @@ class AccountingConfiguratorTests(unittest.TestCase):
                               caught.exception.render())
                 self.assertFalse(output.exists())
 
+    def test_named_accounting_clock_union_arms_each_exclusive_branch_and_extended_jurisdictions(self):
+        print("ARMED: phrase and jurisdiction-vocabulary clock branches each close exclusive gaps")
+        conflicts = (
+            "Georgia grace period is 10 days.",  # closed-vocabulary branch only
+            "Riverside late fee grace period is 10 days.",  # phrase branch only
+            "DC grace period is 10 days.",
+            "Puerto Rico grace period is 10 calendar days.",
+            "Guam grace period is 10 business days.",
+        )
+        for index, conflict in enumerate(conflicts, 1):
+            with self.subTest(conflict=conflict):
+                output = self.tmp / f"clock-union-exclusive-{index}"
+                with self.assertRaises(engine.IntakeRejected) as caught:
+                    engine.configure(self.source, self.fixture_variant(
+                        "A1", f"Late fee grace days: 5\n  {conflict}"
+                    ), output, "accounting", seat_registry={})
+                self.assertIn("A1 accepts exactly one structured day-count line",
+                              caught.exception.render())
+                self.assertFalse(output.exists())
+
+    def test_named_accounting_clock_union_requires_every_closed_vocabulary_leg(self):
+        print("ARMED: closed-vocabulary clock branch requires jurisdiction, grace, and days")
+        benign_lines = (
+            "Georgia requires a 10-day filing deadline.",
+            "Counsel confirms this 5-day grace period.",
+            "Counsel reviews the separate payment window within 30 business days.",
+        )
+        for index, benign in enumerate(benign_lines, 1):
+            with self.subTest(benign=benign):
+                output = self.tmp / f"clock-union-missing-leg-{index}"
+                engine.configure(self.source, self.fixture_variant(
+                    "A1", f"Late fee grace days: 6\n  {benign}"
+                ), output, "accounting", seat_registry={})
+                self.assertEqual(json.loads((output / "config.json").read_text())[
+                    "late_fee_grace_days"], 6)
+
     def test_named_accounting_single_punctuated_clock_preserves_raw_then_refuses_extraction(self):
         print("ARMED: punctuated canonical passes guard without rewriting raw extraction bytes")
         answer = "Late fee grace days: 6.\n  Counsel confirmed the one supported clock."

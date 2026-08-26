@@ -25,11 +25,42 @@ STRUCTURED_DAY_COUNT_LINE = re.compile(
     r"\s*",
     re.I,
 )
+US_JURISDICTION_NAMES = (
+    "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado",
+    "Connecticut", "Delaware", "Florida", "Georgia", "Hawaii", "Idaho",
+    "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana",
+    "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota",
+    "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada",
+    "New Hampshire", "New Jersey", "New Mexico", "New York",
+    "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon",
+    "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota",
+    "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington",
+    "West Virginia", "Wisconsin", "Wyoming", "District of Columbia",
+    "Puerto Rico", "American Samoa", "Guam", "Northern Mariana Islands",
+    "United States Virgin Islands", "US Virgin Islands", "U.S. Virgin Islands",
+    "United States Minor Outlying Islands",
+)
+US_JURISDICTION_NAME = re.compile(
+    rf"(?<!\w)(?:{'|'.join(re.escape(name) for name in US_JURISDICTION_NAMES)}|D\.?C\.?)(?!\w)",
+    re.I,
+)
 def _normalize_accounting_clock_answer(answer: str) -> str:
     return "\n".join(
         re.sub(rf"\s*{TERMINAL_PUNCTUATION_RUN}\s*$", "", line)
         for line in answer.splitlines()
     )
+
+
+def _is_closed_vocabulary_grace_clock(line: str) -> bool:
+    has_jurisdiction_subject = bool(
+        US_JURISDICTION_NAME.search(line)
+        or re.search(r"\b(?:county|parish|city|state|jurisdiction)\b", line, re.I)
+    )
+    has_grace_concept = bool(re.search(r"\bgrace\b", line, re.I))
+    has_integer_duration = bool(
+        re.search(r"\b\d+\s+(?:(?:calendar|business)\s+)?days?\b", line, re.I)
+    )
+    return has_jurisdiction_subject and has_grace_concept and has_integer_duration
 
 class IntakeRejected(RuntimeError):
     def __init__(self, failures: list[tuple[str, str]]):
@@ -147,6 +178,7 @@ def _validate_accounting_scope(answers: dict[str, str], failures: list[tuple[str
             and re.search(r"\b\d+\b", line)
             and re.search(r"\bdays?\b", line, re.I)
             and not canonical_pattern.fullmatch(line))
+        or _is_closed_vocabulary_grace_clock(line)
         or STRUCTURED_DAY_COUNT_LINE.fullmatch(line)
         or re.fullmatch(
             r"\s*.+\b(?:county|parish|city|state|jurisdiction)\s*:\s*\d+\s+days\s*",
