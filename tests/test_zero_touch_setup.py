@@ -58,8 +58,9 @@ class ZeroTouchSetupTests(unittest.TestCase):
         wrapped = self.tmp / "wrapped"
         direct = self.tmp / "direct"
         answers = self.tmp / "guided-answers.md"
+        terminated = [item for response in self.responses for item in (response, "")]
         scripted = iter([
-            "1", str(self.source), str(wrapped), "1", str(answers), *self.responses,
+            "1", str(self.source), str(wrapped), "1", str(answers), *terminated,
         ])
         clock = lambda: datetime.date(2026, 8, 25)
         stdout = io.StringIO()
@@ -109,7 +110,8 @@ class ZeroTouchSetupTests(unittest.TestCase):
             answers = self.tmp / "extra-cover-guided.md"
             (self.source / "seat-config.json").write_text("{}\n")
             scripted = iter([
-                str(len(setup.SEATS)), str(self.source), str(output), "1", str(answers), "portfolio-17",
+                str(len(setup.SEATS)), str(self.source), str(output), "1", str(answers),
+                "portfolio-17", "",
             ])
             self.assertEqual(setup.run_setup(
                 ask=lambda _prompt: next(scripted),
@@ -153,10 +155,11 @@ class ZeroTouchSetupTests(unittest.TestCase):
             "runner": "mapping",
         }
         try:
-            responses = iter([
+            raw_responses = [
                 "Example Company", "example", "ops@example.invalid", "America/Denver",
                 "Escalate after operator review",
-            ])
+            ]
+            responses = iter([item for response in raw_responses for item in (response, "")])
             setup.guided_answers(answers, lambda _prompt: next(responses), io.StringIO(), seat)
             text = answers.read_text()
             self.assertIn("E1. What is the turnover escalation rule?", text)
@@ -171,6 +174,70 @@ class ZeroTouchSetupTests(unittest.TestCase):
                 "[documented] Escalate after operator review",
             )
         finally:
+            setup.engine.SUPPORTED.pop(seat, None)
+
+    def test_named_guided_multiline_answer_reaches_two_labeled_runtime_values(self):
+        print("ARMED: guided multiline B8-style answer reaches both labeled config values")
+        template = ROOT / "editions" / "leasing" / "answers-format.md"
+        fixture = ROOT / "editions" / "leasing" / "fixtures" / "ridgeline-leasing-answers.md"
+        mapping = self.tmp / "multiline-mapping.json"
+        mapping_payload = json.loads(
+            setup.engine.SUPPORTED["leasing-coordinator"]["mapping"].read_text()
+        )
+        mapping_payload["config_keys"].extend([
+            {"path": "/owner_draw_deadline_day", "source": "B8",
+             "extractor": "labeled_integer", "label": "Owner draw deadline day",
+             "value_type": "integer", "minimum": 1, "mode": "create"},
+            {"path": "/owner_draw_target_day", "source": "B8",
+             "extractor": "labeled_integer", "label": "Owner draw target day",
+             "value_type": "integer", "minimum": 1, "mode": "create"},
+        ])
+        mapping.write_text(json.dumps(mapping_payload, indent=2) + "\n")
+        source = ROOT / "editions" / "leasing" / "library-src"
+        output = self.tmp / "multiline-output"
+        answers = self.tmp / "multiline-guided.md"
+        seat = "test-multiline"
+        original_seats = setup.SEATS
+        setup.engine.SUPPORTED[seat] = {
+            "library_id": "test-multiline-2026-08-26", "answers": template,
+            "library": source, "mapping": mapping,
+            "question_ids": setup.engine.SUPPORTED["leasing-coordinator"]["question_ids"],
+            "runner": "mapping",
+        }
+        setup.SEATS = (*original_seats, {"id": seat, "label": "Test multiline"})
+        try:
+            parsed = setup.engine.validate(fixture, "leasing-coordinator")
+            responses = list(parsed.raw_cover.values()) + [
+                parsed.raw_answers[q]
+                for q in setup.engine.SUPPORTED["leasing-coordinator"]["question_ids"]
+            ]
+            b8_index = len(parsed.raw_cover) + list(
+                setup.engine.SUPPORTED["leasing-coordinator"]["question_ids"]
+            ).index("B8")
+            responses[b8_index] = (
+                "Owner draw deadline day: 15\nOwner draw target day: 10"
+            )
+            terminated = [item for response in responses for item in (response, "")]
+            scripted = iter([
+                str(len(setup.SEATS)), str(source), str(output), "1", str(answers),
+                *terminated,
+            ])
+            self.assertEqual(setup.run_setup(
+                ask=lambda _prompt: next(scripted),
+                clock=lambda: datetime.date(2026, 8, 26),
+            ), 0)
+            config = json.loads((output / "config.json").read_text())
+            self.assertEqual(
+                (config["owner_draw_deadline_day"], config["owner_draw_target_day"]),
+                (15, 10),
+            )
+            self.assertIn(
+                "Answer: [documented] Owner draw deadline day: 15\n"
+                "  Owner draw target day: 10",
+                answers.read_text(),
+            )
+        finally:
+            setup.SEATS = original_seats
             setup.engine.SUPPORTED.pop(seat, None)
 
     def test_named_create_then_reconfigure_succeeds_through_wrapper(self):
@@ -228,7 +295,8 @@ class ZeroTouchSetupTests(unittest.TestCase):
             "Answer: [documented] 900 percent.",
         ))
         output = self.tmp / "retry-output"
-        scripted = iter(["1", str(self.source), str(output), "2", str(answers), "15 percent"])
+        scripted = iter(["1", str(self.source), str(output), "2", str(answers),
+                         "15 percent", ""])
         prompts = []
 
         def ask(prompt):
