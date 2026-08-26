@@ -85,6 +85,13 @@ pre-marker failure rolls back role crons, `.onboarded` is the durable boundary, 
 heartbeat registration occurs only after that boundary. Named tests pin all five
 properties and run `bash -n` over every embedded Bash block.
 
+The shipped onboarding skill now follows the same verify-not-reenter custody as
+`ONBOARDING.md`: repository `setup.py` is the single configuration interview,
+first boot reads `turnover-config.json`, and only private Telegram deployment wiring
+may be collected. A named casualty bans the prior reverse-interview instructions so
+the triggerable skill cannot overwrite configuration that the canonical setup path
+already rendered.
+
 ## Member setup
 
 `python3 setup.py` derives the turnover seat number and all five cover fields from
