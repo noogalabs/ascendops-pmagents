@@ -1,7 +1,7 @@
 """Mapping-table-driven managed placeholder application and rerun."""
 from __future__ import annotations
 from decimal import Decimal, InvalidOperation
-import json, math, re
+import json, math, re, value_extractors
 from pathlib import Path
 
 TOKEN = re.compile(r"\{\{([a-zA-Z0-9_]+)\}\}")
@@ -207,9 +207,7 @@ def extract_value(row, value, core):
         return match.group(1)
     if kind == "first_person": return re.split(r"[,;]", value, maxsplit=1)[0].strip()
     if kind == "maintenance_platform":
-        match = re.search(r"(?:platform\s+)?([A-Za-z][A-Za-z0-9_-]+)\s+for\s+maintenance", value, re.I)
-        if not match: raise ValueError("maintenance platform not found")
-        return match.group(1)
+        return value_extractors.maintenance_platform(value)
     if kind in {"window_start", "window_end"}:
         start, end = core.times(value)
         return start if kind.endswith("start") else end

@@ -4,7 +4,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
-import re
+import re, value_extractors
 from pathlib import Path
 from typing import NamedTuple
 
@@ -77,13 +77,7 @@ def _measured_value(measure, value):
     if measure in {None, "identity", "days", "currency"}:
         return value
     if measure == "maintenance_platform":
-        match = re.search(
-            r"(?:platform\s+)?([A-Za-z][A-Za-z0-9_-]+)\s+for\s+maintenance",
-            str(value), re.I,
-        )
-        if not match:
-            raise ValueError("maintenance platform measure not found")
-        return match.group(1).casefold()
+        return value_extractors.maintenance_platform(value).casefold()
     raise ValueError(f"unsupported FACT_MATCH measure {measure!r}")
 
 
