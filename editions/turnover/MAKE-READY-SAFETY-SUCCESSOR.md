@@ -18,7 +18,11 @@ the merged turnover edition. The reviewed subject is the shipped
    other scheduled task ends, regardless of classification. Independent early
    re-key, must-fix work after re-key, and cosmetic work after re-key all fail
    closed by task name. The member-facing skill contract carries the same
-   all-scheduled-task language and bans the narrower must-fix-only form.
+   all-scheduled-task language and bans the narrower must-fix-only form. Exactly
+   one aggregate re-key task represents the singular terminal custody transfer;
+   zero remains missing, while overlapping or neatly sequential multiple re-key
+   rows aggregate into one `INVALID/MULTIPLE RE-KEY` item naming every row before
+   any timeline comparison can bless a corrupted cardinality.
 3. **Declared dependency graph:** task IDs must be unique and nonblank, and every
    `depends_on` value must name a declared task before topological sorting begins.
    IDs and dependencies are stripped once at ingestion and the canonical values
@@ -52,7 +56,7 @@ the merged turnover edition. The reviewed subject is the shipped
 
 ## Running guards
 
-`editions.turnover.tests.test_make_ready` carries thirty named casualties covering
+`editions.turnover.tests.test_make_ready` carries thirty-four named casualties covering
 the five original review directions, four live-review recut directions, both
 future-anchor directions, the missing-stage-entry rejection, and configured CLI default. The turnover
 configurator suite remains unchanged and green; the source template and sealed

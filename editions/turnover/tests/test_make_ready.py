@@ -93,6 +93,50 @@ class MakeReadySafetyTests(unittest.TestCase):
         ]))
         self.assertTrue(ok, open_items)
 
+    def test_named_zero_rekey_tasks_remains_missing(self):
+        print("ARMED: zero re-key tasks remains a named missing-custody failure")
+        ok, open_items = make_ready.certify_gate(scheduled([task("repair")]))
+        self.assertFalse(ok)
+        self.assertEqual(
+            [item for item in open_items if "re-key" in item.lower()],
+            ["MISSING: re-key task not found in punch list — re-key is mandatory"],
+        )
+
+    def test_named_exactly_one_terminal_rekey_certifies(self):
+        print("ARMED: exactly one terminal re-key is the valid custody shape")
+        ok, open_items = make_ready.certify_gate(scheduled([
+            task("repair"),
+            task("rekey", depends=("repair",), rekey=True),
+        ]))
+        self.assertTrue(ok, open_items)
+
+    def test_named_overlapping_rekeys_reject_as_one_cardinality_item(self):
+        print("ARMED: overlapping re-key rows cannot certify as one custody transfer")
+        ok, open_items = make_ready.certify_gate(scheduled([
+            task("repair"),
+            task("front-lock", depends=("repair",), rekey=True),
+            task("back-lock", depends=("repair",), rekey=True),
+        ]))
+        self.assertFalse(ok)
+        cardinality = [item for item in open_items if "INVALID/MULTIPLE RE-KEY" in item]
+        self.assertEqual(len(cardinality), 1)
+        self.assertIn("front-lock", cardinality[0])
+        self.assertIn("back-lock", cardinality[0])
+
+    def test_named_sequential_rekeys_still_reject_on_cardinality(self):
+        print("ARMED: neatly sequential re-key rows still lie about one custody transfer")
+        ok, open_items = make_ready.certify_gate(scheduled([
+            task("repair"),
+            task("front-lock", depends=("repair",), rekey=True),
+            task("back-lock", depends=("front-lock",), rekey=True),
+        ]))
+        self.assertFalse(ok)
+        cardinality = [item for item in open_items if "INVALID/MULTIPLE RE-KEY" in item]
+        self.assertEqual(len(cardinality), 1)
+        self.assertIn("front-lock", cardinality[0])
+        self.assertIn("back-lock", cardinality[0])
+        self.assertFalse(any("RE-KEY NOT LAST" in item for item in open_items))
+
     def test_named_rekey_must_be_scheduled_after_every_required_task(self):
         print("ARMED: early re-key and work scheduled after re-key both fail certification")
         for rows in (
@@ -188,8 +232,8 @@ class MakeReadySafetyTests(unittest.TestCase):
                 found.append(ast.unparse(node))
         self.assertEqual(
             found,
-            ["required['id'] == r['id'] or required.get('is_rekey')"],
-            "Only the reviewed logical re-key self/exclusion predicate may use .get() under or",
+            [],
+            "No user-input .get() value may participate in falsy or-coalescing",
         )
 
     def test_named_negative_duration_after_rekey_rejects_before_certification(self):

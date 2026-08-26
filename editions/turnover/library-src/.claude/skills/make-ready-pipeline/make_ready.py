@@ -255,7 +255,7 @@ def find_critical_path(scheduled: List[Dict[str, object]]) -> Tuple[List[str], d
 def certify_gate(scheduled: List[Dict[str, object]]) -> Tuple[bool, List[str]]:
     """
     Returns (CERTIFIABLE, open_items).
-    CERTIFIABLE: all must_fix verified_done + at least one is_rekey verified_done.
+    CERTIFIABLE: all must_fix verified_done + exactly one is_rekey verified_done.
     """
     open_items: List[str] = []
 
@@ -272,28 +272,33 @@ def certify_gate(scheduled: List[Dict[str, object]]) -> Tuple[bool, List[str]]:
 
     if not rekeyed:
         open_items.append("MISSING: re-key task not found in punch list — re-key is mandatory")
+    elif len(rekeyed) > 1:
+        labels = ", ".join(f"{row['name']} (id: {row['id']})" for row in rekeyed)
+        open_items.append(
+            f"INVALID/MULTIPLE RE-KEY: expected exactly one terminal custody transfer; got {labels}"
+        )
     else:
-        for r in rekeyed:
-            if not r["verified_done"]:
-                open_items.append(f"UNVERIFIED re-key: {r['name']}")
-            else:
-                evidence_item = strict_evidence_reference(r.get("evidence"), r, "re-key")
-                if evidence_item:
-                    open_items.append(evidence_item)
-            for required in scheduled:
-                if required["id"] == r["id"] or required.get("is_rekey"):
-                    continue
-                required_end = strict_task_date(
-                    required.get("end_date"), required, "end_date", required=True
+        r = rekeyed[0]
+        if not r["verified_done"]:
+            open_items.append(f"UNVERIFIED re-key: {r['name']}")
+        else:
+            evidence_item = strict_evidence_reference(r.get("evidence"), r, "re-key")
+            if evidence_item:
+                open_items.append(evidence_item)
+        for required in scheduled:
+            if required["id"] == r["id"]:
+                continue
+            required_end = strict_task_date(
+                required.get("end_date"), required, "end_date", required=True
+            )
+            rekey_start = strict_task_date(
+                r.get("start_date"), r, "start_date", required=True
+            )
+            if required_end > rekey_start:
+                open_items.append(
+                    f"RE-KEY NOT LAST: {r['name']} starts {r['start_date']} before "
+                    f"required task {required['name']} ends {required['end_date']}"
                 )
-                rekey_start = strict_task_date(
-                    r.get("start_date"), r, "start_date", required=True
-                )
-                if required_end > rekey_start:
-                    open_items.append(
-                        f"RE-KEY NOT LAST: {r['name']} starts {r['start_date']} before "
-                        f"required task {required['name']} ends {required['end_date']}"
-                    )
 
     return len(open_items) == 0, open_items
 
