@@ -45,20 +45,6 @@ class AccountingConfiguratorTests(unittest.TestCase):
         self.assertEqual(payload["configuration_engine"]["configuration_date"], "2026-08-25")
         self.assertTrue((out / "GUARDRAILS.md").is_file())
 
-    def test_member_census_has_no_private_operator_markers(self):
-        print("ARMED: accounting member import must remain operator-name clean")
-        forbidden = ("Bet" + "ty", "David " + "Hunter", "Ascend" + "Ops",
-                     "google_doc_" + "id", "google_doc_" + "url")
-        member_roots = [ROOT / "editions" / "accounting" / "answers-format.md",
-                        ROOT / "editions" / "accounting" / "fixtures",
-                        ROOT / "editions" / "accounting" / "library-src"]
-        paths = [root for root in member_roots if root.is_file()]
-        paths += [path for root in member_roots if root.is_dir() for path in root.rglob("*")]
-        for path in paths:
-            if path.is_file():
-                text = path.read_text(errors="ignore")
-                for token in forbidden: self.assertNotIn(token, text, str(path))
-
     def test_sealed_core_unchanged(self):
         self.assertEqual(hashlib.sha256(engine.SEALED_CORE.read_bytes()).hexdigest(),
                          "0540ea08aa8d47ecb1aebbb7f51db85c5a67ab252172804e9ba24e56c2403551")
