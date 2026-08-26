@@ -108,6 +108,24 @@ class AccountingConfiguratorTests(unittest.TestCase):
         for stale in ("what should my name be", "Which accounting system", "approval thresholds"):
             self.assertNotIn(stale, onboarding)
 
+    def test_named_accounting_onboarding_skill_is_verify_only_and_skill_census_is_exact(self):
+        print("ARMED: all eight accounting skills are dispositioned and onboarding never re-interviews")
+        skills = SOURCE / ".claude" / "skills"
+        self.assertEqual({path.parent.name for path in skills.glob("*/SKILL.md")}, {
+            "ap-vendor-payments", "ar-rent-posting", "onboarding", "owner-draws",
+            "owner-statement-drafting", "security-deposit-accounting", "trust-compliance",
+            "trust-reconciliation",
+        })
+        onboarding = (skills / "onboarding" / "SKILL.md").read_text()
+        for required in ("Repository `setup.py` is the single configuration interview",
+                         "read `accounting-config.json` in full",
+                         "silently substitute accounting answers"):
+            self.assertIn(required, onboarding)
+        for banned in ("reverse-prompting interview", "ask the operator questions",
+                       "write their answers into your own configuration",
+                       "What should I call myself?", "What timezone are you in?"):
+            self.assertNotIn(banned, onboarding)
+
     def test_named_accounting_completion_preserves_five_custody_properties(self):
         print("ARMED: accounting completion is gated, rollback-safe, durable, and heartbeat-last")
         onboarding = (SOURCE / "ONBOARDING.md").read_text()
@@ -136,6 +154,24 @@ class AccountingConfiguratorTests(unittest.TestCase):
                                     capture_output=True, check=False)
             self.assertEqual(parsed.returncode, 0,
                              f"ONBOARDING bash block {index}: {parsed.stderr}")
+
+    def test_named_accounting_marker_blocks_crons_and_durable_completion(self):
+        print("ARMED: an unfilled accounting identity marker refuses crons and .onboarded")
+        agent = self.tmp / "agent"
+        shutil.copytree(SOURCE, agent)
+        blocks = re.findall(
+            r"(?m)^([ \t]*)```bash\n(.*?)\n\1```$", (agent / "ONBOARDING.md").read_text(), re.S
+        )
+        self.assertEqual(len(blocks), 1)
+        state_root = self.tmp / "state-root"
+        env = {"CTX_ROOT": str(state_root), "CTX_AGENT_NAME": "accounting"}
+        result = subprocess.run(["bash"], input=blocks[0][1], text=True, cwd=agent,
+                                env=env, capture_output=True, check=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("still contain a rendered placeholder or the unfilled identity marker",
+                      result.stdout)
+        self.assertFalse((state_root / "state" / "accounting" / ".onboarded").exists())
+        self.assertNotIn("cortextos: command not found", result.stderr)
 
     def test_named_accounting_companion_claim_matches_shipped_reality(self):
         print("ARMED: accounting companion claim says no separate documents ship")

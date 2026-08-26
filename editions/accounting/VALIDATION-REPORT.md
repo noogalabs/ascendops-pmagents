@@ -24,6 +24,14 @@ rows survive; destination anchors were retargeted to the classroom package.
 Production configuration, the declared-consumer sweep, and the named runtime
 retarget casualty prove those values reach the actual shipped tree.
 
+The eight reviewed skills are dispositioned exhaustively: `ap-vendor-payments`,
+`ar-rent-posting`, `owner-draws`, `owner-statement-drafting`,
+`security-deposit-accounting`, `trust-compliance`, and `trust-reconciliation`
+remain byte-identical to classroom custody; `onboarding` is the one adapted
+skill. Its platform delta is verify-not-reenter, private Telegram deployment
+wiring, and completion only through `ONBOARDING.md`'s final gate. It contains no
+second identity, company, goals, policy, or software interview.
+
 ## Cross-seat row dispositions
 
 The table below is exhaustive for SEAM-20 through SEAM-32. `Expressible now`
@@ -73,6 +81,8 @@ artifact rather than being coerced into a dishonest integer domain.
   banned.
 - First boot verifies configured values, collects deployment credentials only,
   and uses the canonical role-crons -> durable marker -> heartbeat transaction.
+- The executable final gate refuses both cron registration and `.onboarded`
+  while any rendered placeholder or identity marker remains.
 - Every embedded onboarding Bash fence passes `bash -n`.
 - Companion claims match the shipped tree and promise-ledger rows are
   hash-anchored.
@@ -93,7 +103,7 @@ artifact rather than being coerced into a dishonest integer domain.
   labeled timeline and a money threshold, and unresolved B1 rejection before
   any output write.
 - Provenance source/destination hashes recomputed for every classroom file.
-- Accounting 20/20, engine 92/92, sibling editions 26/5/20/13, zero-touch
+- Accounting 22/22, engine 92/92, sibling editions 26/5/20/13, zero-touch
   28/28, review sweeps 6/6, plus manifest, hygiene, leak, and exact-head CI.
 
 ## Shared-file boundary

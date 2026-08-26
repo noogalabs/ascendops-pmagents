@@ -30,13 +30,18 @@ role crons register before the durable marker, pre-marker failures roll them
 back, and the heartbeat cron registers only after completion.
 
 ```bash
-# Remove residue from an interrupted pre-marker attempt.
-for c in ar-digest bank-rec-am bank-rec-pm owner-statements-monthly deposit-deadline-watch; do
-  cortextos bus remove-cron "$CTX_AGENT_NAME" "$c" 2>/dev/null
-done
-rm -f "$CTX_ROOT/state/$CTX_AGENT_NAME/.onboarded"
+# FINAL GATE: never register crons or write .onboarded while a rendered
+# placeholder or the unfilled identity marker remains.
+if grep -rlE '\{\{[^{}]+\}\}|<!-- Set during onboarding' . --include='*.md' --include='*.json' 2>/dev/null | grep -vE 'ONBOARDING\.md|README\.md|skills/onboarding/|node_modules'; then
+  echo "STOP: configured files still contain a rendered placeholder or the unfilled identity marker. Re-run python3 setup.py or complete the default display-name replacement before onboarding."
+else
+  # Remove residue from an interrupted pre-marker attempt.
+  for c in ar-digest bank-rec-am bank-rec-pm owner-statements-monthly deposit-deadline-watch; do
+    cortextos bus remove-cron "$CTX_AGENT_NAME" "$c" 2>/dev/null
+  done
+  rm -f "$CTX_ROOT/state/$CTX_AGENT_NAME/.onboarded"
 
-if cortextos bus add-cron "$CTX_AGENT_NAME" ar-digest "0 8 * * 1-5" "Run the ar-rent-posting skill in digest mode: read ledgers, verify payment application, prepare the delinquency feed as data, and flag unapplied or unexplained items. No ledger writes." \
+  if cortextos bus add-cron "$CTX_AGENT_NAME" ar-digest "0 8 * * 1-5" "Run the ar-rent-posting skill in digest mode: read ledgers, verify payment application, prepare the delinquency feed as data, and flag unapplied or unexplained items. No ledger writes." \
   && cortextos bus add-cron "$CTX_AGENT_NAME" bank-rec-am "0 8 * * 1-5" "Run trust-reconciliation in morning verify-and-flag mode. Compute bank = book = liability, surface changed breaks only, and stop before any correction." \
   && cortextos bus add-cron "$CTX_AGENT_NAME" bank-rec-pm "0 17 * * 1-5" "Run trust-reconciliation in evening verify-and-flag mode. Compute bank = book = liability, surface changed breaks only, and stop before any correction." \
   && cortextos bus add-cron "$CTX_AGENT_NAME" owner-statements-monthly "0 9 1 * *" "Run owner-statement-drafting for the prior month: draft explainable statements and owner-draw recommendations, draft-only, route any external send or draw through approval." \
@@ -54,7 +59,8 @@ else
     cortextos bus remove-cron "$CTX_AGENT_NAME" "$c" 2>/dev/null
   done
   rm -f "$CTX_ROOT/state/$CTX_AGENT_NAME/.onboarded"
-  echo "STOP: onboarding did not complete. Fix the reported error and re-run this block."
+    echo "STOP: onboarding did not complete. Fix the reported error and re-run this block."
+  fi
 fi
 ```
 
