@@ -312,6 +312,12 @@ def analyze_turn(
                     f"Task {s['id']} ({s['name']}) has future last_progress_date "
                     f"{last_progress.isoformat()}"
                 )
+            if last_progress is not None and last_progress < stage_entered:
+                raise ValueError(
+                    f"Task {s['id']} ({s['name']}) has last_progress_date "
+                    f"{last_progress.isoformat()} before stage_entered_date "
+                    f"{stage_entered.isoformat()}"
+                )
             anchor = last_progress or stage_entered
             age = (today - anchor).days
             if age >= stale_stage_alert_days:

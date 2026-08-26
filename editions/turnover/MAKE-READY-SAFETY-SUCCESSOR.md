@@ -26,11 +26,15 @@ the merged turnover edition. The reviewed subject is the shipped
    work measures staleness from `last_progress_date`, or visibly from required
    `stage_entered_date` when no progress exists. It never substitutes planned end.
    Either anchor being in the future rejects loudly by task, field, and date
-   before staleness age is computed.
+   before staleness age is computed. A progress date earlier than current-stage
+   entry also rejects with both fields and dates; the tool never guesses which
+   contradictory record to substitute. If real boards intentionally carry
+   prior-stage progress forward, that requires an explicit reviewed state in a
+   later contract decision rather than a silent default here.
 
 ## Running guards
 
-`editions.turnover.tests.test_make_ready` carries twelve named casualties covering
+`editions.turnover.tests.test_make_ready` carries thirteen named casualties covering
 the five original review directions, four live-review recut directions, both
 future-anchor directions, the missing-stage-entry rejection, and configured CLI default. The turnover
 configurator suite remains unchanged and green; the source template and sealed

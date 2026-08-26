@@ -179,6 +179,19 @@ class MakeReadySafetyTests(unittest.TestCase):
                 dt.date(2026, 8, 1), 10, 2, as_of_date=dt.date(2026, 8, 6),
             )
 
+    def test_named_progress_before_stage_entry_rejects_both_fields_and_dates(self):
+        print("ARMED: prior-stage progress cannot silently age the current stage")
+        with self.assertRaisesRegex(
+            ValueError,
+            "repair.*last_progress_date 2026-08-01 before stage_entered_date 2026-08-25",
+        ):
+            make_ready.analyze_turn(
+                [task("repair", done=False, evidence="", stage_entered="2026-08-25",
+                      progress="2026-08-01"),
+                 task("rekey", depends=("repair",), rekey=True)],
+                dt.date(2026, 8, 1), 10, 2, as_of_date=dt.date(2026, 8, 26),
+            )
+
     def test_named_cli_defaults_to_configured_stale_threshold(self):
         print("ARMED: CLI reads the configured stale threshold when no flag overrides it")
         stdout = io.StringIO()
