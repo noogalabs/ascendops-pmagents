@@ -20,7 +20,7 @@ QUESTION_HEADING = re.compile(rf"^({QUESTION_ID_PATTERN})\.\s+(.+)$", re.M)
 CONTINUATION_LINE = re.compile(r"^[ \t]+\S")
 INTAKE_VALUE_SPAN = r"[^\n]*(?:\n[ \t]+\S[^\n]*)*"
 STRUCTURED_DAY_COUNT_LINE = re.compile(
-    r"\s*[^:\n]+\s*:\s*\d+\s+(?:(?:calendar|business)\s+)?days?\s*",
+    r"\s*[^:\n]+\s*:\s*\d+\s+(?:(?:calendar|business)\s+)?days?\s*[.!?]?\s*",
     re.I,
 )
 
@@ -149,8 +149,7 @@ def _validate_accounting_scope(answers: dict[str, str], failures: list[tuple[str
             "A1 accepts exactly one structured day-count line (Late fee grace days: NN). "
             "Additional label: N day(s) lines, including calendar/business qualifiers, "
             "are ambiguous—state other timing details as "
-            "plain prose, or wait for the tracked per-jurisdiction capability "
-            "task_1787744582233_11673934",
+            "plain prose, or wait for the tracked per-jurisdiction capability.",
         ))
 
 

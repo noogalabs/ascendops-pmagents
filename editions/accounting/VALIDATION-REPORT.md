@@ -137,12 +137,18 @@ The same normalized structural guard intentionally refuses any additional
 labeled day-count line, including `Label: N day`, `Label: N days`, and optional
 `calendar` or `business` qualifiers. That covers an unrelated
 `Payment window: 30 days` aside as well as named jurisdiction clocks. The
-questionnaire hint and diagnostic state the same contract: exactly one
+same normalized grammar admits ordinary sentence-terminal `.`, `!`, and `?`
+punctuation, so `Georgia: 10 calendar days.` cannot evade the refusal and be
+silently flattened to the canonical clock. A mutation removing terminal
+punctuation support kills all three punctuation variants in the production
+casualty.
+The questionnaire hint and diagnostic state the same contract: exactly one
 structured `Late fee grace days: NN` line; all other timing details belong in
 plain prose. Numeric prose without the labeled colon shape remains valid.
 The diagnostic calls additional labeled day lines ambiguous and points to the
-tracked per-jurisdiction capability. It does not falsely claim that every
-rejected structured duration is a second jurisdiction clock.
+tracked per-jurisdiction capability without leaking the internal task ID into
+the member-facing surface. It does not falsely claim that every rejected
+structured duration is a second jurisdiction clock.
 
 The shared currency extractor normalizes conventional integral decimals such as
 `$30.00` to the integer `30` without rounding fractional values. A shared engine
@@ -187,8 +193,8 @@ the same correction reaches the operator, and confirms zero configured output.
   before any output write.
 - Provenance source/destination hashes recomputed for every accounting product
   row, including every adapted destination.
-- Accounting 30/30, engine 92/92, sibling editions 26/5/20/13, zero-touch
-  28/28, review sweeps 6/6, plus manifest, hygiene, leak, and exact-head CI.
+- Accounting 33/33, engine 93/93, sibling editions 26/5/20/47, zero-touch
+  30/30, review sweeps 6/6, plus manifest, hygiene, leak, and exact-head CI.
 
 ## Shared-file boundary
 

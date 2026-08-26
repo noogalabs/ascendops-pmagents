@@ -481,6 +481,9 @@ class AccountingConfiguratorTests(unittest.TestCase):
             "Late fee grace days: 5\n  Georgia: 1 day\n  Counsel confirmed both jurisdictions.",
             "Late fee grace days: 5\n  Georgia: 10 calendar days\n  Counsel confirmed both jurisdictions.",
             "Late fee grace days: 5\n  Riverside Parish: 10 business days\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 10 calendar days.\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Riverside Parish: 10 business days!\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 1 day?\n  Counsel confirmed both jurisdictions.",
         )
         for index, answer in enumerate(answers, 1):
             with self.subTest(answer=answer):
@@ -491,6 +494,7 @@ class AccountingConfiguratorTests(unittest.TestCase):
                 self.assertIn("A1 accepts exactly one structured day-count line",
                               caught.exception.render())
                 self.assertIn("tracked per-jurisdiction capability", caught.exception.render())
+                self.assertNotIn("task_", caught.exception.render())
                 self.assertFalse(output.exists())
 
     def test_named_accounting_structured_duration_aside_refuses_with_honest_a1_contract(self):
