@@ -4,7 +4,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
-import re
+import re, value_extractors
 from pathlib import Path
 from typing import NamedTuple
 
@@ -70,6 +70,15 @@ def _schema_version(config):
     if schema.get("name") != SCHEMA_NAME or not isinstance(schema.get("version"), int):
         raise ValueError("seat_config_schema is invalid")
     return schema["version"]
+
+
+def _measured_value(measure, value):
+    """Normalize a FACT_MATCH value using the declared shared measure."""
+    if measure in {None, "identity", "days", "currency"}:
+        return value
+    if measure == "maintenance_platform":
+        return value_extractors.maintenance_platform(value).casefold()
+    raise ValueError(f"unsupported FACT_MATCH measure {measure!r}")
 
 
 def _pointer_parts(pointer):
@@ -348,7 +357,12 @@ def apply(current, mapping, registry, *, engine_version):
                 failures.append((f"cross_seat_checks.{check_id}", f"peer value unresolvable: {detail}")); continue
             record["peer_sha256"] = _digest(peer_value)
             if kind == "FACT_MATCH":
-                passed = local_value == peer_value
+                try:
+                    compared_local = _measured_value(local_measure, local_value)
+                    compared_peer = _measured_value(peer_measure, peer_value)
+                except ValueError as exc:
+                    failures.append((f"cross_seat_checks.{check_id}", str(exc))); continue
+                passed = compared_local == compared_peer
             elif kind == "POLICY_DIVERGE":
                 passed = True
             else:
@@ -519,7 +533,8 @@ def replace_report_block(text, items):
     return text.rstrip() + "\n\n" + block
 
 
-def resolve_pointer_config_rows(current, mapping, registry, *, engine_version):
+def resolve_pointer_config_rows(current, mapping, registry, *, engine_version,
+                                extract_pointer_value=None):
     """Resolve K-rows through declared cross-seat pointers without silent defaults."""
     peers = _load_registry(registry)
     pointer_rows = {row.get("value_name"): row
@@ -543,12 +558,31 @@ def resolve_pointer_config_rows(current, mapping, registry, *, engine_version):
                 failures.append((f"mapping.config_keys.{row.get('path')}",
                                  f"owner pointer unresolvable: {exc}")); continue
             state = "owner"
+        elif row.get("fallback_from") == "holding_answer":
+            try:
+                value = _read_pointer(
+                    current,
+                    pointer.get("holding_value_path", f"/answers/{pointer['holding_question_id']}"),
+                )
+            except (KeyError, IndexError, TypeError, ValueError) as exc:
+                failures.append((f"mapping.config_keys.{row.get('path')}",
+                                 f"holding answer unresolvable: {exc}")); continue
+            state = "held_holding_answer"
         elif "fallback" in row:
             value = copy.deepcopy(row["fallback"])
             state = "held_fallback"
         else:
             failures.append((f"mapping.config_keys.{row.get('path')}",
                              "owner is absent and no fallback is declared")); continue
+        if row.get("extractor") is not None:
+            if extract_pointer_value is None:
+                failures.append((f"mapping.config_keys.{row.get('path')}",
+                                 "pointer extractor capability is unavailable")); continue
+            try:
+                value = extract_pointer_value(row, value)
+            except (KeyError, TypeError, ValueError) as exc:
+                failures.append((f"mapping.config_keys.{row.get('path')}",
+                                 f"pointer extraction failed: {exc}")); continue
         resolved.append({
             "row_type": "config_key", "config_path": row["path"],
             "question_id": f"pointer:{name}", "file": "config.json#" + row["path"],

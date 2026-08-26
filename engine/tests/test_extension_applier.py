@@ -415,6 +415,43 @@ class ExtensionApplierTests(unittest.TestCase):
         finally:
             engine.SUPPORTED["maintenance-coordinator"]["mapping"] = original
 
+    def test_named_pointer_config_uses_live_holding_window_endpoint_in_production(self):
+        print("ARMED: production pointer config resolves and extracts the live holding answer")
+        mapping = json.loads(engine.SUPPORTED["maintenance-coordinator"]["mapping"].read_text())
+        mapping["cross_seat"] = {"pointers": [{
+            "value_name": "communications_window", "owner_seat": "leasing",
+            "owner_question_id": "B9", "holding_question_id": "B8",
+            "owner_value_path": "/answers/B9",
+        }]}
+        mapping["config_keys"].append({
+            "path": "/communications_window_start", "value_from": "pointer",
+            "pointer_name": "communications_window", "fallback_from": "holding_answer",
+            "extractor": "window_start", "value_type": "string", "mode": "create",
+        })
+        mapping_path = self.tmp / "live-holding-window-mapping.json"
+        mapping_path.write_text(json.dumps(mapping))
+        answers = self.tmp / "live-holding-answers.md"
+        answers.write_text(FIXTURE.read_text().replace(
+            "external communications window 08:00-20:00",
+            "external communications window 09:15-20:00",
+        ))
+        original = engine.SUPPORTED["maintenance-coordinator"]["mapping"]
+        engine.SUPPORTED["maintenance-coordinator"]["mapping"] = mapping_path
+        try:
+            source = self.tmp / "live-holding-window-source"; prepare_raw(source)
+            output = self.tmp / "live-holding-window-output"
+            engine.configure(source, answers, output, "maintenance-coordinator", seat_registry={})
+            config = json.loads((output / "config.json").read_text())
+            self.assertEqual(config["communications_window_start"], "09:15")
+            managed = json.loads((output / "seat-config.json").read_text())[
+                "configuration_engine"
+            ]["managed_surfaces"]
+            row = next(item for item in managed
+                       if item.get("config_path") == "/communications_window_start")
+            self.assertEqual(row["resolution"], "held_holding_answer")
+        finally:
+            engine.SUPPORTED["maintenance-coordinator"]["mapping"] = original
+
     def test_named_pointer_config_replace_absent_rejects_and_declared_create_creates(self):
         mapping = json.loads(engine.SUPPORTED["maintenance-coordinator"]["mapping"].read_text())
         mapping["cross_seat"] = {"pointers": [{

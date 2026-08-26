@@ -349,6 +349,33 @@ class PlaceholderTests(unittest.TestCase):
             )
         self.assertIn("appears more than once", str(duplicate.exception))
 
+    def test_named_pointer_rows_admit_only_window_extractors_and_one_fallback_kind(self):
+        base = {
+            "path": "/day_mode_start", "value_from": "pointer",
+            "pointer_name": "communications_window", "value_type": "string",
+        }
+        cases = (
+            ({**base, "extractor": "first_integer"},
+             "pointer extractor must be window_start or window_end"),
+            ({**base, "fallback_from": "cached_answer"},
+             "fallback_from must be holding_answer"),
+            ({**base, "fallback": "08:00", "fallback_from": "holding_answer"},
+             "mutually exclusive"),
+        )
+        for index, (row, message) in enumerate(cases):
+            with self.subTest(message=message):
+                path = self.tmp / f"pointer-row-{index}.json"
+                path.write_text(json.dumps({
+                    "placeholders": [{
+                        "placeholder": "company_name", "source": "cover.company_name",
+                        "extractor": "identity",
+                    }],
+                    "config_keys": [row],
+                }))
+                with self.assertRaises(engine.placeholders.PlaceholderRejected) as caught:
+                    engine.placeholders.load_mapping(path)
+                self.assertIn(message, str(caught.exception.failures))
+
     def test_named_numeric_domain_honors_zero_and_optional_maximum(self):
         row = {"value_type": "integer", "minimum": 0, "maximum": 3}
         self.assertEqual(engine.placeholders._typed_value(row, "0"), 0)
