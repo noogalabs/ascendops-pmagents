@@ -395,7 +395,10 @@ def configure(source: Path, answers: Path, output: Path, seat: str,
             seat_path.write_text(json.dumps(seam_result.current, indent=2) + "\n")
             try:
                 pointer_config = cross_seat.resolve_pointer_config_rows(
-                    seam_result.current, mapping, seat_registry, engine_version=ENGINE_VERSION
+                    seam_result.current, mapping, seat_registry, engine_version=ENGINE_VERSION,
+                    extract_pointer_value=lambda row, value: placeholders.extract_value(
+                        row, value, core
+                    ),
                 )
                 config_rows = {row["path"]: row for row in mapping.get("config_keys", [])}
                 for item in pointer_config:

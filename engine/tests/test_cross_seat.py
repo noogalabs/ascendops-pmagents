@@ -231,6 +231,28 @@ class CrossSeatTests(unittest.TestCase):
         self.assertEqual(len(self._check_mapping("ORDERING", 4, 5, operator="gte").report_items), 1)
         self.assertEqual(self._check_mapping("ORDERING", 5, 4, operator="gte").report_items, [])
 
+    def test_named_fact_match_applies_declared_platform_measure_before_comparison(self):
+        print("ARMED: raw platform prose is compared only after declared measure application")
+        same = self._check_mapping(
+            "FACT_MATCH",
+            "Fictional platform WorkTrail for maintenance and LedgerPeak for accounting.",
+            "WorkTrail for maintenance",
+            measure="maintenance_platform",
+        )
+        self.assertEqual(same.report_items, [])
+        different = self._check_mapping(
+            "FACT_MATCH",
+            "Fictional platform WorkTrail for maintenance and LedgerPeak for accounting.",
+            "MeldPoint for maintenance",
+            measure="maintenance_platform",
+        )
+        self.assertEqual(different.report_items[0]["status"], "EYEBALL")
+
+    def test_named_unknown_fact_measure_rejects_instead_of_raw_comparing(self):
+        with self.assertRaises(cross_seat.CrossSeatRejected) as caught:
+            self._check_mapping("FACT_MATCH", "same", "same", measure="unknown-measure")
+        self.assertIn("unsupported FACT_MATCH measure", str(caught.exception.failures))
+
     def test_named_unknown_type_and_mismatched_measure_reject(self):
         with self.assertRaises(cross_seat.CrossSeatRejected):
             self._check_mapping("UNKNOWN", 1, 1)
@@ -284,6 +306,54 @@ class CrossSeatTests(unittest.TestCase):
         del mapping["config_keys"][0]["fallback"]
         with self.assertRaises(cross_seat.CrossSeatRejected):
             cross_seat.resolve_pointer_config_rows(self.current, mapping, {}, engine_version="1.1.0")
+
+    def test_named_pointer_config_absent_owner_falls_back_from_live_holding_answer(self):
+        print("ARMED: absent pointer owner resolves from the current holding answer, never a frozen literal")
+        pointer = self.mapping()["cross_seat"]["pointers"][0]
+        mapping = {"cross_seat": {"pointers": [pointer]}, "config_keys": [{
+            "path": "/deposit_deadline_days", "value_from": "pointer",
+            "pointer_name": "deposit_deadline", "fallback_from": "holding_answer",
+        }]}
+        current = {**self.current, "answers": {**self.current["answers"], "A1": "45 days"}}
+        rows = cross_seat.resolve_pointer_config_rows(
+            current, mapping, {}, engine_version="1.1.0"
+        )
+        self.assertEqual(rows[0]["value"], "45 days")
+        self.assertEqual(rows[0]["resolution"], "held_holding_answer")
+        current["answers"]["A1"] = "60 days"
+        rerun = cross_seat.resolve_pointer_config_rows(
+            current, mapping, {}, engine_version="1.1.0"
+        )
+        self.assertEqual(rerun[0]["value"], "60 days")
+
+    def test_named_pointer_config_applies_window_extractor_after_resolution(self):
+        print("ARMED: pointer config extracts one window endpoint from the resolved pointer value")
+        pointer = self.mapping()["cross_seat"]["pointers"][0]
+        mapping = {"cross_seat": {"pointers": [pointer]}, "config_keys": [{
+            "path": "/day_mode_start", "value_from": "pointer",
+            "pointer_name": "deposit_deadline", "fallback_from": "holding_answer",
+            "extractor": "window_start",
+        }]}
+        current = {**self.current, "answers": {**self.current["answers"], "A1": "07:30 to 18:00"}}
+
+        def endpoint(row, value):
+            start, end = [part.strip() for part in value.split("to", 1)]
+            return start if row["extractor"] == "window_start" else end
+
+        rows = cross_seat.resolve_pointer_config_rows(
+            current, mapping, {}, engine_version="1.1.0", extract_pointer_value=endpoint
+        )
+        self.assertEqual(rows[0]["value"], "07:30")
+        mapping["config_keys"][0]["extractor"] = "window_end"
+        owner_rows = cross_seat.resolve_pointer_config_rows(
+            current,
+            mapping,
+            {"maintenance-coordinator": self.owner(answer="06:00 to 19:45")},
+            engine_version="1.1.0",
+            extract_pointer_value=endpoint,
+        )
+        self.assertEqual((owner_rows[0]["value"], owner_rows[0]["resolution"]),
+                         ("19:45", "owner"))
 
     def test_named_six_way_all_pairs_reports_exactly_thirteen_failures(self):
         values = ["A", "A", "B", "C", "D", "D"]

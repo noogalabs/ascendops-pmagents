@@ -10,7 +10,7 @@ Mappings may declare `structured_answers_file` as one safe JSON basename. An omi
 
 `cross_seat.checks[]` uses a closed `type` vocabulary:
 
-- `FACT_MATCH`: equal values pass; mismatch reports or rejects when `severity: error`. Promise-class rows report `UNBACKED` when the delivering seat is absent. When measures are declared, both sides must name the same measure.
+- `FACT_MATCH`: equal values pass; mismatch reports or rejects when `severity: error`. Promise-class rows report `UNBACKED` when the delivering seat is absent. When measures are declared, both sides must name the same supported measure. `maintenance_platform` applies the shared platform extractor before comparison, so equivalent questionnaire prose compares at platform grain rather than raw-text grain. `days` and `currency` retain typed measure compatibility for existing rows. Unsupported measures reject instead of falling back to raw equality.
 - `POLICY_DIVERGE`: differing values are preserved and surfaced for human review; agreement is clean. Legacy `POLICY` and `SPLIT` rows retain this behavior until their mapping is re-declared.
 - `ORDERING`: evaluates a closed comparison operator (`gte`, `gt`, `lte`, or `lt`, including symbolic spellings) and surfaces a violation.
 
@@ -20,7 +20,9 @@ Unknown assertion types, operators, severity values, and inconsistent measures r
 
 A pointer may declare `migration_pending`, `migration_trigger`, and `migrates_to`. Presence of the trigger seat emits a pending migration record but never flips ownership automatically.
 
-A config-key row may use `value_from: pointer` plus `pointer_name`. Owner presence resolves the owner's value. Owner absence uses only an explicitly declared `fallback`, records `held_fallback` in the managed-surface manifest, and rejects when no fallback exists.
+A config-key row may use `value_from: pointer` plus `pointer_name`. Owner presence resolves the owner's value. Owner absence may use an explicitly declared literal `fallback`, recording `held_fallback`, or `fallback_from: holding_answer`, which reads the pointer's current `holding_value_path` (defaulting to its declared holding question) and records `held_holding_answer`. Literal and live-answer fallback declarations are mutually exclusive; an absent owner with neither rejects.
+
+Pointer-backed config rows may apply `window_start` or `window_end` after resolving the owner or live holding value. The extractor always consumes the resolved pointer value before config-key type coercion; other pointer extractor names reject at mapping load.
 
 Typed numeric config-key rows may declare numeric `minimum` and `maximum` bounds. Bounds are valid only for `integer` and `number` rows, `minimum` cannot exceed `maximum`, and the engine applies the domain after coercion for both questionnaire-backed and pointer-backed values. Domain failure names the config-key path and blocks all output.
 

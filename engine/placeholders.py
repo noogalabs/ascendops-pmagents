@@ -73,7 +73,18 @@ def load_mapping(path: Path):
             failures.append((f"mapping.config_keys.{row.get('path')}", "value_from must be pointer"))
         if row.get("value_from") == "pointer" and not isinstance(row.get("pointer_name"), str):
             failures.append((f"mapping.config_keys.{row.get('path')}", "pointer_name is required"))
-        if row.get("value_from") != "pointer":
+        if row.get("value_from") == "pointer":
+            extractor = row.get("extractor")
+            if extractor is not None and extractor not in {"window_start", "window_end"}:
+                failures.append((f"mapping.config_keys.{row.get('path')}",
+                                 "pointer extractor must be window_start or window_end"))
+            if "fallback" in row and row.get("fallback_from") == "holding_answer":
+                failures.append((f"mapping.config_keys.{row.get('path')}",
+                                 "literal fallback and holding-answer fallback are mutually exclusive"))
+            if row.get("fallback_from") not in {None, "holding_answer"}:
+                failures.append((f"mapping.config_keys.{row.get('path')}",
+                                 "fallback_from must be holding_answer"))
+        else:
             extractor = row.get("extractor")
             if extractor not in SUPPORTED_EXTRACTORS:
                 failures.append((f"mapping.config_keys.{row.get('path')}",
@@ -166,6 +177,12 @@ def extract(row, cover, answers, core):
     source = row["source"]
     raw = cover[source.split(".", 1)[1]] if source.startswith("cover.") else answers[source]
     value = core.provenance_value(raw, source)
+    return extract_value(row, value, core)
+
+
+def extract_value(row, value, core):
+    """Apply a declared extractor to an already-resolved scalar value."""
+    kind = row["extractor"]
     if kind == "identity": return value
     if kind == "currency": return _number(value, integer=row.get("value_type") == "integer")
     if kind == "first_integer":
