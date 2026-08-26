@@ -482,8 +482,19 @@ class AccountingConfiguratorTests(unittest.TestCase):
             "Late fee grace days: 5\n  Georgia: 10 calendar days\n  Counsel confirmed both jurisdictions.",
             "Late fee grace days: 5\n  Riverside Parish: 10 business days\n  Counsel confirmed both jurisdictions.",
             "Late fee grace days: 5\n  Georgia: 10 calendar days.\n  Counsel confirmed both jurisdictions.",
-            "Late fee grace days: 5\n  Riverside Parish: 10 business days!\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 10 days,\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 10 calendar days;\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 10 business days:\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 10 days!\n  Counsel confirmed both jurisdictions.",
             "Late fee grace days: 5\n  Georgia: 1 day?\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 10 days)\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 10 days]\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 10 days}\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 10 days\"\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 10 days'\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 10 days”\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 10 days’\n  Counsel confirmed both jurisdictions.",
+            "Late fee grace days: 5\n  Georgia: 10 days…\n  Counsel confirmed both jurisdictions.",
         )
         for index, answer in enumerate(answers, 1):
             with self.subTest(answer=answer):
@@ -535,6 +546,16 @@ class AccountingConfiguratorTests(unittest.TestCase):
         engine.configure(self.source, self.fixture_variant(
             "A1", "Late fee grace days: 6\n"
             "  Counsel reviews the separate payment window within 30 business days."
+        ), output, "accounting", seat_registry={})
+        self.assertEqual(json.loads((output / "config.json").read_text())[
+            "late_fee_grace_days"], 6)
+
+    def test_named_accounting_labeled_duration_with_trailing_words_remains_prose(self):
+        print("ARMED: letters after a labeled duration keep the line outside the clock grammar")
+        output = self.tmp / "labeled-duration-trailing-prose"
+        engine.configure(self.source, self.fixture_variant(
+            "A1", "Late fee grace days: 6\n"
+            "  Payment: 10 days later we bill."
         ), output, "accounting", seat_registry={})
         self.assertEqual(json.loads((output / "config.json").read_text())[
             "late_fee_grace_days"], 6)

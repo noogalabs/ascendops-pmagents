@@ -137,11 +137,16 @@ The same normalized structural guard intentionally refuses any additional
 labeled day-count line, including `Label: N day`, `Label: N days`, and optional
 `calendar` or `business` qualifiers. That covers an unrelated
 `Payment window: 30 days` aside as well as named jurisdiction clocks. The
-same normalized grammar admits ordinary sentence-terminal `.`, `!`, and `?`
-punctuation, so `Georgia: 10 calendar days.` cannot evade the refusal and be
-silently flattened to the canonical clock. A mutation removing terminal
-punctuation support kills all three punctuation variants in the production
-casualty.
+same normalized grammar admits an optional run from the closed terminal set:
+period, comma, semicolon, colon, exclamation, question mark, closing
+parenthesis/bracket/brace, straight or curly closing quotes, and ellipsis.
+Thus `Georgia: 10 calendar days.`, `Georgia: 10 days!`, and
+`Georgia: 10 days)` cannot evade the refusal and be silently flattened to the
+canonical clock. Nothing containing a letter or digit after the unit belongs
+to this grammar: `Payment: 10 days later we bill.` remains prose by contract,
+as does the qualified-duration prose sentence with terminal punctuation. A
+mutation removing terminal punctuation support kills all three punctuation
+variants in the production casualty.
 The questionnaire hint and diagnostic state the same contract: exactly one
 structured `Late fee grace days: NN` line; all other timing details belong in
 plain prose. Numeric prose without the labeled colon shape remains valid.
@@ -204,7 +209,7 @@ nonblank-only grammar kills that production casualty.
   before any output write.
 - Provenance source/destination hashes recomputed for every accounting product
   row, including every adapted destination.
-- Accounting 33/33, engine 93/93, sibling editions 26/5/20/47, zero-touch
+- Accounting 34/34, engine 93/93, sibling editions 26/5/20/47, zero-touch
   31/31, review sweeps 6/6, plus manifest, hygiene, leak, and exact-head CI.
   The hygiene unit suite is 6/6, including the task-ID surface casualty.
 
