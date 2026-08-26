@@ -17,7 +17,11 @@ the merged turnover edition. The reviewed subject is the shipped
    `depends_on` value must name a declared task before topological sorting begins.
    IDs and dependencies are stripped once at ingestion and the canonical values
    flow through adjacency, scheduling, critical-path analysis, and certification;
-   duplicates are detected after normalization.
+   duplicates are detected after normalization. None-only coalescing preserves
+   present falsy values such as numeric ID `0`; dependency lists accept only
+   absent, list, or tuple forms, and an AST census bans user-input `.get()` values
+   from regaining value-or-default `or` expressions outside one documented
+   logical re-key exclusion.
 4. **True critical path:** a forward schedule plus backward latest-start pass
    reports zero-slack work only. At an unequal two-branch join, the short branch
    is no longer mislabeled critical. Scheduling is the single duration-parsing
@@ -42,7 +46,7 @@ the merged turnover edition. The reviewed subject is the shipped
 
 ## Running guards
 
-`editions.turnover.tests.test_make_ready` carries twenty-one named casualties covering
+`editions.turnover.tests.test_make_ready` carries twenty-five named casualties covering
 the five original review directions, four live-review recut directions, both
 future-anchor directions, the missing-stage-entry rejection, and configured CLI default. The turnover
 configurator suite remains unchanged and green; the source template and sealed

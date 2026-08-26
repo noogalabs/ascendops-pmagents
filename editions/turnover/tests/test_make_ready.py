@@ -102,6 +102,56 @@ class MakeReadySafetyTests(unittest.TestCase):
         ok, open_items = make_ready.certify_gate(rows)
         self.assertTrue(ok, open_items)
 
+    def test_named_zero_task_id_and_dependency_survive_end_to_end(self):
+        print("ARMED: numeric zero is a present task identity, never a missing value")
+        rows = scheduled([
+            task(0),
+            task(1, depends=(0,), rekey=True),
+        ])
+        self.assertEqual([row["id"] for row in rows], ["0", "1"])
+        self.assertEqual(rows[1]["depends_on"], ["0"])
+        self.assertEqual(rows[1]["start_date"], rows[0]["end_date"])
+        ok, open_items = make_ready.certify_gate(rows)
+        self.assertTrue(ok, open_items)
+
+    def test_named_present_scalar_dependency_list_rejects_loudly(self):
+        print("ARMED: a present scalar depends_on cannot disappear or iterate as characters")
+        row = task("child")
+        row["depends_on"] = "parent"
+        with self.assertRaisesRegex(ValueError, "child.*invalid depends_on: 'parent'"):
+            make_ready.topo_sort([task("parent"), row])
+
+    def test_named_falsy_present_values_never_coalesce_to_absent(self):
+        print("ARMED: zero and False survive None-only coalescing")
+        self.assertEqual(make_ready.none_coalesce(0, "missing"), 0)
+        self.assertIs(make_ready.none_coalesce(False, "missing"), False)
+        with self.assertRaisesRegex(ValueError, r"repair.*invalid last_progress_date: '0'"):
+            make_ready.analyze_turn(
+                [task("repair", done=False, evidence="", progress=0),
+                 task("rekey", depends=("repair",), rekey=True)],
+                dt.date(2026, 8, 1), 10, 2, as_of_date=dt.date(2026, 8, 6),
+            )
+
+    def test_named_user_input_gets_have_no_falsy_or_coalescing(self):
+        print("ARMED: user-input .get values cannot regain value-or-default conflation")
+        tree = ast.parse(SCRIPT.read_text())
+        found = []
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.BoolOp) or not isinstance(node.op, ast.Or):
+                continue
+            if any(
+                isinstance(candidate, ast.Call)
+                and isinstance(candidate.func, ast.Attribute)
+                and candidate.func.attr == "get"
+                for candidate in ast.walk(node)
+            ):
+                found.append(ast.unparse(node))
+        self.assertEqual(
+            found,
+            ["required['id'] == r['id'] or required.get('is_rekey')"],
+            "Only the reviewed logical re-key self/exclusion predicate may use .get() under or",
+        )
+
     def test_named_negative_duration_after_rekey_rejects_before_certification(self):
         print("ARMED: negative post-rekey duration rejects before timeline certification")
         with self.assertRaisesRegex(ValueError, "cosmetic.*nonpositive duration_days: -1"):

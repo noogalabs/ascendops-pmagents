@@ -19,8 +19,23 @@ Task = Dict[str, object]
 # Parsing helpers
 # ---------------------------------------------------------------------------
 
+def none_coalesce(value: object, default: object) -> object:
+    """Default only a genuinely absent value; preserve every present falsy value."""
+    return default if value is None else value
+
+
+def task_dependencies(value: object, task: Task) -> List[object]:
+    """Normalize an optional dependency list without treating scalars as sequences."""
+    if value is None:
+        return []
+    if not isinstance(value, (list, tuple)):
+        raise ValueError(
+            f"Task {task.get('id')} ({task.get('name')}) has invalid depends_on: {value!r}"
+        )
+    return list(value)
+
 def parse_date(value: object) -> Optional[dt.date]:
-    text = str(value or "").strip()
+    text = str(none_coalesce(value, "")).strip()
     if not text:
         return None
     for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y"):
@@ -67,7 +82,7 @@ def strict_task_duration(value: object, task: Dict[str, object]) -> int:
 
 
 def parse_bool(value: object) -> bool:
-    return str(value or "").strip().lower() in {"1", "true", "yes", "y"}
+    return str(none_coalesce(value, "")).strip().lower() in {"1", "true", "yes", "y"}
 
 
 # ---------------------------------------------------------------------------
@@ -79,10 +94,10 @@ def topo_sort(tasks: List[Task]) -> List[Task]:
     normalized: List[Task] = []
     for task in tasks:
         canonical = dict(task)
-        canonical["id"] = str(task.get("id") or "").strip()
+        canonical["id"] = str(none_coalesce(task.get("id"), "")).strip()
         canonical["depends_on"] = [
             str(dependency).strip()
-            for dependency in (task.get("depends_on") or [])
+            for dependency in task_dependencies(task.get("depends_on"), task)
         ]
         normalized.append(canonical)
 
@@ -96,7 +111,7 @@ def topo_sort(tasks: List[Task]) -> List[Task]:
     declared = set(ids)
     dangling = sorted({
         str(dep).strip()
-        for task in normalized for dep in (task.get("depends_on") or [])
+        for task in normalized for dep in task["depends_on"]
         if not str(dep).strip() or str(dep).strip() not in declared
     })
     if dangling:
@@ -107,7 +122,7 @@ def topo_sort(tasks: List[Task]) -> List[Task]:
     adj: Dict[str, List[str]] = {tid: [] for tid in ids}
 
     for task in normalized:
-        for dep in task.get("depends_on") or []:
+        for dep in task["depends_on"]:
             dep_str = str(dep)
             adj[dep_str].append(str(task["id"]))
             in_degree[str(task["id"])] += 1
@@ -146,7 +161,7 @@ def schedule_tasks(
 
         # Start = max(possession_date, max finish of all dependencies)
         start = possession_date
-        for dep in task.get("depends_on") or []:
+        for dep in task["depends_on"]:
             dep_str = str(dep)
             dep_end = earliest_start.get(dep_str + "_end")
             if dep_end is not None and dep_end > start:
@@ -161,20 +176,20 @@ def schedule_tasks(
             "name": task.get("name", ""),
             "trade": task.get("trade", ""),
             "stage": task.get("stage", ""),
-            "stage_entered_date": str(task.get("stage_entered_date") or ""),
-            "last_progress_date": str(task.get("last_progress_date") or ""),
+            "stage_entered_date": str(none_coalesce(task.get("stage_entered_date"), "")),
+            "last_progress_date": str(none_coalesce(task.get("last_progress_date"), "")),
             "is_rekey": parse_bool(task.get("is_rekey")),
             "is_critical_path": False,
             "is_dry_cure_block": parse_bool(task.get("is_dry_cure_block")),
             "must_fix": parse_bool(task.get("must_fix")),
             "verified_done": parse_bool(task.get("verified_done")),
-            "evidence": str(task.get("evidence") or ""),
+            "evidence": str(none_coalesce(task.get("evidence"), "")),
             "duration_days": duration_days,
-            "depends_on": list(task.get("depends_on") or []),
+            "depends_on": list(task["depends_on"]),
             "start_date": start.isoformat(),
             "end_date": end.isoformat(),
-            "wear_vs_damage": str(task.get("wear_vs_damage") or "normal_wear"),
-            "classification": str(task.get("classification") or "must_fix"),
+            "wear_vs_damage": str(none_coalesce(task.get("wear_vs_damage"), "normal_wear")),
+            "classification": str(none_coalesce(task.get("classification"), "must_fix")),
         })
 
     return scheduled
@@ -196,7 +211,7 @@ def find_critical_path(scheduled: List[Dict[str, object]]) -> Tuple[List[str], d
     project_finish = max(ends.values())
     dependents: Dict[str, List[str]] = {tid: [] for tid in by_id}
     for tid, task in by_id.items():
-        for dependency in task.get("depends_on") or []:
+        for dependency in task["depends_on"]:
             dependents[str(dependency)].append(tid)
 
     latest_start: Dict[str, dt.date] = {}
@@ -235,7 +250,7 @@ def certify_gate(scheduled: List[Dict[str, object]]) -> Tuple[bool, List[str]]:
     for s in must_fixes:
         if not s["verified_done"]:
             open_items.append(f"UNVERIFIED must-fix: {s['name']} (trade: {s['trade']})")
-        elif not str(s.get("evidence") or "").strip():
+        elif not str(none_coalesce(s.get("evidence"), "")).strip():
             open_items.append(f"MISSING EVIDENCE must-fix: {s['name']} (id: {s['id']})")
 
     if not rekeyed:
@@ -244,7 +259,7 @@ def certify_gate(scheduled: List[Dict[str, object]]) -> Tuple[bool, List[str]]:
         for r in rekeyed:
             if not r["verified_done"]:
                 open_items.append(f"UNVERIFIED re-key: {r['name']}")
-            elif not str(r.get("evidence") or "").strip():
+            elif not str(none_coalesce(r.get("evidence"), "")).strip():
                 open_items.append(f"MISSING EVIDENCE re-key: {r['name']} (id: {r['id']})")
             for required in scheduled:
                 if required["id"] == r["id"] or required.get("is_rekey"):
@@ -326,7 +341,7 @@ def analyze_turn(
     slack_or_gap = (target_date - ready_date).days  # positive = slack, negative = gap
 
     stale_flags = []
-    today = as_of_date or dt.date.today()
+    today = dt.date.today() if as_of_date is None else as_of_date
     for s in scheduled:
         stage_num = str(s.get("stage", ""))
         if not s["verified_done"] and s["must_fix"]:
@@ -352,7 +367,7 @@ def analyze_turn(
                     f"{last_progress.isoformat()} before stage_entered_date "
                     f"{stage_entered.isoformat()}"
                 )
-            anchor = last_progress or stage_entered
+            anchor = stage_entered if last_progress is None else last_progress
             age = (today - anchor).days
             if age >= stale_stage_alert_days:
                 state = "last progress" if last_progress else "no progress recorded; stage entry"
