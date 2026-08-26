@@ -34,6 +34,7 @@ class ManifestGenerationTests(unittest.TestCase):
         for suite in suite_dirs:
             self.assertNotIn(suite, workflow)
         self.assertIn("python3 -m unittest -v tests.test_manifest_generation", workflow)
+        self.assertIn("python3 -m unittest -v tests.test_review_sweeps", workflow)
 
     def test_named_untracked_cache_can_never_enter_manifest(self):
         print("ARMED: untracked __pycache__ is outside the tracked manifest census")

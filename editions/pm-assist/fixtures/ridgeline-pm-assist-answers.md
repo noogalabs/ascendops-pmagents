@@ -1,6 +1,6 @@
 ---
 title: "Property Manager Agent Setup Questionnaire"
-source: "Derived from the three Property Manager library docs: The Property Manager Seat, The PM Operating Board, PM Judgment and Lookup Guide (owner-reviewed, 2026-08-21)"
+source: "Derived from the Property Manager seat contract (owner-reviewed, 2026-08-21); no separate companion documents ship in this edition"
 converted: 2026-08-21
 google_doc_id: 1_f9dSxe25gCDe60nI-sz8E7t9DGUbfRJDq0pF_8xWRQ
 google_doc_url: https://docs.google.com/document/d/1_f9dSxe25gCDe60nI-sz8E7t9DGUbfRJDq0pF_8xWRQ/edit
@@ -31,10 +31,10 @@ answer until the next questionnaire heading or question begins.
 ## Property Manager Agent Setup Questionnaire
 Residential Property Management, Platform-Agnostic. The setup interview that turns the generic PM-seat assistant agent into your company's agent.
 
-Companion documents in this folder: The Property Manager Seat, The PM Operating Board, and the PM Judgment and Lookup Guide.
+No separate companion documents ship in this edition. The configured bootstrap library is the complete shipped surface.
 
 ### What This Is and How To Use It
-The Property Manager is a hired human seat: the judgment hub of the portfolio, accountable for owners, tenants, vendors, and every board underneath. The agent this questionnaire configures is not that seat. It is the PM's assistant: it owns the execution lane the seat documents carve out (pulling reports, updating boards, drafting from templates, tracking clocks, filing the decision log) and it never owns a judgment call. The three companion documents ship as a generic baseline that works for any residential property management company; nothing company-specific is baked in. This questionnaire is the one door your company's specifics enter through. Your answers become the assistant's configuration file; every flag, every clock, and every board the assistant runs reads from that file, and the generic documents themselves are never edited.
+The Property Manager is a hired human seat: the judgment hub of the portfolio, accountable for owners, tenants, vendors, and every board underneath. The agent this questionnaire configures is not that seat. It is the PM's assistant: it owns the execution lane the configured bootstrap library carves out (pulling reports, updating boards, drafting from templates, tracking clocks, filing the decision log) and it never owns a judgment call. The bootstrap library ships as a generic baseline that works for any residential property management company; nothing company-specific is baked in. This questionnaire is the one door your company's specifics enter through. Your answers become the assistant's configuration file; every flag, every clock, and every board the assistant runs reads from that file, and the generic files themselves are never edited.
 
 There are 41 questions in four groups: company, portfolio, and state rules; thresholds, KPI targets, and clocks; delegation and people; platform and wiring. Most answers take a minute. A handful need your attorney, your broker of record, or a pass through your management agreements; those are marked in the hint under the question, and it is fine to write "confirm with counsel" as a first answer and come back. Expect 60 to 90 minutes for a complete first pass.
 
@@ -461,5 +461,4 @@ Your answers do three things, in order:
 
 Keep the answers current. When a threshold, a person, an owner, or a platform changes, the config changes the same day; the questionnaire is a living document, not a one-time form.
 
-Ascend Operations Library, generic baseline document. Derived from the three Property Manager library documents: The Property Manager Seat, The PM Operating Board, and the PM Judgment and Lookup Guide. Nothing in this document is legal advice; confirm every state-law answer with your attorney and broker of record.
-
+Ascend Operations Library, generic baseline document. Derived from the Property Manager seat contract and the shipped bootstrap library; no separate companion documents ship in this edition. Nothing in this document is legal advice; confirm every state-law answer with your attorney and broker of record.

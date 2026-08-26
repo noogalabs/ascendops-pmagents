@@ -1,6 +1,6 @@
 ---
 title: "Maintenance Agent Setup Questionnaire"
-source: "Derived from the maintenance coordinator agent spec (owner-reviewed, 2026-08-21) and the eight maintenance library docs"
+source: "Derived from the maintenance coordinator agent spec and six shipped maintenance library docs (owner-reviewed, 2026-08-21)"
 converted: 2026-08-21
 google_doc_id: 1WjWw9xujNs7fjX_grrcwyCCNoDLvezOHYuXm3v56xbg
 google_doc_url: https://docs.google.com/document/d/1WjWw9xujNs7fjX_grrcwyCCNoDLvezOHYuXm3v56xbg/edit
@@ -25,7 +25,7 @@ answer until the next questionnaire heading or question begins.
 ## Maintenance Agent Setup Questionnaire
 Residential Property Management, Platform-Agnostic. The setup interview that turns the generic maintenance coordinator agent into your company's agent.
 
-Companion documents in this folder: Occupied Unit Maintenance Workflow, Occupied Unit Maintenance Board, Maintenance Auto-Send Message Library, Tenant-Caused Damage and Chargeback Notice Templates, and the Maintenance Board Template spreadsheet.
+Companion documents shipped in this folder: Occupied Unit Maintenance Workflow, Occupied Unit Maintenance Board, Maintenance Auto-Send Message Library, Maintenance Coordinator Judgment Guide, Coordinator Scope Playbook, and Invoice Review Example.
 
 ### What This Is and How To Use It
 The maintenance coordinator agent ships as a generic baseline: a workflow, a board, a message library, and a set of hard gates that work for any residential property management company. Nothing company-specific is baked in. This questionnaire is the one door your company's specifics enter through. Your answers become the agent's configuration file; every check, every clock, and every gate the agent runs reads from that file, and the generic documents themselves are never edited.
@@ -270,10 +270,10 @@ Answer: Friday 16:00 destination: Maintenance Leadership chat; Monday 09:00 dest
 ### What Happens Next
 Your answers do three things, in order:
 
-- The board template gets your values. The Maintenance Board Template spreadsheet in this folder has a LOOKUP tab with a fill-in config block: owner approval threshold, approval timer, variance flag, callback and recurring windows, emergency cap. Your Group B answers drop straight into it, and every board formula and alert reads from those cells.
+- The configured maintenance library gets your values. The setup process writes the approved thresholds, clocks, people, and routing answers into the agent's managed configuration surfaces; no separate board-template spreadsheet ships in this edition.
 - The agent boots in shadow mode. For about the first week the agent runs its daily checks silently and sends a calibration digest to the people you named in Group C. Nothing outbound, no actions. Shadow mode ends when a week of digests matches reality.
 - Autonomy widens by consequence. Triage, tracking, and internal coordination run autonomously from day one. Every outbound message starts as a human-released draft, then message classes graduate to autonomous send one class at a time as they prove clean, lowest consequence first. Three gates never graduate at any setting: money committed, legal notices, and anyone entering a home. Those always end with a human.
 
 Keep the answers current. When a threshold, a person, a vendor, or a platform changes, the config changes the same day; the questionnaire is a living document, not a one-time form.
 
-Ascend Operations Library, generic baseline document. Derived from the maintenance coordinator agent specification and the eight maintenance documents in this library. Nothing in this document is legal advice; confirm every state-law answer with your attorney.
+Ascend Operations Library, generic baseline document. Derived from the maintenance coordinator agent specification and the six shipped maintenance documents in this library. Nothing in this document is legal advice; confirm every state-law answer with your attorney.

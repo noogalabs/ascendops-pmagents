@@ -1,0 +1,96 @@
+{
+  "promise_wordlist": ["must", "blocker", "never", "each", "every", "graduate", "autonomous", "automatically"],
+  "editions": {
+    "maintenance-coordinator": {
+      "edition": "maintenance",
+      "mapping": "maintenance-coordinator.json",
+      "mapping_driven": false,
+      "companions": [
+        "coordinator-scope-playbook.md",
+        "invoice-review-example.md",
+        "maintenance-auto-send-message-library.md",
+        "maintenance-coordinator-judgment-guide.md",
+        "occupied-unit-maintenance-board.md",
+        "occupied-unit-maintenance-workflow.md"
+      ],
+      "companion_claim": "Companion documents shipped in this folder: Occupied Unit Maintenance Workflow, Occupied Unit Maintenance Board, Maintenance Auto-Send Message Library, Maintenance Coordinator Judgment Guide, Coordinator Scope Playbook, and Invoice Review Example.",
+      "banned_companion_claims": ["eight maintenance library docs", "Tenant-Caused Damage and Chargeback Notice Templates", "Maintenance Board Template spreadsheet"],
+      "promise_subject_sha256": {"A2":"78aa2ace08416baf99a9492e11329a9afdf6a980fe84cc680c982c322cdf143b","A6":"8be51b219bd8fcb0555ad7034f5b7dc40a5f674969d0ac831806d91cc1c5fb5f","B1":"e36a6edc4125bbe36b535cf9f998365a72554856f56e4ca4bacb6c9a73b24b3b","B10":"63d85fad979b558ea54df22aa759e51a8c0b00e10c25c6ffcb33e7b86612f31c","B6":"41c51998b6653277eb6495e668b872b45e47de623b698b99311758c0ec1c0b79","C1":"6ec63ad93afeeb814b6425bd48cafe5374fe5fc66eff812e717630dcd6695551","C5":"c3ddd69e5972f277db038864403ef0a4846aaf25e9dca353fae735d131847bdc","C8":"e5fd8fda5567f92febcf002236592973e19ce08d2e6f6cb1a3d8e7feaf05204a","D1":"66c1351355f4a1838c8118d2b3c15f8af364f1420cac1d5677d72ec4feeb16f7","D8":"96e9997d7886cb793d0b690b54f9546e0c594637adc3262359d5d1dc81296bd4","D9":"d1e42d3121932539c864a7fa53fc540a7e75dceaa69ca4ae062f6ccd1db0aa08","INTRO":"ff6fe0b59e9f9ec79bffcf6b6df23f25ac4a45f32aa910cadce5cfcf4b318945"},
+      "promise_ledger": {
+        "INTRO": {"no_gate_reason": "format instructions, provenance behavior, and legal-review disclosure"},
+        "A2": {"no_gate_reason": "question collects the jurisdiction-specific entry rule"},
+        "A6": {"no_gate_reason": "question collects the approved lease-section source"},
+        "B1": {"no_gate_reason": "question collects owner approval thresholds and overrides"},
+        "B6": {"no_gate_reason": "question collects the confirmed agreement clause"},
+        "B10": {"no_gate_reason": "question asks the operator to declare escalation clocks"},
+        "C1": {"no_gate_reason": "question collects human decision ownership"},
+        "C5": {"no_gate_reason": "question collects the vendor roster"},
+        "C8": {"no_gate_reason": "question collects owner-contractor exclusions"},
+        "D1": {"no_gate_reason": "question identifies systems of record"},
+        "D8": {"no_gate_reason": "question collects the approved secure code store"},
+        "D9": {"successor_task": "promise-runtime audit required before any autonomy claim"}
+      }
+    },
+    "pm-assist": {
+      "edition": "pm-assist",
+      "mapping": "pm-assist.json",
+      "mapping_driven": true,
+      "companions": [],
+      "companion_claim": "No separate companion documents ship in this edition. The configured bootstrap library is the complete shipped surface.",
+      "banned_companion_claims": ["three Property Manager library docs", "three companion documents ship", "The Property Manager Seat, The PM Operating Board, and the PM Judgment and Lookup Guide"],
+      "promise_subject_sha256": {"A1":"2c90cc71b1992a0ab8dab40b84827eee3865ed4a6560504744739e54aa24f817","A2":"294cf99510b9e16160b2af25b8fcdc369cff148f8de9f446dd25b3a4a06105cc","A3":"362e7eb424c35667ce3f272803985333285d2f246880fe25ad960d278f10c36e","A5":"426f0cfe21a1e693c4cc16c159be42c05ae99469f97bde8209159db5bd43edc8","A7":"1e3043c507ec336e9a1724dee02f93f7ea4f73b58c1525bdf707bd9260c2720e","A9":"0662f9684f3fd0b43cdb126e696005bdc838433346bab8198480cdcfbfd20d2b","B1":"a7c12aed5f00f3934ddd1d24500289eb196842f5d9f34eee407f05ee534b75ff","B3":"ab729c51e14b77b311ac063912d3394e5f550b1beca7a827727278ad4d2a7de8","C1":"a4641d9166573eb90ee54df48f0f7df6305bbb506f98bc25993799ea71b6b0bb","C2":"58ce867c3eca9fba693df23bec69cfaf881b8b4e156c5079db29122a501baab0","C3":"6d87ff58b053b4a3f0c468ccaa7140cd50090450f83a20aa216695f7dd28f4c7","C8":"cf6ffcace7eeb2344c8fe62a8d88e53338396d4167c21fd161aa3414f0a0ad64","D1":"b348bf3755c86bb959459a8a0d2f6d5d8753439f6065041c804d8ac5ad8adfc7","D3":"0cdcc018112a0db730e5544f91e93a7a5f55d3a852b9e45a1d4446bc3bfa36fb","D4":"18664fb4816efe29466e8d70c3940dc5d294a0f15d81ada95002ce0ca1562233","D5":"fe37cc18ee6e64ca2f8de011e534bd1b1039ae23a30e8c80561df8b4566c9e7c","D7":"00d43b0594b7161584d716c6bd0184799ee617a0e5481d6c864c7a5969d6fafb","D9":"29c9d172372844a0d9b065ced468178dac2d3dbf056ed3c375d97ab04b6c6cc3","INTRO":"b373a0edeed4bbd659d2f2cd786bbae735df72a0540240268007859eb9bcac4c"},
+      "promise_ledger": {
+        "INTRO": {"no_gate_reason": "format, provenance, legal-review, and seat-boundary disclosure"},
+        "A1": {"no_gate_reason": "question collects portfolio scale"},
+        "A2": {"no_gate_reason": "question collects the human PM and lane owners"},
+        "A3": {"no_gate_reason": "question collects broker escalation routing"},
+        "A5": {"no_gate_reason": "question collects jurisdiction-specific notice rules"},
+        "A7": {"no_gate_reason": "question collects the trust-account rule and deadline"},
+        "A9": {"no_gate_reason": "question collects inspection and retention cadence"},
+        "B1": {"no_gate_reason": "question collects approval thresholds"},
+        "B3": {"no_gate_reason": "question collects emergency authority and broker threshold"},
+        "C1": {"no_gate_reason": "question explicitly records now, later, or never delegation"},
+        "C2": {"successor_task": "message-class graduation requires runtime policy before activation"},
+        "C3": {"no_gate_reason": "question collects the owner-contact boundary"},
+        "C8": {"no_gate_reason": "question collects follow-through timing"},
+        "D1": {"no_gate_reason": "question identifies systems of record"},
+        "D3": {"no_gate_reason": "question identifies each lane board"},
+        "D4": {"no_gate_reason": "question inventories automatic and manual alerts"},
+        "D5": {"no_gate_reason": "question inventories audience channels"},
+        "D7": {"no_gate_reason": "question collects the decision-log destination"},
+        "D9": {"successor_task": "board-value and graduation promises require runtime-evidence audit"}
+      }
+    },
+    "leasing-coordinator": {
+      "edition": "leasing",
+      "mapping": "leasing-coordinator.json",
+      "mapping_driven": true,
+      "companions": ["Leasing Message Template Library.md", "Renewal and Rent-Increase Workflow.md"],
+      "companion_claim": "Companion documents shipped in this folder: Leasing Message Template Library and Renewal and Rent-Increase Workflow.",
+      "banned_companion_claims": ["Leasing Process End to End", "The Leasing Board Full System Design", "Leasing Coordinator Judgment Guide", "CMA Process and Owner Conversation Scripts", "Tenant Offer and Negotiation Scripts", "Leasing Board Template spreadsheet", "Pre-Move-Out Inspection Checklist", "Move-Out Inspection Checklist"],
+      "promise_subject_sha256": {"A1":"59de1217f775fe9449502e2e852f5fc8216cab6c3a99968c70fd219a90acf2c0","A10":"0d9dbc7e52cce2d2c0d46bd7ce75741540fc53d5504a3df819f4ec9bb2f507ca","A11":"181f3977f45be76a6dffd689489063599c74a5e96bd31d7ab10a4db76e346464","A5":"1b5027935dab88e229b44a61a86aec8e0ac3f41480e9d5ea65260ed0a6eed441","A9":"74a92b5a8860699a081e75d9c7dff194e0796692e4209296cda42b48a9a45d49","B2":"271b415d27229ad0a1374383677069fa05479584e465859ac36a15c68ae17f6b","B3":"6e1aba578d54b54cf0c3dd041b04fbc524c99efd7f3ce67980adfe8536f7fab5","B5":"52f0b66dce202b40b6d7c39f7d58be34a4c8e6dc68fb84309ce730061ea8a84b","B7":"ff22849c7eb9117ad46565a5d34ceb7f3befd40716db072d82efa1b96d0d3b72","B8":"cf9fa4821b5eee4e6753812b5d0d4631dce4eb62311fd2dbbc8be485823736d7","C2":"d6fec1193bf58450f2056a589312a6f2436aca38da8a65696729d6a7a7acbb97","C3":"da9ed1a3d6b958f35ba5ab26451f63389bd033fe55849e00c2fd9a7ec1371a4b","D1":"3552ef1284043d2ccd9b398687ef53a4ca02cf823a54c2aa19d903df4ad7a4a5","D10":"c5fa2f18a2eec24abaa1659b5faf4804864689d5e7cb48f42e8670456e661090","D2":"2be65ba488be09a067d8815c49dcacb5dc9eb358daf3f9666f60537814d97064","D3":"9374efd62db331fecbf7dfecb7828ee7a098feb9ff0d5ede20023b6512e54a8f","D4":"38b78a6d0549b691e98bd3779e883d473598f80e0cf8f0c23239d948f14992fe","D5":"4a07e0cd53e24c6697b44b36100476fcdef378cb55be6672a911e84d61852c2c","D7":"8d2a9e4e816c42de69ef6676e94d8609371666a42964a92a25356dab48eafd2d","INTRO":"0da2742b7c16ef057bbbd2274bbf3dc6ccdb63780f171e185c3a17b63404b950"},
+      "promise_ledger": {
+        "INTRO": {"no_gate_reason": "format, shipped-library truth, and legal-review disclosure"},
+        "A1": {"gate_surface": ".claude/skills/applicant-screening/SKILL.md", "named_test": "test_named_compliance_promises_reach_value_bound_runtime_gates"},
+        "A5": {"gate_surface": "cross_seat.never_graduate criminal_assessment", "named_test": "test_named_d7_and_cross_seat_contract_rows_match_authority"},
+        "A9": {"no_gate_reason": "question collects the deterministic application ordering rule"},
+        "A10": {"no_gate_reason": "question collects the assistance-animal routing policy"},
+        "A11": {"no_gate_reason": "question collects jurisdiction-specific voucher policy"},
+        "B2": {"no_gate_reason": "question collects jurisdiction-specific notice periods"},
+        "B3": {"gate_surface": "AGENTS.md RENEWAL CADENCE STOP", "named_test": "test_named_b3_labeled_notice_rejects_earlier_unbound_number"},
+        "B5": {"no_gate_reason": "question collects the retention period"},
+        "B7": {"no_gate_reason": "question collects the insufficient-notice routing boundary"},
+        "B8": {"gate_surface": ".claude/skills/lease-abstraction/SKILL.md", "named_test": "test_named_compliance_promises_reach_value_bound_runtime_gates"},
+        "C2": {"no_gate_reason": "question collects the approved self-show identity protocol"},
+        "C3": {"no_gate_reason": "question collects showing-resource confirmation"},
+        "D1": {"no_gate_reason": "question identifies the PM system of record"},
+        "D2": {"gate_surface": ".claude/skills/applicant-screening/SKILL.md", "named_test": "test_named_compliance_promises_reach_value_bound_runtime_gates"},
+        "D3": {"no_gate_reason": "question identifies the e-signature system"},
+        "D4": {"no_gate_reason": "question inventories syndication channels"},
+        "D5": {"no_gate_reason": "question inventories lead sources"},
+        "D7": {"gate_surface": "cross_seat.never_graduate housing_decision", "named_test": "test_named_d7_and_cross_seat_contract_rows_match_authority"},
+        "D10": {"gate_surface": "questionnaire permanent copilot statement", "named_test": "test_named_shadow_mode_never_promises_unshipped_autonomy"}
+      }
+    }
+  }
+}
