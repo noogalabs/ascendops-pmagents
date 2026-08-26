@@ -162,7 +162,8 @@ default display value and substitutes a different human-facing value only when r
 Keeping the canonical display name therefore cannot strand the marker that the final
 completeness sweep rejects.
 
-The round-9 A2/A3 unresolved-threshold row is owned by PR13a's generalized executable-
+The round-9 A2/A3 unresolved-threshold row is owned by PR13a
+(`task_1787719172740_06204033`), whose generalized executable-
 value gate rather than duplicated here. Its explicit casualty list now includes unresolved
 `income_multiplier` and `credit_min_score`, alongside string-gate and integer variants;
 every mapping-consumed sentinel must reject configuration with the field and resolution path.
