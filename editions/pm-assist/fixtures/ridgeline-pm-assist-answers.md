@@ -1,6 +1,6 @@
 ---
 title: "Property Manager Agent Setup Questionnaire"
-source: "Derived from the three Property Manager library docs: The Property Manager Seat, The PM Operating Board, PM Judgment and Lookup Guide (Betty via David, 2026-08-21)"
+source: "Derived from the three Property Manager library docs: The Property Manager Seat, The PM Operating Board, PM Judgment and Lookup Guide (owner-reviewed, 2026-08-21)"
 converted: 2026-08-21
 google_doc_id: 1_f9dSxe25gCDe60nI-sz8E7t9DGUbfRJDq0pF_8xWRQ
 google_doc_url: https://docs.google.com/document/d/1_f9dSxe25gCDe60nI-sz8E7t9DGUbfRJDq0pF_8xWRQ/edit

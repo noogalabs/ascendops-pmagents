@@ -1,8 +1,8 @@
-# Betty glue: PM questionnaire → PM-assist seat MAPPING TABLE (draft for collie QA, then dane eyeball)
+# AscendOps PMAgents glue: PM questionnaire → PM-assist seat MAPPING TABLE (draft for mapping QA reviewer QA, then orchestrator reviewer eyeball)
 
 Worker: m-pm-assist. Contract: `outputs/mapping-contracts-accounting-pmassist-2026-08-25.md`,
 section **M-PM-ASSIST** + the inherited L2 shared rules block
-(`outputs/glue-lane2-contracts-2026-08-24.md`). Status: **DRAFT** — collie QA seat, then dane
+(`outputs/glue-lane2-contracts-2026-08-24.md`). Status: **DRAFT** — mapping QA reviewer QA seat, then orchestrator reviewer
 eyeball, then the table feeds the engine. **Mapping schema: v2** (the E2 extension's K-row +
 `cross_seat{}` machinery is the consuming surface; rows are cited for it in §10).
 
@@ -10,12 +10,12 @@ eyeball, then the table feeds the engine. **Mapping schema: v2** (the E2 extensi
 
 | Source | Used for |
 |---|---|
-| `agents/dane/outputs/ascend-doc-kit/pm-questionnaire/pm-questionnaire.md` (41 Q, groups A–D) | The source side. **FROZEN — opened read-only, zero bytes written.** |
+| `private source-questionnaire archive` (41 Q, groups A–D) | The source side. **FROZEN — opened read-only, zero bytes written.** |
 | `outputs/templates-drafts/pm-assist-seat/` (67 files, 19 root, 40 SKILL.md) | The destination side. Census re-derived **fresh by grep**, then diffed against the assembly report's census (§2). |
 | `outputs/sa-pm-assist-assembly-report.md` | Pre-seeded work list: §4 NO-SOURCE defaults, §5 mapping-forward table, §8 seam list. Verified before consumption, not trusted as counts. |
-| `outputs/betty-maintenance-mapping-table-2026-08-23.md` | Pattern authority: structure, destination taxonomy, cover-sheet precedent. |
-| `outputs/betty-leasing-mapping-table-2026-08-25.md` (incl. the **X1 QA amendment**) + `outputs/betty-turnover-mapping-table-2026-08-25.md` | Seam register reconciliation by question id (§7). |
-| `outputs/betty-c1-accepted/ridgeline-maintenance-answers.md`, `outputs/ridgeline-leasing-answers-2026-08-25.md`, `outputs/ridgeline-turnover-answers-2026-08-25.md` | Established Ridgeline entities for fixture coherence, and the **four-way SEAM-11 verification** (§7.1) — the actual names, read, not remembered. |
+| `mapping-tables/maintenance.md` | Pattern authority: structure, destination taxonomy, cover-sheet precedent. |
+| `mapping-tables/leasing.md` (incl. the **X1 QA amendment**) + `mapping-tables/turnover.md` | Seam register reconciliation by question id (§7). |
+| `editions/maintenance/ridgeline-maintenance-answers.md`, `outputs/ridgeline-leasing-answers-2026-08-25.md`, `outputs/ridgeline-turnover-answers-2026-08-25.md` | Established Ridgeline entities for fixture coherence, and the **four-way SEAM-11 verification** (§7.1) — the actual names, read, not remembered. |
 | `outputs/glue-engine-extension-contract-2026-08-25.md` (schema v2 / E2) | The consuming surface. Rows cite its four capabilities. |
 
 **Rule (two-direction, from the maintenance pattern, non-negotiable):** every question gets a
@@ -237,9 +237,9 @@ table but in the applier — stated as an engine requirement in §10.
 
 ## 7. Cross-seat seam register — reconciled by question id against three tables
 
-Reconciled against `betty-maintenance-mapping-table-2026-08-23.md`,
-`betty-turnover-mapping-table-2026-08-25.md` (SEAM-1…19) and
-`betty-leasing-mapping-table-2026-08-25.md` (X1…X6, incl. the **X1 QA amendment**). Existing ids
+Reconciled against `mapping-tables/maintenance.md`,
+`mapping-tables/turnover.md` (SEAM-1…19) and
+`mapping-tables/leasing.md` (X1…X6, incl. the **X1 QA amendment**). Existing ids
 are reused; only genuinely new pairs get a new id, continuing the turnover numbering.
 
 | Seam | Value | This seat's Q ↔ other side | Type | Resolution |
@@ -254,7 +254,7 @@ are reused; only genuinely new pairs get a new id, continuing the turnover numbe
 | **SEAM-19** | Timezone + day-mode window | **cover sheet** ↔ maintenance B8 | FACT | Timezone is install-level, one value per install. Day mode: owner = maintenance B8; this seat has no question and takes the org seed + pointer (leasing X2). **Timezone must reach `config.json`, not just prose — K1, §10** |
 | **SEAM-33** *(new)* | Entry-notice period per jurisdiction | **A6** ↔ maintenance A2 | FACT | **Owner = maintenance A2** (richer grain: it asks the per-jurisdiction map explicitly). This seat holds a pointer so the compliance calendar and renewal pipeline read one map. The **non-renewal** notice half of A6 has no counterpart anywhere — **PM-assist-owned** |
 | **SEAM-34** *(new)* | Renewal clocks | **B9** ↔ leasing renewal cover-sheet values, renewals-coordinator seat | **SPLIT** | The PM **pipeline look-ahead** and **owner decision window** are PM-assist-owned (no other seat asks them). The **offer lead** and **tenant response window** are leasing-owned execution clocks that sit *inside* this window. Not a duplicate; a nesting. Cross-check fires only if a leasing clock exceeds the PM window |
-| **SEAM-35** *(new)* | Owner reserve floor | **B5** ↔ bookkeeping **B3** | FACT | Unowned pending accounting-seat promotion. Bookkeeping B3 asks reserve floor per property *or* per owner with contract overrides — richer grain. **Proposed owner = bookkeeping B3 at promotion; PM-assist holds today** (`held_pending_seat: accounting`). Flagged for the collie QA cross-check |
+| **SEAM-35** *(new)* | Owner reserve floor | **B5** ↔ bookkeeping **B3** | FACT | Unowned pending accounting-seat promotion. Bookkeeping B3 asks reserve floor per property *or* per owner with contract overrides — richer grain. **Proposed owner = bookkeeping B3 at promotion; PM-assist holds today** (`held_pending_seat: accounting`). Flagged for the mapping QA reviewer QA cross-check |
 | **SEAM-36** *(new)* | Leasing alert thresholds | **B10** ↔ leasing B-group | FACT | Owner = leasing for the application-decision SLA and the listing clocks it executes. This seat watches them as alert thresholds. Cross-check on difference |
 | **SEAM-37** *(new)* | Turnover escalation + over-budget | **B11** ↔ turnover C-group | FACT | Owner = turnover for the board mechanics; PM-assist owns the escalation landing. Cross-check on the escalation-days number |
 | **B12 pointer** *(no new id)* | Maintenance SLA windows | **B12** ↔ maintenance B5 | FACT | The questionnaire itself names the pointer. Owner = maintenance B5. Difference → `unresolved`, never an average |
@@ -289,7 +289,7 @@ with per-seat ownership; nothing to unify.
 ### 7.2 B14 / C6 — the accounting seam, resolved by question id
 
 Both mapping passes run in parallel, so this resolves **by question id only** and expects the
-collie QA cross-check. Proposal from this side:
+mapping QA reviewer QA cross-check. Proposal from this side:
 
 | Half | Owner proposed | Question ids |
 |---|---|---|
@@ -378,7 +378,7 @@ loop-in — six distinct money numbers across five gates in one seat.
 | V5 | Fictional-only | Regex scan **restricted to answer text** over fleet agent names, operator first names, org strings, and real PM platforms (AppFolio / Buildium / Rent Manager / Propertyware / Yardi / PropertyMeld) | **PASS — zero hits across all 41 answer blocks.** Matches elsewhere in the file are frozen kit text preserved byte-verbatim by V2, not answers |
 | V6 | V9 rule — no reuse of leasing/turnover golden unit names | Regex scan of answer text for those names and the draft tree's example units | **PASS — zero hits** |
 | V7 | Two-direction proof | §11 count lines | **PASS** — 41/41 questions, 32/32 placeholders, zero bare flags |
-| V8 | Read-only surfaces genuinely untouched | **Not by `git status` — the draft tree is gitignored** (`.gitignore:164` `orgs/ascendops/agents/collie/*`), so a clean status there proves nothing. Verified by **mtime** instead: `find outputs/templates-drafts/pm-assist-seat -type f -newermt '2026-08-25 02:04'` → **0 files**. Kit files last written 2026-08-21 14:31 | **PASS** |
+| V8 | Read-only surfaces genuinely untouched | **Not by `git status` — the draft tree is gitignored** (`.gitignore:164` `private mapping workspace`), so a clean status there proves nothing. Verified by **mtime** instead: `find outputs/templates-drafts/pm-assist-seat -type f -newermt '2026-08-25 02:04'` → **0 files**. Kit files last written 2026-08-21 14:31 | **PASS** |
 | V9 | Fixture parses through the scenario-1 parser | — | **NOT RUN — and not claimed.** Same honest position the leasing pass took: the parser lives in contract-2's reconfigurator, which this worker does not run (contract: no build, no configurator run). The fixture is built to the identical format spec the maintenance, leasing, and turnover fixtures use, so it should pass unchanged, but **that is an expectation, not evidence.** Re-run V9 against the parser when the engine consumes this table |
 
 ---
@@ -551,7 +551,7 @@ Table + fixture, per contract. No build, no configurator run, no `add-agent`, no
 in place. SEAM-1's migration ruling left to M-ACCOUNTING as the contract assigns.
 
 ---
-## QA CROSS-CHECK RESOLUTION (collie QA seat, 2026-08-25 ~0700Z) — B14/C6 seam, both passes now on disk
+## QA CROSS-CHECK RESOLUTION (mapping QA reviewer QA seat, 2026-08-25 ~0700Z) — B14/C6 seam, both passes now on disk
 
 RESOLVED, NO COLLISION: pm-assist B14 (trust_variance_broker_threshold) stays
 pm-assist-owned as its own placeholder — POLICY per the SEAM-8 precedent (an escalation
@@ -569,7 +569,7 @@ A3 / accounting B14-answer. SEAM-22 (pm-assist C6 ↔ accounting C3 financial-bo
 accepted as accounting-decomposed; accounting C6 (CPA of record) confirmed seamless by
 id sweep. SEAM-11 five-way-at-promotion noted by both passes consistently.
 
-## QA REGISTER AMENDMENT (collie, 2026-08-25 ~0710Z, per dane cross-table finding 1787639205649)
+## QA REGISTER AMENDMENT (mapping QA reviewer, 2026-08-25 ~0710Z, per orchestrator reviewer cross-table finding 1787639205649)
 
 REGISTER ID COLLISION RESOLVED: this pass and the parallel accounting pass both continued
 the turnover register and independently minted SEAM-20..24 with different meanings.
@@ -577,7 +577,7 @@ Ruling: the ACCOUNTING assignments keep 20..32; THIS table's five contributions 
 renumbered to SEAM-33..37 (33 entry-notice, 34 renewal-clock nesting, 35 owner-reserve
 floor, 36 leasing alert thresholds, 37 turnover escalation) - applied consistently
 through this table's body (17 sites). The QA cross-check appendix above cites SEAM-21/22
-in the ACCOUNTING sense, which is now the unambiguous assignment. FIXTURE NOTE (dane
+in the ACCOUNTING sense, which is now the unambiguous assignment. FIXTURE NOTE (orchestrator reviewer
 LOW finding, documented not yet fixed): $400 appears as both turnover C7 per-unit
 chargeback and the B5/B3 reserve floor (workers could not see each other; both values
 seam-forced) - so the specific B3-to-per-unit-chargeback mis-route would produce a
