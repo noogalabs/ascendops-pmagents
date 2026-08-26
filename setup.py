@@ -23,7 +23,6 @@ SEAT_LABELS = {
 SEATS = tuple({"id": seat, "label": SEAT_LABELS.get(seat, seat.replace("-", " ").title())}
               for seat in engine.SUPPORTED)
 SKIP_WORDS = {"skip", "unsure", "?"}
-
 REJECTION_RULES = (
     ("mapping.config_keys", "the configuration question named by this row", "the answer cannot be written with the declared type or path", "Example: enter a timezone such as America/Denver"),
     ("config_keys", "the configuration question named by this row", "the answer cannot be written with the declared type or path", "Example: enter a timezone such as America/Denver"),
@@ -45,17 +44,16 @@ REJECTION_RULES = (
 class PromptField(NamedTuple):
     key: str
     label: str
-    marker: str
 
 
 def questionnaire_fields(template: str, cover_fields=None) -> list[PromptField]:
     active_cover_fields = engine.intake.COVER_FIELDS if cover_fields is None else cover_fields
     fields = [
-        PromptField(f"cover.{label}", label, rf"^{re.escape(label)}:\s*.*$" )
+        PromptField(f"cover.{label}", label)
         for label in active_cover_fields
     ]
     for match in engine.intake.QUESTION_HEADING.finditer(template):
-        fields.append(PromptField(match.group(1), f"{match.group(1)}. {match.group(2)}", ""))
+        fields.append(PromptField(match.group(1), f"{match.group(1)}. {match.group(2)}"))
     return fields
 
 
@@ -68,12 +66,7 @@ def answer_values(text: str, cover_fields=None) -> dict[str, str]:
             match = re.match(rf"^{re.escape(label)}:\s*(.*)$", line)
             if not match:
                 continue
-            value_lines = [match.group(1).strip()]
-            cursor = index + 1
-            while cursor < len(lines) and re.match(r"^[ \t]+\S", lines[cursor]):
-                value_lines.append(lines[cursor].strip())
-                cursor += 1
-            value = "\n".join(value_lines).strip()
+            value = engine.intake.indented_value(lines, index, match.group(1))
             if value.strip(" _\n"):
                 values[f"cover.{label}"] = value
     current = None
@@ -85,12 +78,7 @@ def answer_values(text: str, cover_fields=None) -> dict[str, str]:
             continue
         if not current or not line.startswith("Answer:"):
             continue
-        answer_lines = [line.partition(":")[2].strip()]
-        cursor = index + 1
-        while cursor < len(lines) and re.match(r"^[ \t]+\S", lines[cursor]):
-            answer_lines.append(lines[cursor].strip())
-            cursor += 1
-        answer = "\n".join(answer_lines).strip()
+        answer = engine.intake.indented_value(lines, index, line.partition(":")[2])
         if answer.strip(" _\n"):
             values[current] = answer
     return values
@@ -99,11 +87,10 @@ def answer_values(text: str, cover_fields=None) -> dict[str, str]:
 def set_answer(text: str, field: PromptField, value: str) -> str:
     if field.key.startswith("cover."):
         rendered = value.rstrip().replace("\n", "\n  ")
-        pattern = rf"^{re.escape(field.label)}:[^\n]*(?:\n[ \t]+\S[^\n]*)*"
+        pattern = rf"^{re.escape(field.label)}:{engine.intake.INTAKE_VALUE_SPAN}"
         return re.sub(pattern, f"{field.label}: {rendered}", text, count=1, flags=re.M)
     pattern = (
-        rf"(^({re.escape(field.key)})\..*?^Answer:)[^\n]*"
-        rf"(?:\n[ \t]+\S[^\n]*)*"
+        rf"(^({re.escape(field.key)})\..*?^Answer:){engine.intake.INTAKE_VALUE_SPAN}"
     )
     rendered = value.rstrip().replace("\n", "\n  ")
     return re.sub(pattern, lambda match: f"{match.group(1)} {rendered}",

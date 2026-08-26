@@ -126,6 +126,31 @@ also rejects duplicate exact labels instead of taking the first match. Task
 `task_1787744582233_11673934` owns the
 per-jurisdiction keyed carrier, questionnaire extension, and consuming rows.
 
+The single-jurisdiction limitation now recognizes only explicit scope-bearing
+clock forms. Explanatory prose such as counsel confirming the configured grace
+period no longer masquerades as a second jurisdiction, while duplicate labels,
+jurisdiction-prefixed labels, and generic labeled clock lines such as
+`Georgia: 10 days` still refuse activation regardless of whether the place name
+contains `county`, `city`, or another jurisdiction noun. This is a fail-closed
+UX correction, not an early implementation of the future keyed carrier.
+The same normalized structural guard intentionally refuses any additional
+labeled day-count line, including `Label: N day`, `Label: N days`, and optional
+`calendar` or `business` qualifiers. That covers an unrelated
+`Payment window: 30 days` aside as well as named jurisdiction clocks. The
+questionnaire hint and diagnostic state the same contract: exactly one
+structured `Late fee grace days: NN` line; all other timing details belong in
+plain prose. Numeric prose without the labeled colon shape remains valid.
+The diagnostic calls additional labeled day lines ambiguous and points to the
+tracked per-jurisdiction capability. It does not falsely claim that every
+rejected structured duration is a second jurisdiction clock.
+
+The shared currency extractor normalizes conventional integral decimals such as
+`$30.00` to the integer `30` without rounding fractional values. A shared engine
+casualty proves `$30.00` configures and `$30.50` still refuses an integer target
+with a corrective instruction to state the threshold in whole dollars. A
+production guided-setup casualty enters `$30.50` through `collect_answer`, proves
+the same correction reaches the operator, and confirms zero configured output.
+
 ## Inherited platform laws
 
 - `AGENTS.md` gates session start on `.onboarded` and reads the declared

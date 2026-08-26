@@ -35,7 +35,7 @@ Where a question offers a common default, the default is a starting point, not l
 ### Group A: State Rules
 A1. How many days must rent be late before a late fee may be posted?
 
-Hint: This edition currently supports one jurisdiction-wide grace clock. Begin the answer with an exact line `Late fee grace days: NN` and confirm it with counsel. If your portfolio has different grace clocks by jurisdiction, setup rejects that answer and directs you to wait for the tracked per-jurisdiction capability rather than choosing one clock.
+Hint: This edition currently supports one jurisdiction-wide grace clock. A1 accepts exactly one structured day-count line: begin with `Late fee grace days: NN`. State every other timing detail as plain prose without another labeled day-count line such as `Label: N day(s)`, `Label: N calendar days`, or `Label: N business days`, and confirm the grace period with counsel. If your portfolio has different grace clocks by jurisdiction, setup rejects that answer and directs you to wait for the tracked per-jurisdiction capability rather than choosing one clock.
 
 Answer: ________________________________________
 

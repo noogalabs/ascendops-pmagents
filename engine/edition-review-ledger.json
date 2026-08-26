@@ -101,7 +101,7 @@
       "banned_companion_claims": ["five generic bookkeeping documents", "Bookkeeping Tracking Board in this folder", "PM Decision Log Template"],
       "promise_subject_sha256": {
         "INTRO": "84ccad3b5c4db4a28d3c75be346e9be7bd92fe048341f0ceca4b7e87ef25ccfe",
-        "A1": "1d0390052cdd5a44e665f74a76e651b6522aea8582b89a1026266f5dd518c36b",
+        "A1": "c71116e6c25ca1bd22035989aaa4adfe51c6ded6ca0822d3f4c991daa60d2edf",
         "A4": "58141e33c41ea20987874f6a0204fd03f9f729f7d20ba6e3554167a80a4320e7",
         "A5": "df822a2185168151b824a31744777ea9f4620ecd2bdc793dd07231d5e903e600",
         "A7": "954c130c35b43f6b8e8f883608b91f72814d5bdef058ea47adcf29c831a130e5",
@@ -119,7 +119,7 @@
       },
       "promise_ledger": {
         "INTRO": {"no_gate_reason": "format, legal-review disclosure, shipped-library truth, and permanent human gate statement"},
-        "A1": {"no_gate_reason": "question collects the jurisdiction-specific late-fee clock"},
+        "A1": {"gate_surface": "engine/intake.py::_validate_accounting_scope", "named_test": "test_named_accounting_structured_duration_aside_refuses_with_honest_a1_contract"},
         "A4": {"no_gate_reason": "question collects the jurisdiction-specific notice type"},
         "A5": {"no_gate_reason": "question records the counsel-confirmed partial-payment effect for configured policy custody"},
         "A7": {"no_gate_reason": "question records jurisdiction-specific deposit-account and disclosure requirements"},

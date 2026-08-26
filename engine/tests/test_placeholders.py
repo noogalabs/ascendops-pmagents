@@ -166,7 +166,7 @@ class PlaceholderTests(unittest.TestCase):
             }],
         }
         (self.root / "IDENTITY.md").write_text("{{company_name}}")
-        answers = dict(self.answers, B1="$12 base threshold")
+        answers = dict(self.answers, B1="$12.00 base threshold")
         manifest = engine.placeholders.apply_initial(
             self.root, mapping, self.cover, answers, self.core
         )
@@ -211,6 +211,29 @@ class PlaceholderTests(unittest.TestCase):
                 self.core, updated,
             )
         self.assertEqual(path.read_bytes(), before)
+
+    def test_named_currency_integral_decimal_configures_without_rounding_fractional_value(self):
+        path = self.root / "config.json"
+        path.write_text(json.dumps({"threshold": 1}))
+        mapping = {
+            "placeholders": [],
+            "config_keys": [{
+                "path": "/threshold", "source": "B1", "extractor": "currency",
+                "value_type": "integer",
+            }],
+        }
+        manifest = engine.placeholders.apply_initial(
+            self.root, mapping, self.cover, dict(self.answers, B1="$30.00"), self.core
+        )
+        self.assertEqual(json.loads(path.read_text())["threshold"], 30)
+        path.write_text(json.dumps({"threshold": 1}))
+        with self.assertRaises(engine.placeholders.PlaceholderRejected) as caught:
+            engine.placeholders.apply_initial(
+                self.root, mapping, self.cover, dict(self.answers, B1="$30.50"), self.core
+            )
+        self.assertIn("threshold must be stated in whole dollars", str(caught.exception.failures))
+        self.assertEqual(json.loads(path.read_text())["threshold"], 1)
+        self.assertEqual(next(row for row in manifest if row["row_type"] == "config_key")["value"], 30)
 
     def test_named_config_key_replace_missing_rejects_but_explicit_create_works(self):
         path = self.root / "config.json"

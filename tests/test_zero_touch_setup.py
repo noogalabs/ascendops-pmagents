@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import datetime
+import ast
 import hashlib
 import importlib.util
 import io
@@ -27,6 +28,70 @@ def tree_digest(root: Path):
 
 
 class ZeroTouchSetupTests(unittest.TestCase):
+    def test_named_every_intake_text_consumer_uses_shared_multiline_surface(self):
+        print("ARMED: intake-format readers and writers cannot fork a single-line value grammar")
+        sources = {
+            "setup.py": (ROOT / "setup.py").read_text(),
+            "engine/intake.py": (ROOT / "engine" / "intake.py").read_text(),
+        }
+        framing_allowlist = {
+            ("setup.py", "answer_values", "cover-label-frame"):
+                "matches only the cover label; indented_value consumes its value",
+            ("setup.py", "answer_values", "question-heading-frame"):
+                "selects the question id; indented_value consumes the Answer block",
+            ("engine/intake.py", "preflight", "cover-label-frame"):
+                "matches only the cover label; indented_value consumes its value",
+            ("engine/intake.py", "preflight", "question-heading-frame"):
+                "selects the question id; indented_value consumes the Answer block",
+        }
+        discovered = []
+        private_grammars = []
+        for module, source in sources.items():
+            tree = ast.parse(source)
+            parents = {}
+            for parent in ast.walk(tree):
+                for child in ast.iter_child_nodes(parent):
+                    parents[child] = parent
+            def owning_function(node):
+                while node in parents:
+                    node = parents[node]
+                    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        return node.name
+                return "<module>"
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                    if (r"^[ \t]+\S" in node.value or
+                            r"[^\n]*(?:\n[ \t]+\S[^\n]*)*" in node.value):
+                        private_grammars.append((module, node.lineno, node.value))
+                if not isinstance(node, ast.Call):
+                    continue
+                function = owning_function(node)
+                segment = ast.get_source_segment(source, node) or ""
+                if "indented_value(" in segment:
+                    discovered.append((module, function, "shared-reader"))
+                elif "collect_answer(" in segment:
+                    discovered.append((module, function, "shared-interactive-collector"))
+                elif "re.escape(label)" in segment and "re.match" in segment:
+                    discovered.append((module, function, "cover-label-frame"))
+                elif "QUESTION_LINE.match" in segment:
+                    discovered.append((module, function, "question-heading-frame"))
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Attribute) and node.attr == "INTAKE_VALUE_SPAN":
+                    function = owning_function(node)
+                    discovered.append((module, function, "shared-writer-span"))
+
+        canonical_grammars = [row for row in private_grammars if row[0] == "engine/intake.py"]
+        self.assertEqual(len(canonical_grammars), 2, canonical_grammars)
+        self.assertFalse([row for row in private_grammars if row[0] != "engine/intake.py"])
+        unclassified = [row for row in discovered
+                        if not row[2].startswith("shared-") and row not in framing_allowlist]
+        self.assertFalse(unclassified, f"unclassified intake consumers: {unclassified}")
+        self.assertEqual({row for row in discovered if row[2].endswith("-frame")},
+                         set(framing_allowlist))
+        self.assertGreaterEqual(sum(row[2] == "shared-reader" for row in discovered), 4)
+        self.assertGreaterEqual(sum(row[2] == "shared-writer-span" for row in discovered), 2)
+        self.assertGreaterEqual(sum(row[2] == "shared-interactive-collector" for row in discovered), 2)
+
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="pmagents-zero-touch-"))
         self.source = self.tmp / "source"
