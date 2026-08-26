@@ -168,22 +168,30 @@ class AccountingConfiguratorTests(unittest.TestCase):
         print("ARMED: accounting seams preserve table authority and deferred boundaries")
         mapping = json.loads(MAPPING.read_text())
         pointers = {row["value_name"]: row for row in mapping["cross_seat"]["pointers"]}
-        self.assertEqual(set(pointers), {
-            "deposit_disposition_deadline", "deposit_clock_trigger", "licensed_trades",
-            "deposit_chargeback_threshold", "eviction_attorney", "accounting_platform",
-            "decision_log_location",
+        self.assertEqual({
+            (row["value_name"], row["owner_seat"], row["owner_question_id"],
+             row["holding_question_id"], row["owner_value_path"])
+            for row in pointers.values()
+        }, {
+            ("deposit_disposition_deadline", "maintenance-coordinator", "A3", "A6", "/answers/A3"),
+            ("deposit_clock_trigger", "leasing-coordinator", "B1", "A6", "/answers/B1"),
+            ("licensed_trades", "maintenance-coordinator", "A7", "A15", "/answers/A7"),
+            ("deposit_chargeback_threshold", "turnover-coordinator", "C7", "B13", "/answers/C7"),
+            ("eviction_attorney", "pm-assist", "A4", "C5", "/answers/A4"),
+            ("accounting_platform", "maintenance-coordinator", "D1", "D1", "/answers/D1"),
+            ("decision_log_location", "pm-assist", "D7", "D6", "/answers/D7"),
         })
-        self.assertEqual(
-            (pointers["deposit_chargeback_threshold"]["owner_seat"],
-             pointers["deposit_chargeback_threshold"]["owner_question_id"],
-             pointers["deposit_chargeback_threshold"]["holding_question_id"]),
-            ("turnover-coordinator", "C7", "B13"),
-        )
         self.assertNotIn("day_mode_window", pointers)
-        self.assertEqual(
-            {row["check_id"] for row in mapping["cross_seat"]["checks"]},
-            {"SEAM-8", "SEAM-11", "SEAM-12", "SEAM-17"},
-        )
+        self.assertEqual({
+            (row["check_id"], row["type"], row["local_ref"],
+             row["peer_seat"], row["peer_ref"])
+            for row in mapping["cross_seat"]["checks"]
+        }, {
+            ("SEAM-8", "POLICY_DIVERGE", "/answers/B1", "maintenance-coordinator", "/answers/B1"),
+            ("SEAM-11", "POLICY_DIVERGE", "/answers/C1", "maintenance-coordinator", "/answers/C1"),
+            ("SEAM-12", "POLICY_DIVERGE", "/answers/C4", "maintenance-coordinator", "/answers/C9"),
+            ("SEAM-17", "POLICY_DIVERGE", "/answers/D8", "maintenance-coordinator", "/answers/D6"),
+        })
         self.assertEqual(
             {row["gate_id"] for row in mapping["cross_seat"]["never_graduate"]},
             {"vendor_payment", "owner_draw", "deposit_disposition", "trust_reconciliation",
