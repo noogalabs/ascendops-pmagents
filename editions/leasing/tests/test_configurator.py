@@ -393,7 +393,8 @@ class LeasingEditionTests(unittest.TestCase):
         ))
         wrapped, direct = self.tmp / "wrapped", self.tmp / "direct"
         answers = self.tmp / "guided.md"
-        scripted = iter([leasing_choice, str(SOURCE), str(wrapped), "1", str(answers), *responses])
+        terminated = [item for response in responses for item in (response, "")]
+        scripted = iter([leasing_choice, str(SOURCE), str(wrapped), "1", str(answers), *terminated])
         out = io.StringIO()
         self.assertEqual(setup.run_setup(ask=lambda _p: next(scripted), out=out,
                                          clock=self.clock), 0)

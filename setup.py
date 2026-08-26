@@ -61,25 +61,68 @@ def questionnaire_fields(template: str, cover_fields=None) -> list[PromptField]:
 def answer_values(text: str, cover_fields=None) -> dict[str, str]:
     active_cover_fields = engine.intake.COVER_FIELDS if cover_fields is None else cover_fields
     values: dict[str, str] = {}
+    lines = text.splitlines()
     for label in active_cover_fields:
-        match = re.search(rf"^{re.escape(label)}:\s*(.*)$", text, re.M)
-        if match and match.group(1).strip(" _"):
-            values[f"cover.{label}"] = match.group(1).strip()
+        for index, line in enumerate(lines):
+            match = re.match(rf"^{re.escape(label)}:\s*(.*)$", line)
+            if not match:
+                continue
+            value_lines = [match.group(1).strip()]
+            cursor = index + 1
+            while cursor < len(lines) and re.match(r"^[ \t]+\S", lines[cursor]):
+                value_lines.append(lines[cursor].strip())
+                cursor += 1
+            value = "\n".join(value_lines).strip()
+            if value.strip(" _\n"):
+                values[f"cover.{label}"] = value
     current = None
-    for line in text.splitlines():
+    lines = text.splitlines()
+    for index, line in enumerate(lines):
         question = engine.intake.QUESTION_LINE.match(line)
         if question:
             current = question.group(1)
-        elif current and line.startswith("Answer:") and line.partition(":")[2].strip(" _"):
-            values[current] = line.partition(":")[2].strip()
+            continue
+        if not current or not line.startswith("Answer:"):
+            continue
+        answer_lines = [line.partition(":")[2].strip()]
+        cursor = index + 1
+        while cursor < len(lines) and re.match(r"^[ \t]+\S", lines[cursor]):
+            answer_lines.append(lines[cursor].strip())
+            cursor += 1
+        answer = "\n".join(answer_lines).strip()
+        if answer.strip(" _\n"):
+            values[current] = answer
     return values
 
 
 def set_answer(text: str, field: PromptField, value: str) -> str:
     if field.key.startswith("cover."):
-        return re.sub(field.marker, f"{field.label}: {value}", text, count=1, flags=re.M)
-    pattern = rf"(^({re.escape(field.key)})\..*?^Answer:)\s*[^\n]*"
-    return re.sub(pattern, rf"\1 {value}", text, count=1, flags=re.M | re.S)
+        rendered = value.rstrip().replace("\n", "\n  ")
+        pattern = rf"^{re.escape(field.label)}:[^\n]*(?:\n[ \t]+\S[^\n]*)*"
+        return re.sub(pattern, f"{field.label}: {rendered}", text, count=1, flags=re.M)
+    pattern = (
+        rf"(^({re.escape(field.key)})\..*?^Answer:)[^\n]*"
+        rf"(?:\n[ \t]+\S[^\n]*)*"
+    )
+    rendered = value.rstrip().replace("\n", "\n  ")
+    return re.sub(pattern, lambda match: f"{match.group(1)} {rendered}",
+                  text, count=1, flags=re.M | re.S)
+
+
+def collect_answer(ask: Callable[[str], str], prompt: str) -> str:
+    """Collect a blank-line-terminated answer without flattening semantic lines."""
+    lines = [ask(prompt)]
+    while lines[-1]:
+        lines.append(ask("Continue answer (blank line finishes): "))
+    return "\n".join(lines[:-1]).strip()
+
+
+def documented_answer(response: str) -> str:
+    if response.lower() in SKIP_WORDS or not response:
+        return "[NEEDS-DAVID] Confirm this answer later"
+    if not re.match(r"^\[(?:documented|inferred|NEEDS-DAVID)\]", response):
+        return f"[documented] {response}"
+    return response
 
 
 def atomic_text(path: Path, text: str) -> None:
@@ -140,13 +183,12 @@ def fix_named_answer(
     row = next((name for name, _reason in failures if name in editable), None)
     if row is None:
         return ask("Correct the named file or setup input, then type 'retry' (Enter exits): ").strip().lower() == "retry"
-    response = ask(f"New answer for {editable[row].label} (Enter exits setup): ").strip()
+    response = collect_answer(
+        ask, f"New answer for {editable[row].label} (blank line finishes; blank first line exits): "
+    )
     if not response:
         return False
-    if response.lower() in SKIP_WORDS:
-        response = "[NEEDS-DAVID] Confirm this answer later"
-    elif not re.match(r"^\[(?:documented|inferred|NEEDS-DAVID)\]", response):
-        response = f"[documented] {response}"
+    response = documented_answer(response)
     text = set_answer(answers.read_text(encoding="utf-8"), editable[row], response)
     atomic_text(answers, text)
     return True
@@ -165,11 +207,10 @@ def guided_answers(path: Path, ask: Callable[[str], str], out: TextIO, seat: str
     for field in fields:
         if field.key in complete:
             continue
-        response = ask(f"{field.label}\nAnswer (or 'unsure' to confirm later): ").strip()
-        if response.lower() in SKIP_WORDS or not response:
-            response = "[NEEDS-DAVID] Confirm this answer later"
-        elif not re.match(r"^\[(?:documented|inferred|NEEDS-DAVID)\]", response):
-            response = f"[documented] {response}"
+        response = documented_answer(collect_answer(
+            ask,
+            f"{field.label}\nAnswer (blank line finishes; 'unsure' confirms later): ",
+        ))
         text = set_answer(text, field, response)
         atomic_text(path, text)
     return path

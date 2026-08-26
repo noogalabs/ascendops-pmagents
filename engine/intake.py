@@ -123,7 +123,18 @@ def preflight(path: Path, question_ids: list[str], *, cover_fields=None,
     raw_cover: dict[str, str] = {}
     active_cover_fields = COVER_FIELDS if cover_fields is None else cover_fields
     for label, key in active_cover_fields.items():
-        hits = re.findall(rf"^{re.escape(label)}:\s*(.*)$", text, re.M)
+        hits = []
+        lines = text.splitlines()
+        for index, line in enumerate(lines):
+            match = re.match(rf"^{re.escape(label)}:\s*(.*)$", line)
+            if not match:
+                continue
+            value_lines = [match.group(1).strip()]
+            cursor = index + 1
+            while cursor < len(lines) and re.match(r"^[ \t]+\S", lines[cursor]):
+                value_lines.append(lines[cursor].strip())
+                cursor += 1
+            hits.append("\n".join(value_lines).strip())
         if len(hits) != 1 or not (hits[0].strip(" _") if hits else ""):
             failures.append((f"cover.{label}", "required exactly once with a nonblank value"))
         elif hits:
