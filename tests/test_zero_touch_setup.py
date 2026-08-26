@@ -60,8 +60,8 @@ class ZeroTouchSetupTests(unittest.TestCase):
                 return "<module>"
             for node in ast.walk(tree):
                 if isinstance(node, ast.Constant) and isinstance(node.value, str):
-                    if (r"^[ \t]+\S" in node.value or
-                            r"[^\n]*(?:\n[ \t]+\S[^\n]*)*" in node.value):
+                    if (r"^[ \t]+(?:\S[^\n]*)?$" in node.value or
+                            r"[^\n]*(?:\n[ \t]+[^\n]*)*" in node.value):
                         private_grammars.append((module, node.lineno, node.value))
                 if not isinstance(node, ast.Call):
                     continue
@@ -308,6 +308,30 @@ class ZeroTouchSetupTests(unittest.TestCase):
         finally:
             setup.SEATS = original_seats
             setup.engine.SUPPORTED.pop(seat, None)
+
+    def test_named_indented_blank_preserves_and_replaces_answer_paragraphs(self):
+        print("ARMED: indented blank separators preserve and replace full answer paragraphs")
+        fixture = ROOT / "editions" / "maintenance" / "fixtures" / "ridgeline-maintenance-answers.md"
+        answers = self.tmp / "paragraph-answers.md"
+        field = next(
+            item for item in setup.questionnaire_fields(fixture.read_text())
+            if item.key == "A1"
+        )
+        value = "[documented] First paragraph.\n\nSecond paragraph."
+        rendered = setup.set_answer(fixture.read_text(), field, value)
+        answers.write_text(rendered)
+        self.assertIn(
+            "Answer: [documented] First paragraph.\n  \n  Second paragraph.",
+            rendered,
+        )
+        self.assertEqual(setup.answer_values(rendered)["A1"], value)
+        parsed = setup.engine.intake.preflight(answers, setup.engine.load_core().QUESTION_IDS)
+        self.assertEqual(parsed.raw_answers["A1"], value)
+
+        replacement = "[documented] Replacement paragraph."
+        corrected = setup.set_answer(rendered, field, replacement)
+        self.assertNotIn("Second paragraph.", corrected)
+        self.assertEqual(setup.answer_values(corrected)["A1"], replacement)
 
     def test_named_create_then_reconfigure_succeeds_through_wrapper(self):
         print("ARMED: wrapper create then reconfigure uses the production rerun entry")

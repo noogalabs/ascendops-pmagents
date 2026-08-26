@@ -17,8 +17,8 @@ QUESTION_ID_PATTERN = r"[A-Z]\d+"
 QUESTION_ID = re.compile(rf"^{QUESTION_ID_PATTERN}$")
 QUESTION_LINE = re.compile(rf"^({QUESTION_ID_PATTERN})\.\s")
 QUESTION_HEADING = re.compile(rf"^({QUESTION_ID_PATTERN})\.\s+(.+)$", re.M)
-CONTINUATION_LINE = re.compile(r"^[ \t]+\S")
-INTAKE_VALUE_SPAN = r"[^\n]*(?:\n[ \t]+\S[^\n]*)*"
+CONTINUATION_LINE = re.compile(r"^[ \t]+(?:\S[^\n]*)?$")
+INTAKE_VALUE_SPAN = r"[^\n]*(?:\n[ \t]+[^\n]*)*"
 STRUCTURED_DAY_COUNT_LINE = re.compile(
     r"\s*[^:\n]+\s*:\s*\d+\s+(?:(?:calendar|business)\s+)?days?\s*[.!?]?\s*",
     re.I,

@@ -157,6 +157,13 @@ with a corrective instruction to state the threshold in whole dollars. A
 production guided-setup casualty enters `$30.50` through `collect_answer`, proves
 the same correction reaches the operator, and confirms zero configured output.
 
+The shared intake continuation grammar preserves indented blank separators
+inside completed multi-paragraph answers. The same canonical grammar drives
+both production reading and replacement spans: a round-trip casualty proves
+both paragraphs survive parsing, then correction consumes the complete old
+answer instead of leaving a stale trailing paragraph. Reverting to the former
+nonblank-only grammar kills that production casualty.
+
 ## Inherited platform laws
 
 - `AGENTS.md` gates session start on `.onboarded` and reads the declared
@@ -194,7 +201,7 @@ the same correction reaches the operator, and confirms zero configured output.
 - Provenance source/destination hashes recomputed for every accounting product
   row, including every adapted destination.
 - Accounting 33/33, engine 93/93, sibling editions 26/5/20/47, zero-touch
-  30/30, review sweeps 6/6, plus manifest, hygiene, leak, and exact-head CI.
+  31/31, review sweeps 6/6, plus manifest, hygiene, leak, and exact-head CI.
 
 ## Shared-file boundary
 
