@@ -163,6 +163,12 @@ class AccountingConfiguratorTests(unittest.TestCase):
             r"(?m)^([ \t]*)```bash\n(.*?)\n\1```$", (agent / "ONBOARDING.md").read_text(), re.S
         )
         self.assertEqual(len(blocks), 1)
+        self.assertIn(
+            "if grep -rlE '\\{\\{[^{}]+\\}\\}|<!-- Set during onboarding' . "
+            "--include='*.md' --include='*.json' 2>/dev/null | grep -vE "
+            "'ONBOARDING\\.md|README\\.md|skills/onboarding/|node_modules'; then",
+            blocks[0][1],
+        )
         state_root = self.tmp / "state-root"
         env = {"CTX_ROOT": str(state_root), "CTX_AGENT_NAME": "accounting"}
         result = subprocess.run(["bash"], input=blocks[0][1], text=True, cwd=agent,

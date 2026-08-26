@@ -55,6 +55,15 @@ vehicle rather than shipping a confident wrong result.
 | SEAM-31 | Accounting owns the decomposed late-rent and eviction clocks | No local pointer needed. Existing sibling rows must point here only in a reviewed consuming follow-up; no second owner is minted in this PR. |
 | SEAM-32 | Accounting owns the decomposed security-deposit holding rules | No local pointer needed. Existing sibling consumers migrate only through reviewed pointer rows. |
 
+The live bot re-raised AF-2 at the current consumer grain: a differing local B13
+and owner C7 cannot yet be compared safely. This is successor-grade, not a
+second PR9 mapping defect: pointer ownership is correct, but C7 is two-number
+prose and the current engine has neither pointer-grain extraction nor measured
+comparison for it. Task `task_1787735414502_98348643` owns the shared PR13b
+capability and a consuming follow-up that returns this chargeback equality with
+the leasing communications-window and BD day-mode rows. Its casualty must prove
+151/401 rejects against owner 150/400; PR9 never guesses by raw prose equality.
+
 The existing POLICY_DIVERGE rows SEAM-8, SEAM-11, SEAM-12, and SEAM-17
 remain report-only comparisons and never auto-unify prose. SEAM-1 remains at
 the table's current migration-ready ownership: maintenance A3 owns the deadline
