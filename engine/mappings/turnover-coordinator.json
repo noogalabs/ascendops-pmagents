@@ -1,0 +1,70 @@
+{
+  "schema_version": 3,
+  "seat": "turnover-coordinator",
+  "library_id": "turnover-2026-08-25",
+  "cover_fields": [
+    {"label":"Company name","key":"company_name"},
+    {"label":"Org short-name","key":"org_short_name"},
+    {"label":"Forward email","key":"forward_email"},
+    {"label":"Timezone","key":"timezone"},
+    {"label":"Day mode start","key":"day_mode_start"},
+    {"label":"Day mode end","key":"day_mode_end"},
+    {"label":"Inspection SLA hours","key":"inspection_sla_hours"},
+    {"label":"Scope SLA hours","key":"scope_sla_hours"},
+    {"label":"Stale-stage alert days","key":"stale_stage_alert_days"}
+  ],
+  "source_table": "mapping-tables/turnover.md",
+  "source_table_sha256": "bc9ddbba1211d6b8fa90a5aad005e7c3c8e78b9510442a9dbee0d1e2d8643af6",
+  "structured_answers_file": "turnover-config.json",
+  "placeholders": [
+    {"placeholder":"agent_name","source":"cover.org_short_name","extractor":"literal","value":"turnover-coordinator"},
+    {"placeholder":"company_name","source":"cover.company_name","extractor":"identity"},
+    {"placeholder":"operator_name","source":"D3","extractor":"first_person"},
+    {"placeholder":"owner_name","source":"D3","extractor":"first_person"},
+    {"placeholder":"timezone","source":"cover.timezone","extractor":"identity"},
+    {"placeholder":"day_mode_start","source":"cover.day_mode_start","extractor":"identity"},
+    {"placeholder":"day_mode_end","source":"cover.day_mode_end","extractor":"identity"},
+    {"placeholder":"turn_target_days","source":"B2","extractor":"labeled_integer","label":"Default turn target days"},
+    {"placeholder":"inspection_sla_hours","source":"cover.inspection_sla_hours","extractor":"identity"},
+    {"placeholder":"scope_sla_hours","source":"cover.scope_sla_hours","extractor":"identity"},
+    {"placeholder":"stale_stage_alert_days","source":"cover.stale_stage_alert_days","extractor":"identity"},
+    {"placeholder":"approval_threshold","source":"C1","extractor":"currency"}
+  ],
+  "config_keys": [
+    {"path": "/timezone", "source": "cover.timezone", "extractor": "identity", "value_type": "string", "mode": "replace"},
+    {"path": "/day_mode_start", "source": "cover.day_mode_start", "extractor": "identity", "value_type": "string", "mode": "replace"},
+    {"path": "/day_mode_end", "source": "cover.day_mode_end", "extractor": "identity", "value_type": "string", "mode": "replace"},
+    {"path": "/turn_target_days", "source": "B2", "extractor": "labeled_integer", "label":"Default turn target days", "value_type": "integer", "minimum":1, "mode": "replace"},
+    {"path": "/approval_threshold", "source": "C1", "extractor": "currency", "value_type": "integer", "minimum":1, "mode": "replace"},
+    {"path": "/inspection_sla_hours", "source": "cover.inspection_sla_hours", "extractor": "identity", "value_type": "integer", "minimum":1, "mode": "replace"},
+    {"path": "/scope_sla_hours", "source": "cover.scope_sla_hours", "extractor": "identity", "value_type": "integer", "minimum":1, "mode": "replace"},
+    {"path": "/stale_stage_alert_days", "source": "cover.stale_stage_alert_days", "extractor": "identity", "value_type": "integer", "minimum":1, "mode": "replace"}
+  ],
+  "cross_seat": {
+    "pointers": [
+      {"value_name":"deposit_deadline","owner_seat":"maintenance-coordinator","owner_question_id":"A3","holding_question_id":"A1","owner_value_path":"/answers/A3"},
+      {"value_name":"damage_dispute_window","owner_seat":"maintenance-coordinator","owner_question_id":"A5","holding_question_id":"A3","owner_value_path":"/answers/A5"},
+      {"value_name":"certified_mail","owner_seat":"maintenance-coordinator","owner_question_id":"A4","holding_question_id":"A4","owner_value_path":"/answers/A4"},
+      {"value_name":"lease_sections","owner_seat":"maintenance-coordinator","owner_question_id":"A6","holding_question_id":"A5","owner_value_path":"/answers/A6"},
+      {"value_name":"technician_roster","owner_seat":"maintenance-coordinator","owner_question_id":"C3","holding_question_id":"D1","owner_value_path":"/answers/C3"},
+      {"value_name":"platform_inventory","owner_seat":"maintenance-coordinator","owner_question_id":"D1","holding_question_id":"E3","owner_value_path":"/answers/D1"},
+      {"value_name":"owner_channel","owner_seat":"maintenance-coordinator","owner_question_id":"D5","holding_question_id":"E5","owner_value_path":"/answers/D5"}
+    ],
+    "checks": [
+      {"check_id":"SEAM-8","type":"POLICY_DIVERGE","local_ref":"/answers/C1","peer_seat":"maintenance-coordinator","peer_ref":"/answers/B1"},
+      {"check_id":"SEAM-11","type":"POLICY_DIVERGE","local_ref":"/answers/D3","peer_seat":"maintenance-coordinator","peer_ref":"/answers/C1"},
+      {"check_id":"SEAM-12","type":"POLICY_DIVERGE","local_ref":"/answers/D7","peer_seat":"maintenance-coordinator","peer_ref":"/answers/C9"},
+      {"check_id":"SEAM-17","type":"POLICY_DIVERGE","local_ref":"/answers/E8","peer_seat":"maintenance-coordinator","peer_ref":"/answers/D6"},
+      {"check_id":"SEAM-18","type":"POLICY_DIVERGE","local_ref":"/answers/D6","peer_seat":"maintenance-coordinator","peer_ref":"/answers/C7"}
+    ],
+    "appends": [
+      {"value_name":"vendor_roster","owner_seat":"maintenance-coordinator","owner_question_id":"C5","appender_question_id":"E4","value_path":"/answers/E4","owner_target_path":"/derived/roster/vendors"}
+    ],
+    "never_graduate": [
+      {"gate_id":"make_ready_scope_budget","question_id":"C1","reason":"human approval"},
+      {"gate_id":"deposit_deductions","question_id":"C7","reason":"human decision"},
+      {"gate_id":"vendor_pricing","question_id":"E4","reason":"money commitment"},
+      {"gate_id":"damage_charge_notice","question_id":"A4","reason":"legal notice"}
+    ]
+  }
+}

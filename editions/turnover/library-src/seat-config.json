@@ -1,0 +1,9 @@
+{
+  "_note": "Structured turnover setup answers. This file configures routing, clocks, and gates; it grants no spend, dispatch, certification, deposit, or external-send authority.",
+  "seat": "turnover-coordinator",
+  "cover_sheet": {},
+  "answers": {},
+  "flags": {
+    "unresolved": []
+  }
+}

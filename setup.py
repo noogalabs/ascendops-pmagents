@@ -15,7 +15,10 @@ sys.path.insert(0, str(ROOT / "engine"))
 import engine  # noqa: E402
 
 
-SEAT_LABELS = {"maintenance-coordinator": "Maintenance coordinator"}
+SEAT_LABELS = {
+    "maintenance-coordinator": "Maintenance coordinator",
+    "turnover-coordinator": "Turnover coordinator",
+}
 SEATS = tuple({"id": seat, "label": SEAT_LABELS.get(seat, seat.replace("-", " ").title())}
               for seat in engine.SUPPORTED)
 SKIP_WORDS = {"skip", "unsure", "?"}
