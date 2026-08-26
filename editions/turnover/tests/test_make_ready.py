@@ -17,7 +17,8 @@ SPEC.loader.exec_module(make_ready)
 
 
 def task(task_id, *, duration=1, depends=(), rekey=False, done=True,
-         evidence="proof.jpg", stage_entered="2026-08-01", progress=""):
+         evidence="proof.jpg", stage_entered="2026-08-01", progress="",
+         must_fix=True):
     return {
         "id": task_id,
         "name": task_id,
@@ -25,7 +26,7 @@ def task(task_id, *, duration=1, depends=(), rekey=False, done=True,
         "stage": "3",
         "stage_entered_date": stage_entered,
         "last_progress_date": progress,
-        "must_fix": True,
+        "must_fix": must_fix,
         "duration_days": duration,
         "depends_on": list(depends),
         "verified_done": done,
@@ -61,6 +62,17 @@ class MakeReadySafetyTests(unittest.TestCase):
             self.assertTrue(any("RE-KEY NOT LAST" in item and "repair" in item
                                 for item in open_items))
 
+    def test_named_rekey_must_follow_cosmetic_work_too(self):
+        print("ARMED: cosmetic work after re-key fails certification by name")
+        rows = scheduled([
+            task("rekey", rekey=True),
+            task("cosmetic-touchup", depends=("rekey",), must_fix=False),
+        ])
+        ok, open_items = make_ready.certify_gate(rows)
+        self.assertFalse(ok)
+        self.assertTrue(any("RE-KEY NOT LAST" in item and "cosmetic-touchup" in item
+                            for item in open_items))
+
     def test_named_task_graph_rejects_empty_duplicate_and_undeclared_ids(self):
         print("ARMED: task graph validates identities and every dependency before Kahn")
         with self.assertRaisesRegex(ValueError, "nonempty"):
@@ -69,6 +81,18 @@ class MakeReadySafetyTests(unittest.TestCase):
             make_ready.topo_sort([task("same"), task("same")])
         with self.assertRaisesRegex(ValueError, "Undeclared dependency task IDs.*typo"):
             make_ready.topo_sort([task("repair", depends=("typo",))])
+
+    def test_named_task_ids_normalize_once_through_production_scheduling(self):
+        print("ARMED: padded task identities remain one canonical graph through certification")
+        rows = scheduled([
+            task(" repair "),
+            task(" rekey ", depends=(" repair ",), rekey=True),
+        ])
+        self.assertEqual([row["id"] for row in rows], ["repair", "rekey"])
+        self.assertEqual(rows[1]["depends_on"], ["repair"])
+        self.assertEqual(rows[1]["start_date"], rows[0]["end_date"])
+        ok, open_items = make_ready.certify_gate(rows)
+        self.assertTrue(ok, open_items)
 
     def test_named_critical_path_uses_zero_slack_at_unequal_join(self):
         print("ARMED: short join branch has slack and is not reported critical")

@@ -9,10 +9,14 @@ the merged turnover edition. The reviewed subject is the shipped
 1. **Evidence-backed certification:** a verified must-fix or re-key item with a
    blank evidence reference remains open and names the affected task.
 2. **Re-key finality:** certification requires re-key to begin only after every
-   other required task ends. Both an independent early re-key and work scheduled
-   after re-key fail closed.
+   other scheduled task ends, regardless of classification. Independent early
+   re-key, must-fix work after re-key, and cosmetic work after re-key all fail
+   closed by task name.
 3. **Declared dependency graph:** task IDs must be unique and nonblank, and every
    `depends_on` value must name a declared task before topological sorting begins.
+   IDs and dependencies are stripped once at ingestion and the canonical values
+   flow through adjacency, scheduling, critical-path analysis, and certification;
+   duplicates are detected after normalization.
 4. **True critical path:** a forward schedule plus backward latest-start pass
    reports zero-slack work only. At an unequal two-branch join, the short branch
    is no longer mislabeled critical.
@@ -23,7 +27,8 @@ the merged turnover edition. The reviewed subject is the shipped
 
 ## Running guards
 
-`editions.turnover.tests.test_make_ready` carries seven named casualties covering
-the five review directions, the missing-stage-entry rejection, and configured CLI
-default. The turnover configurator suite remains unchanged and green; the source
-template and sealed maintenance core remain outside this patch.
+`editions.turnover.tests.test_make_ready` carries nine named casualties covering
+the five original review directions, the two live-review recut directions, the
+missing-stage-entry rejection, and configured CLI default. The turnover
+configurator suite remains unchanged and green; the source template and sealed
+maintenance core remain outside this patch.

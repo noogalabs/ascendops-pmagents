@@ -48,7 +48,17 @@ def parse_bool(value: object) -> bool:
 
 def topo_sort(tasks: List[Task]) -> List[Task]:
     """Return tasks in valid dependency order (raises ValueError on cycle)."""
-    ids = [str(task.get("id") or "").strip() for task in tasks]
+    normalized: List[Task] = []
+    for task in tasks:
+        canonical = dict(task)
+        canonical["id"] = str(task.get("id") or "").strip()
+        canonical["depends_on"] = [
+            str(dependency).strip()
+            for dependency in (task.get("depends_on") or [])
+        ]
+        normalized.append(canonical)
+
+    ids = [str(task["id"]) for task in normalized]
     empty = [index for index, tid in enumerate(ids) if not tid]
     if empty:
         raise ValueError(f"Task IDs must be nonempty; missing at rows {empty}")
@@ -58,22 +68,21 @@ def topo_sort(tasks: List[Task]) -> List[Task]:
     declared = set(ids)
     dangling = sorted({
         str(dep).strip()
-        for task in tasks for dep in (task.get("depends_on") or [])
+        for task in normalized for dep in (task.get("depends_on") or [])
         if not str(dep).strip() or str(dep).strip() not in declared
     })
     if dangling:
         raise ValueError(f"Undeclared dependency task IDs: {', '.join(repr(item) for item in dangling)}")
 
-    by_id: Dict[str, Task] = dict(zip(ids, tasks))
+    by_id: Dict[str, Task] = dict(zip(ids, normalized))
     in_degree: Dict[str, int] = {tid: 0 for tid in ids}
     adj: Dict[str, List[str]] = {tid: [] for tid in ids}
 
-    for task in tasks:
+    for task in normalized:
         for dep in task.get("depends_on") or []:
             dep_str = str(dep)
-            if dep_str in adj:
-                adj[dep_str].append(str(task["id"]))
-                in_degree[str(task["id"])] += 1
+            adj[dep_str].append(str(task["id"]))
+            in_degree[str(task["id"])] += 1
 
     queue = [tid for tid, deg in in_degree.items() if deg == 0]
     ordered: List[Task] = []
@@ -86,7 +95,7 @@ def topo_sort(tasks: List[Task]) -> List[Task]:
             if in_degree[neighbor] == 0:
                 queue.append(neighbor)
 
-    if len(ordered) != len(tasks):
+    if len(ordered) != len(normalized):
         raise ValueError("Cycle detected in task dependencies — check your depends_on fields.")
     return ordered
 
@@ -209,7 +218,7 @@ def certify_gate(scheduled: List[Dict[str, object]]) -> Tuple[bool, List[str]]:
                 open_items.append(f"UNVERIFIED re-key: {r['name']}")
             elif not str(r.get("evidence") or "").strip():
                 open_items.append(f"MISSING EVIDENCE re-key: {r['name']} (id: {r['id']})")
-            for required in must_fixes:
+            for required in scheduled:
                 if required["id"] == r["id"] or required.get("is_rekey"):
                     continue
                 required_end = parse_date(required["end_date"])
