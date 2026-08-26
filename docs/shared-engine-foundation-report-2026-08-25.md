@@ -19,6 +19,11 @@ Edition PRs must rebase and retain only edition content, mapping data, one
 registry row, provenance, and their edition tests/reports. Engine machinery is
 owned here once.
 
+Every registered edition must ship exactly one valid filled fixture at
+`editions/<seat>/fixtures/ridgeline-*-answers.md`; shared registry casualties
+derive both the library and known-positive input from that edition rather than
+substituting maintenance inputs beneath a parameterized seat label.
+
 ## Declared extractor interface census
 
 The consumer-side census was re-derived from each edition head before its
