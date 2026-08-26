@@ -13,6 +13,7 @@ class MemberHygieneTests(unittest.TestCase):
         (root / "ci").mkdir(); shutil.copy2(SCRIPT, root / "ci/member-hygiene.py")
         (root / "README.md").write_text("# AscendOps PMAgents\n")
         (root / "internal.py").write_text("SCHEMA = 'bet" + "ty-seat-config'\n")
+        (root / "VALIDATION-REPORT.md").write_text("Tracked internally as task_123_456.\n")
         line=(root / "internal.py").read_text().splitlines()[0]
         import hashlib
         digest=hashlib.sha256(line.encode()).hexdigest()
@@ -42,6 +43,11 @@ class MemberHygieneTests(unittest.TestCase):
         root=self.fixture(); self.addCleanup(shutil.rmtree, root)
         (root / "README.md").write_text("Bet" + "ty guide.\n"); subprocess.run(["git","add","README.md"],cwd=root,check=True)
         result=self.run_gate(root); self.assertNotEqual(result.returncode,0); self.assertIn("member-visible surface",result.stdout)
+
+    def test_named_planted_member_task_id_dies(self):
+        root=self.fixture(); self.addCleanup(shutil.rmtree, root)
+        (root / "README.md").write_text("Wait for task_123_456.\n"); subprocess.run(["git","add","README.md"],cwd=root,check=True)
+        result=self.run_gate(root); self.assertNotEqual(result.returncode,0); self.assertIn("README.md:1: internal task id on shipped member surface",result.stdout)
 
     def test_named_moved_internal_allowlist_site_dies(self):
         root=self.fixture(); self.addCleanup(shutil.rmtree, root)

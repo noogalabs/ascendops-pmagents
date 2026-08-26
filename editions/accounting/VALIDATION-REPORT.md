@@ -149,6 +149,10 @@ The diagnostic calls additional labeled day lines ambiguous and points to the
 tracked per-jurisdiction capability without leaking the internal task ID into
 the member-facing surface. It does not falsely claim that every rejected
 structured duration is a second jurisdiction clock.
+The fleet member-hygiene gate now rejects `task_<digits>` identifiers in every
+tracked shipped file except internal `*-REPORT.md` evidence, where durable task
+custody belongs. A planted task ID in a member README kills the gate; removing
+the detector kills that casualty.
 
 The shared currency extractor normalizes conventional integral decimals such as
 `$30.00` to the integer `30` without rounding fractional values. A shared engine
@@ -202,6 +206,7 @@ nonblank-only grammar kills that production casualty.
   row, including every adapted destination.
 - Accounting 33/33, engine 93/93, sibling editions 26/5/20/47, zero-touch
   31/31, review sweeps 6/6, plus manifest, hygiene, leak, and exact-head CI.
+  The hygiene unit suite is 6/6, including the task-ID surface casualty.
 
 ## Shared-file boundary
 
