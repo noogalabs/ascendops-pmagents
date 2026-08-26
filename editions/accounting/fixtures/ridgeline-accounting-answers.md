@@ -44,7 +44,7 @@ Hint: Grace periods are set by state law in most jurisdictions; the agent will n
 
 Answer: Late fee grace days: 5
   Rent is due on the 1st; a late fee may not post before the 6th in either fictional
-  jurisdiction. Counsel confirmed for both. CONFIRMED=true.
+  jurisdiction. Counsel confirmed one shared clock for this fixture. CONFIRMED=true.
 
 A2. What is your state's late fee cap: a flat amount, a daily rate, or a total percentage of past-due rent?
 

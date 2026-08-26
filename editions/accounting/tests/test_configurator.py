@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import datetime, hashlib, importlib.util, io, json, re, shutil, subprocess, tempfile, unittest
+import csv, datetime, hashlib, importlib.util, io, json, re, shutil, subprocess, tempfile, unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -90,6 +90,24 @@ class AccountingConfiguratorTests(unittest.TestCase):
     def test_sealed_core_unchanged(self):
         self.assertEqual(hashlib.sha256(engine.SEALED_CORE.read_bytes()).hexdigest(),
                          "0540ea08aa8d47ecb1aebbb7f51db85c5a67ab252172804e9ba24e56c2403551")
+
+    def test_named_accounting_provenance_destination_hashes_match_shipped_bytes(self):
+        print("ARMED: every accounting included-product provenance row matches shipped bytes")
+        with (ROOT / "provenance" / "source-files.tsv").open(newline="") as handle:
+            rows = [row for row in csv.DictReader(handle, delimiter="\t")
+                    if row["disposition"] == "included-product"
+                    and row["destination_path"].startswith("editions/accounting/")
+                    and not re.fullmatch(r"[0-9a-f]{8,40}", row["reviewed_head"])]
+        self.assertEqual({row["artifact_id"] for row in rows},
+                         {f"artifact-{number}" for number in range(167, 196)})
+        self.assertEqual(len(rows), 29)
+        for row in rows:
+            destination = ROOT / row["destination_path"]
+            with self.subTest(artifact_id=row["artifact_id"]):
+                self.assertTrue(destination.is_file(), row["destination_path"])
+                self.assertRegex(row["destination_sha256"], r"^[0-9a-f]{64}$")
+                self.assertEqual(hashlib.sha256(destination.read_bytes()).hexdigest(),
+                                 row["destination_sha256"])
 
     def test_named_accounting_readme_routes_only_through_guided_setup(self):
         print("ARMED: accounting README names guided setup and bans manual replacement")
@@ -316,7 +334,12 @@ class AccountingConfiguratorTests(unittest.TestCase):
             "/owner_draw_target_day", "/owner_statement_release_day",
             "/deposit_chargeback_per_line", "/deposit_chargeback_per_unit",
         })
-        self.assertTrue(all(row.get("minimum") == 1 for row in numeric.values()))
+        self.assertEqual(numeric["/vendor_bill_approval_threshold"].get("minimum"), 0)
+        self.assertTrue(all(row.get("minimum") == 1 for path, row in numeric.items()
+                            if path != "/vendor_bill_approval_threshold"))
+        for path in ("/owner_draw_deadline_day", "/owner_draw_target_day",
+                     "/owner_statement_release_day"):
+            self.assertEqual(numeric[path].get("maximum"), 31)
         self.assertTrue(all(row.get("mode") == "create" for row in numeric.values()))
         self.assertNotIn("first_integer", {row["extractor"] for row in numeric.values()})
         for row in numeric.values():
@@ -399,30 +422,50 @@ class AccountingConfiguratorTests(unittest.TestCase):
         skill = (self.source / ".claude/skills/onboarding/SKILL.md").read_text()
         self.assertIn("allowed sender id", skill)
 
-    def test_named_accounting_zero_numeric_values_reject_before_activation(self):
-        print("ARMED: zero timeline and money values reject before accounting writes")
+    def test_named_zero_vendor_threshold_means_every_bill_requires_approval(self):
+        print("ARMED: zero vendor threshold is a valid conservative approval policy")
+        output = self.tmp / "zero-vendor-threshold"
+        engine.configure(self.source, self.fixture_variant(
+            "B1", "$0. Every vendor bill requires PM approval before payment."
+        ), output, "accounting", seat_registry={})
+        self.assertEqual(json.loads((output / "config.json").read_text())[
+            "vendor_bill_approval_threshold"], 0)
+
+    def test_named_calendar_day_fields_reject_day_32_before_activation(self):
+        print("ARMED: impossible day-of-month values reject before accounting writes")
         for question_id, answer in (
-            ("A1", "Late fee grace days: 0"),
-            ("B1", "$0. No vendor payment may bypass the configured review gate."),
+            ("B8", "Owner draw deadline day: 32\n  Owner draw target day: 10"),
+            ("B8", "Owner draw deadline day: 15\n  Owner draw target day: 32"),
+            ("B10", "Owner statement release day: 32"),
         ):
-            with self.subTest(question_id=question_id):
-                output = self.tmp / f"zero-{question_id}"
+            with self.subTest(question_id=question_id, answer=answer):
+                output = self.tmp / ("day-32-" + hashlib.sha256(answer.encode()).hexdigest()[:8])
                 with self.assertRaises(engine.IntakeRejected) as caught:
                     engine.configure(self.source, self.fixture_variant(question_id, answer), output,
                                      "accounting", seat_registry={})
-                self.assertIn("minimum", caught.exception.render())
+                self.assertIn("maximum", caught.exception.render())
                 self.assertFalse(output.exists())
 
-    def test_named_accounting_legal_clock_requires_its_labeled_line(self):
-        print("ARMED: accounting legal clock rejects an earlier unrelated numeral")
-        output = self.tmp / "unlabeled-clock"
+    def test_named_accounting_multiple_jurisdiction_clocks_reject_loudly(self):
+        print("ARMED: multi-jurisdiction clocks reject instead of flattening to one value")
+        output = self.tmp / "multiple-jurisdiction-clocks"
         fixture = self.fixture_variant(
-            "A1", "Use 2 reminder attempts; the counsel-confirmed grace period is 5 days."
+            "A1", "Pine Basin County: 5 days\n  Cedar Mesa County: 7 days\n  Counsel confirmed both."
         )
         with self.assertRaises(engine.IntakeRejected) as caught:
             engine.configure(self.source, fixture, output, "accounting", seat_registry={})
-        self.assertIn("labeled integer line 'Late fee grace days'", caught.exception.render())
+        self.assertIn("multiple jurisdiction grace clocks are not supported", caught.exception.render())
+        self.assertIn("per-jurisdiction capability", caught.exception.render())
         self.assertFalse(output.exists())
+
+    def test_named_accounting_single_jurisdiction_clock_configures_exactly(self):
+        print("ARMED: one counsel-confirmed grace clock configures exactly")
+        output = self.tmp / "single-jurisdiction-clock"
+        engine.configure(self.source, self.fixture_variant(
+            "A1", "Late fee grace days: 6\n  Counsel confirmed the one supported clock."
+        ), output, "accounting", seat_registry={})
+        self.assertEqual(json.loads((output / "config.json").read_text())[
+            "late_fee_grace_days"], 6)
 
     def test_named_accounting_deferred_money_value_rejects_before_activation(self):
         print("ARMED: unresolved accounting money sentinel names B1 and writes nothing")

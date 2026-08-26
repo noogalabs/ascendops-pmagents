@@ -171,7 +171,8 @@ def validate(path: Path, seat: str):
         path,
         SUPPORTED[seat]["question_ids"],
         cover_fields=cover_fields_for_seat(seat),
-        semantic_profile="maintenance" if seat == "maintenance-coordinator" else "structural",
+        semantic_profile=("maintenance" if seat == "maintenance-coordinator"
+                          else "accounting" if seat == "accounting" else "structural"),
     )
 
 

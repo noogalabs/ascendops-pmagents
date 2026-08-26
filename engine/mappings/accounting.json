@@ -121,7 +121,7 @@
       "source": "B1",
       "extractor": "currency",
       "value_type": "integer",
-      "minimum": 1,
+      "minimum": 0,
       "mode": "create"
     },
     {
@@ -181,6 +181,7 @@
       "label": "Owner draw deadline day",
       "value_type": "integer",
       "minimum": 1,
+      "maximum": 31,
       "mode": "create"
     },
     {
@@ -190,6 +191,7 @@
       "label": "Owner draw target day",
       "value_type": "integer",
       "minimum": 1,
+      "maximum": 31,
       "mode": "create"
     },
     {
@@ -199,6 +201,7 @@
       "label": "Owner statement release day",
       "value_type": "integer",
       "minimum": 1,
+      "maximum": 31,
       "mode": "create"
     },
     {

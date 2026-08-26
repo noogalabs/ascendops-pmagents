@@ -25,7 +25,11 @@ generic platform flow is retained; its PM-assist-only routing tail is replaced
 under Dane's explicit extension with a mapping-derived accounting boundary:
 the seven declared `never_graduate` gates remain human-executed after approval.
 The source and adapted destination hashes remain separate in provenance, and a
-named casualty bans every absent PM-assist routing skill.
+named casualty bans every absent PM-assist routing skill. A second custody
+casualty derives all 29 accounting `included-product` rows from the TSV,
+requires the complete artifact-167..195 set, and recomputes every destination
+hash against the shipped bytes; an adapted-file edit can no longer leave a
+stale provenance claim behind.
 
 The QAd mapping table targeted that draft tree. Its semantic question-to-value
 rows survive; destination anchors were retargeted to the classroom package.
@@ -96,8 +100,12 @@ literals and their config keys do not ship. As with the leasing X2 and BD
 day-mode dispositions, no holderless row is fabricated; holderless pointer state
 and pointer-grain window extraction return through PR13b.
 
-Twenty runtime accounting numbers land as typed integer config keys with a
-strict minimum of 1. Semantically ambiguous prose is never parsed with
+Twenty runtime accounting numbers land as typed integer config keys. The
+vendor-bill approval threshold permits 0 because that is the conservative
+policy in which every bill requires approval; the other typed values retain a
+strict minimum of 1. The two owner-draw calendar days and owner-statement
+release day also carry a maximum of 31, so an impossible day-of-month fails
+before activation. Semantically ambiguous prose is never parsed with
 `first_integer`: multi-number answers lead with exact labeled lines and use
 `labeled_integer`, while unambiguous money answers use `currency`. Accounting
 B3 now requires `Base reserve: NN`; its production casualty places a $650 owner
@@ -105,6 +113,14 @@ override before the labeled $400 base and proves `/reserve_floor` still lands
 400 rather than guessing the first currency. Percentage,
 fractional-month, multi-date, and explicit-none answers remain in the structured
 artifact rather than being coerced into a dishonest integer domain.
+
+A1 is truthfully limited to one jurisdiction-wide clock in this edition. The
+intake boundary rejects an answer containing multiple labeled jurisdiction
+clocks, names the limitation, and directs the operator to the tracked
+per-jurisdiction capability instead of flattening the first number into
+`/late_fee_grace_days`. A paired production casualty proves a single labeled
+clock still configures exactly. Task `task_1787744582233_11673934` owns the
+per-jurisdiction keyed carrier, questionnaire extension, and consuming rows.
 
 ## Inherited platform laws
 
@@ -136,11 +152,13 @@ artifact rather than being coerced into a dishonest integer domain.
   declared structured artifact, the boot read names it, and every classroom
   placeholder is consumed.
 - Exact cross-seat pointer/check/gate sets and AF-2/AF-3 dispositions.
-- Exact typed-config key set, fixture-to-config values, zero rejection for a
-  labeled timeline and a money threshold, and unresolved B1 rejection before
-  any output write.
-- Provenance source/destination hashes recomputed for every classroom file.
-- Accounting 23/23, engine 92/92, sibling editions 26/5/20/13, zero-touch
+- Exact typed-config key set, fixture-to-config values, valid zero-dollar
+  always-review policy, impossible day-32 rejection on all three calendar-day
+  fields, loud multi-jurisdiction refusal plus a single-clock regression, and unresolved B1 rejection
+  before any output write.
+- Provenance source/destination hashes recomputed for every accounting product
+  row, including every adapted destination.
+- Accounting 30/30, engine 92/92, sibling editions 26/5/20/13, zero-touch
   28/28, review sweeps 6/6, plus manifest, hygiene, leak, and exact-head CI.
 
 ## Shared-file boundary

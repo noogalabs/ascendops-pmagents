@@ -35,7 +35,7 @@ Where a question offers a common default, the default is a starting point, not l
 ### Group A: State Rules
 A1. How many days must rent be late before a late fee may be posted?
 
-Hint: Grace periods are set by state law in most jurisdictions; the agent will not flag a missing late fee before this day. Confirm with counsel. Begin the answer with an exact line `Late fee grace days: NN`.
+Hint: This edition currently supports one jurisdiction-wide grace clock. Begin the answer with an exact line `Late fee grace days: NN` and confirm it with counsel. If your portfolio has different grace clocks by jurisdiction, setup rejects that answer and directs you to wait for the tracked per-jurisdiction capability rather than choosing one clock.
 
 Answer: ________________________________________
 
