@@ -55,6 +55,24 @@ class CrossSeatTests(unittest.TestCase):
         self.assertNotIn("deposit_deadline", result.current["cross_seat"]["held"])
         self.assertNotIn("value", pointer)
 
+    def test_named_resolved_pointer_digest_tracks_live_owner_value_without_copying_it(self):
+        print("ARMED: removing resolved value_sha256 breaks owner-value custody symmetry")
+        first = cross_seat.apply(
+            self.current, self.mapping(),
+            {"maintenance-coordinator": self.owner(answer="30 days")},
+            engine_version="1.1.0",
+        ).current["cross_seat"]["pointers"]["deposit_deadline"]
+        second = cross_seat.apply(
+            self.current, self.mapping(),
+            {"maintenance-coordinator": self.owner(answer="31 days")},
+            engine_version="1.1.0",
+        ).current["cross_seat"]["pointers"]["deposit_deadline"]
+        self.assertEqual(first["value_sha256"], cross_seat._digest("30 days"))
+        self.assertEqual(second["value_sha256"], cross_seat._digest("31 days"))
+        self.assertNotEqual(first["value_sha256"], second["value_sha256"])
+        self.assertNotIn("value", first)
+        self.assertNotIn("value", second)
+
     def test_named_fact_pointer_owner_absent_holds_once_and_names_pending_owner(self):
         result = cross_seat.apply(self.current, self.mapping(), {}, engine_version="1.1.0")
         held = result.current["cross_seat"]["held"]["deposit_deadline"]

@@ -264,7 +264,7 @@ def apply(current, mapping, registry, *, engine_version):
         if owner in peers:
             try:
                 owner_schema = _validate_peer_version(owner, peers[owner], engine_version)
-                _read_pointer(peers[owner], owner_path)
+                owner_value = _read_pointer(peers[owner], owner_path)
             except (KeyError, IndexError, TypeError, ValueError, CrossSeatRejected) as exc:
                 detail = exc.failures if isinstance(exc, CrossSeatRejected) else str(exc)
                 failures.append((f"cross_seat.pointers.{name}", f"owner value unresolvable: {detail}")); continue
@@ -274,6 +274,7 @@ def apply(current, mapping, registry, *, engine_version):
                 "owner_question_id": owner_question,
                 "state": "resolved",
                 "resolved_owner_schema": owner_schema,
+                "value_sha256": _digest(owner_value),
             }
         else:
             try:
