@@ -204,10 +204,11 @@ Answer: $1,500. At or above it a second person signs off before the payment is r
 
 B3. What reserve floor do you hold per property or per owner, and which owners have a different number in their management agreement?
 
-Hint: Common range: $300 to $500. The management agreement governs; list every per-owner override.
+Hint: Lead with `Base reserve: NN` on its own line. Common range: $300 to $500. The management agreement governs; list every per-owner override after that line.
 
-Answer: $400 base reserve floor per property. Fictional owner overrides written into their management
-  agreements: Juniper Holdings $650, Northstar Homes $250. This is a cash floor that must remain
+Answer: Base reserve: 400
+  Fictional owner overrides written into their management agreements: Juniper Holdings $650,
+  Northstar Homes $250. This is a cash floor that must remain
   in the owner's ledger, not a spend-approval threshold; it is not the same number as, and must
   not be reconciled against, the maintenance B1 overrides ($700 / $300) or the turnover C1
   overrides ($750 / $350).

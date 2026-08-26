@@ -8,6 +8,17 @@ status: reference
 
 # Bookkeeping Agent Setup Questionnaire
 
+# Configuration Cover Sheet
+
+Company name: ________________________________________
+Org short-name: ________________________________________
+Forward email: ________________________________________
+Timezone: ________________________________________
+
+Answer format: Put each response on its `Answer:` line. For a multi-line response,
+indent every continuation line by two spaces; indented lines belong to the preceding
+answer until the next questionnaire heading or question begins.
+
 ## Bookkeeping Agent Setup Questionnaire
 Residential Property Management, Platform-Agnostic. The setup interview that turns the generic bookkeeping and accounting agent into your company's agent.
 
@@ -139,7 +150,7 @@ Answer: ________________________________________
 
 B3. What reserve floor do you hold per property or per owner, and which owners have a different number in their management agreement?
 
-Hint: Common range: $300 to $500. The management agreement governs; list every per-owner override.
+Hint: Lead with `Base reserve: NN` on its own line. Common range: $300 to $500. The management agreement governs; list every per-owner override after that line.
 
 Answer: ________________________________________
 

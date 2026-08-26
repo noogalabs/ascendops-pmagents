@@ -146,6 +146,21 @@ class AccountingConfiguratorTests(unittest.TestCase):
         ]
         self.assertEqual(missing, [])
 
+    def test_named_accounting_approval_boundary_derives_from_never_graduate_mapping(self):
+        print("ARMED: accounting approval routing is mapping-derived and never PM-assist-specific")
+        mapping = json.loads(MAPPING.read_text())
+        approval = (SOURCE / ".claude/skills/approvals/SKILL.md").read_text()
+        for row in mapping["cross_seat"]["never_graduate"]:
+            with self.subTest(gate_id=row["gate_id"]):
+                self.assertIn(f"`{row['gate_id']}`", approval)
+                self.assertIn(row["reason"], approval)
+        for stale in (
+            "Property Manager's Assistant", "draft-release-gate",
+            "escalation-triage", "broker-escalation",
+        ):
+            self.assertNotIn(stale, approval)
+        self.assertIn("approval is not execution", approval)
+
     def test_named_accounting_completion_preserves_five_custody_properties(self):
         print("ARMED: accounting completion is gated, rollback-safe, durable, and heartbeat-last")
         onboarding = (SOURCE / "ONBOARDING.md").read_text()
@@ -178,17 +193,16 @@ class AccountingConfiguratorTests(unittest.TestCase):
     def test_named_accounting_marker_blocks_crons_and_durable_completion(self):
         print("ARMED: an unfilled accounting identity marker refuses crons and .onboarded")
         agent = self.tmp / "agent"
-        shutil.copytree(SOURCE, agent)
+        engine.configure(self.source, FIXTURE, agent, "accounting", seat_registry={})
+        identity = agent / "IDENTITY.md"
+        identity.write_text(
+            '<!-- Set during onboarding: deliberately reintroduced casualty -->\n'
+            + identity.read_text()
+        )
         blocks = re.findall(
             r"(?m)^([ \t]*)```bash\n(.*?)\n\1```$", (agent / "ONBOARDING.md").read_text(), re.S
         )
         self.assertEqual(len(blocks), 1)
-        self.assertIn(
-            "if grep -rlE '\\{\\{[^{}]+\\}\\}|<!-- Set during onboarding' . "
-            "--include='*.md' --include='*.json' 2>/dev/null | grep -vE "
-            "'ONBOARDING\\.md|README\\.md|skills/onboarding/|node_modules'; then",
-            blocks[0][1],
-        )
         state_root = self.tmp / "state-root"
         env = {"CTX_ROOT": str(state_root), "CTX_AGENT_NAME": "accounting"}
         result = subprocess.run(["bash"], input=blocks[0][1], text=True, cwd=agent,
@@ -198,6 +212,12 @@ class AccountingConfiguratorTests(unittest.TestCase):
                       result.stdout)
         self.assertFalse((state_root / "state" / "accounting" / ".onboarded").exists())
         self.assertNotIn("cortextos: command not found", result.stderr)
+        self.assertIn(
+            "if grep -rlE '\\{\\{[^{}]+\\}\\}|<!-- Set during onboarding' . "
+            "--include='*.md' --include='*.json' 2>/dev/null | grep -vE "
+            "'ONBOARDING\\.md|README\\.md|skills/onboarding/|node_modules'; then",
+            blocks[0][1],
+        )
 
     def test_named_accounting_companion_claim_matches_shipped_reality(self):
         print("ARMED: accounting companion claim says no separate documents ship")
@@ -329,6 +349,55 @@ class AccountingConfiguratorTests(unittest.TestCase):
             "owner_draw_target_day": 10, "owner_statement_release_day": 12,
             "deposit_chargeback_per_line": 150, "deposit_chargeback_per_unit": 400,
         })
+
+    def test_named_accounting_reserve_floor_uses_labeled_base_not_earlier_override(self):
+        print("ARMED: accounting B3 extracts the labeled base reserve, never an earlier override")
+        output = self.tmp / "reserve-label"
+        fixture = self.fixture_variant(
+            "B3",
+            "Juniper override $650.\n  Base reserve: 400\n  Northstar override $250.",
+        )
+        engine.configure(self.source, fixture, output, "accounting", seat_registry={})
+        config = json.loads((output / "config.json").read_text())
+        self.assertEqual(config["reserve_floor"], 400)
+
+    def test_named_accounting_guided_setup_preserves_b8_labeled_multiline_values(self):
+        print("ARMED: real accounting guided setup preserves both B8 labeled values")
+        parsed = engine.validate(FIXTURE, "accounting")
+        answers = self.tmp / "guided-accounting.md"
+        output = self.tmp / "guided-accounting-output"
+        responses = list(parsed.raw_cover.values()) + [
+            parsed.raw_answers[q] for q in engine.SUPPORTED["accounting"]["question_ids"]
+        ]
+        terminated = [item for response in responses for item in (response, "")]
+        seat_number = next(number for number, row in enumerate(setup.SEATS, 1)
+                           if row["id"] == "accounting")
+        scripted = iter([
+            str(seat_number), str(self.source), str(output), "1", str(answers),
+            *terminated,
+        ])
+        self.assertEqual(setup.run_setup(
+            ask=lambda _prompt: next(scripted), out=io.StringIO(),
+            clock=lambda: datetime.date(2026, 8, 26),
+        ), 0)
+        config = json.loads((output / "config.json").read_text())
+        self.assertEqual(
+            (config["owner_draw_deadline_day"], config["owner_draw_target_day"]),
+            (15, 10),
+        )
+        rendered = answers.read_text()
+        self.assertIn("Answer: [documented] Owner draw deadline day: 15\n"
+                      "  Owner draw target day: 10", rendered)
+
+    def test_named_accounting_onboarding_wiring_is_identical_across_surfaces(self):
+        print("ARMED: accounting first boot carries the complete Telegram wiring triple")
+        required = {"BOT_TOKEN", "CHAT_ID", "ALLOWED_USER"}
+        for relative in ("ONBOARDING.md", ".claude/skills/onboarding/SKILL.md"):
+            text = (self.source / relative).read_text()
+            with self.subTest(relative=relative):
+                self.assertEqual({name for name in required if f"`{name}`" in text}, required)
+        skill = (self.source / ".claude/skills/onboarding/SKILL.md").read_text()
+        self.assertIn("allowed sender id", skill)
 
     def test_named_accounting_zero_numeric_values_reject_before_activation(self):
         print("ARMED: zero timeline and money values reject before accounting writes")

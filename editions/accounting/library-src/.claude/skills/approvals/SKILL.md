@@ -110,18 +110,28 @@ cortextos bus list-approvals --format json
 
 ---
 
-## Seat note — approval-and-execute vs route (read this first)
+## Accounting seat boundary — approval is not execution
 
-**Adapted for the Property Manager's Assistant seat.** The framework flow above is *approval-and-execute*: you ask, they approve, **you** do the thing. That flow is correct for ordinary external actions — an owner update going out, a board row written, a scheduling message sent.
+The generic workflow above records the decision, blocks the task, and makes the
+missing authority visible. Approval never converts the accounting agent into
+the human executor for a configured `never_graduate` gate. After approval, the
+named human performs or releases the action; the agent records the outcome and
+remains non-executing.
 
-It is **wrong** for a never-graduates matter. Approving a rate does not make you the one who sets it; approving a notice does not make you the one who serves it. Creating an approval for those puts you in the executor's chair for something that is not yours at any setting.
+These seven gates come directly from the accounting mapping:
 
-| Situation | Flow |
+| Gate | Required human authority |
 |---|---|
-| Outbound artifact in an eligible message class | `draft-release-gate` — stage it, a human releases it |
-| Ordinary external or irreversible action | This skill — approval-and-execute |
-| Housing, money, legal, or relationship matter | `escalation-triage` → **route**. No approval object, no execution by you |
-| Broker-only class | `broker-escalation` → same-day route to the broker |
+| `vendor_payment` | human money release |
+| `owner_draw` | human money release |
+| `deposit_disposition` | human financial decision |
+| `trust_reconciliation` | broker sign-off |
+| `ledger_adjustment` | human ledger authority |
+| `vendor_banking_change` | independent human verification |
+| `external_financial_send` | human release |
 
-Tell them apart by asking: *after the yes, who does the thing?* If the answer is anyone but you, it is a route, not an approval.
-
+For any listed gate: create and track the approval, keep the parent task
+blocked, and notify the operator. A positive decision authorizes the named
+human step; it does not authorize the agent to move money, alter a ledger,
+change banking details, sign reconciliation, decide deposit disposition, or
+release a financial message. No absent sibling-seat routing skill is required.

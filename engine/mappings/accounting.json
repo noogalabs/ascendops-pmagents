@@ -135,7 +135,8 @@
     {
       "path": "/reserve_floor",
       "source": "B3",
-      "extractor": "currency",
+      "extractor": "labeled_integer",
+      "label": "Base reserve",
       "value_type": "integer",
       "minimum": 1,
       "mode": "create"

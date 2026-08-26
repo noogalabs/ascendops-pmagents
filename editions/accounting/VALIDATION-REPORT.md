@@ -20,9 +20,12 @@ placeholder spelling, session-start structured-config custody, guided-only
 setup, and verify-not-reenter first boot. The mapping-owned `seat-config.json`
 baseline and edition tests are product-native, not falsely attributed to the
 classroom source. The larger in-fan draft is not shipped.
-Artifact 195 records the separately reviewed, byte-identical approval workflow
-import. It closes the classroom rent-posting skill's dangling money-gate
-reference without inventing a new approval procedure.
+Artifact 195 records the separately reviewed approval workflow import. Its
+generic platform flow is retained; its PM-assist-only routing tail is replaced
+under Dane's explicit extension with a mapping-derived accounting boundary:
+the seven declared `never_graduate` gates remain human-executed after approval.
+The source and adapted destination hashes remain separate in provenance, and a
+named casualty bans every absent PM-assist routing skill.
 
 The QAd mapping table targeted that draft tree. Its semantic question-to-value
 rows survive; destination anchors were retargeted to the classroom package.
@@ -30,7 +33,7 @@ Production configuration, the declared-consumer sweep, and the named runtime
 retarget casualty prove those values reach the actual shipped tree.
 
 The nine shipped skills are dispositioned exhaustively: `ap-vendor-payments`,
-`approvals`,
+`approvals` (mapping-derived platform adaptation),
 `ar-rent-posting`, `owner-draws`, `owner-statement-drafting`,
 `security-deposit-accounting`, `trust-compliance`, and `trust-reconciliation`
 remain byte-identical to classroom custody; `onboarding` is the one adapted
@@ -96,7 +99,10 @@ and pointer-grain window extraction return through PR13b.
 Twenty runtime accounting numbers land as typed integer config keys with a
 strict minimum of 1. Semantically ambiguous prose is never parsed with
 `first_integer`: multi-number answers lead with exact labeled lines and use
-`labeled_integer`, while unambiguous money answers use `currency`. Percentage,
+`labeled_integer`, while unambiguous money answers use `currency`. Accounting
+B3 now requires `Base reserve: NN`; its production casualty places a $650 owner
+override before the labeled $400 base and proves `/reserve_floor` still lands
+400 rather than guessing the first currency. Percentage,
 fractional-month, multi-date, and explicit-none answers remain in the structured
 artifact rather than being coerced into a dishonest integer domain.
 
@@ -106,7 +112,8 @@ artifact rather than being coerced into a dishonest integer domain.
   structured config before work.
 - README routes only through repository `setup.py`; manual placeholder setup is
   banned.
-- First boot verifies configured values, collects deployment credentials only,
+- First boot verifies configured values, collects the complete deployment-only
+  `BOT_TOKEN` / `CHAT_ID` / `ALLOWED_USER` wiring triple,
   and uses the canonical role-crons -> durable marker -> heartbeat transaction.
 - The executable final gate refuses both cron registration and `.onboarded`
   while any rendered placeholder or identity marker remains.
@@ -122,6 +129,9 @@ artifact rather than being coerced into a dishonest integer domain.
 - Content-divergent maintenance fixture rejected before writes.
 - Original accounting AKIA blast shape rejected before either config or
   onboarding output exists.
+- FINAL GATE behavior executes the shipped Bash block against a fully configured
+  tree with only the identity marker deliberately reintroduced; placeholder
+  residue cannot substitute for the marker subject under test.
 - Destination-retarget proof: configured semantic answers are present in the
   declared structured artifact, the boot read names it, and every classroom
   placeholder is consumed.

@@ -37,10 +37,11 @@ silently substitute accounting answers during first boot.
 
 ## 3. Add deployment-only wiring
 
-The only values first boot may collect are the Telegram bot token and chat id.
-Keep them in the agent's private environment file, never a tracked file. If new
-credentials were loaded in the current process, restart so the daemon reads
-them before continuing.
+The only values first boot may collect are the Telegram bot token, chat id, and
+allowed sender id. Store all three as `BOT_TOKEN`, `CHAT_ID`, and
+`ALLOWED_USER` in the agent's private environment file, never a tracked file.
+If new credentials were loaded in the current process, restart so the daemon
+reads them before continuing.
 
 Do not ask for accounting-platform credentials or API keys. Live platform
 connections are separate, approval-gated work.
