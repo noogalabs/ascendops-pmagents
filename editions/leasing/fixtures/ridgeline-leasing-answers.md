@@ -176,12 +176,13 @@ Answer: Lease-end notice to vacate: 30 days written notice from the tenant. Mont
   30 days from the tenant and 30 days from Ridgeline, the same period in each direction.
   Confirmed with counsel for this fictional scenario.
 
-B3. What is your non-renewal notice period and required delivery method?
+B3. What is your non-renewal notice period and required delivery method? Begin the answer with a labeled numeric line: `Notice days: NN`.
 
-Hint: Commonly 30 to 60 days. The property manager or the attorney serves non-renewal notices, never the agent. Confirm with counsel.
+Hint: The first line must be `Notice days: NN`, using the confirmed integer notice period (commonly 30 to 60 days). Put delivery methods and service ownership on following lines. The property manager or the attorney serves non-renewal notices, never the agent. Confirm with counsel.
 
-Answer: 30 days before the lease end date, delivered by first-class mail and email together, with
-  proof of mailing retained in the unit record. Dana Wren or Ridgeline's attorney serves every
+Answer: Notice days: 30
+  Delivered by first-class mail and email together, with proof of mailing retained in the unit record.
+  Dana Wren or Ridgeline's attorney serves every
   non-renewal notice; the agent never serves one and never drafts one for direct send.
   Confirmed with counsel for this fictional scenario.
 

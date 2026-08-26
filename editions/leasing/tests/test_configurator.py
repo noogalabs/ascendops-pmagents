@@ -74,12 +74,12 @@ class LeasingEditionTests(unittest.TestCase):
         self.assertFalse((self.tmp / "wrong").exists())
 
     def test_named_each_declared_seam_type_fires_when_peer_present(self):
-        print("ARMED: POLICY_DIVERGE is the only currently expressible leasing seam check")
+        print("ARMED: incomparable platform and escalation prose checks stay absent")
         mapping = json.loads(MAPPING.read_text())
-        self.assertEqual({row["type"] for row in mapping["cross_seat"]["checks"]},
-                         {"POLICY_DIVERGE"})
-        self.assertNotIn("platform-fact",
-                         {row["check_id"] for row in mapping["cross_seat"]["checks"]})
+        checks = {row["check_id"] for row in mapping["cross_seat"]["checks"]}
+        self.assertEqual(checks, set())
+        self.assertNotIn("platform-fact", checks)
+        self.assertNotIn("escalation-policy", checks)
 
     def test_named_onboarding_gate_precedes_every_heartbeat_instruction(self):
         print("ARMED: leasing first boot gates heartbeat until onboarding completes")
@@ -215,6 +215,27 @@ class LeasingEditionTests(unittest.TestCase):
         self.assertIn("/renewal_offer_lead_days", agents)
         self.assertIn("/renewal_response_window_days", agents)
         self.assertRegex(agents, r"surface the conflicting configured\s+values")
+
+    def test_named_b3_notice_days_label_controls_configured_floor(self):
+        print("ARMED: B3 notice floor comes from the labeled numeric line")
+        questionnaire = (EDITION / "answers-format.md").read_text()
+        self.assertIn("Notice days: NN", questionnaire)
+        parsed = engine.validate(FIXTURE, "leasing-coordinator")
+        self.assertTrue(parsed.raw_answers["B3"].startswith("Notice days: 30\n"))
+        output = self.tmp / "labeled-notice-days"
+        self.configure(output)
+        agents = (output / "AGENTS.md").read_text()
+        self.assertRegex(agents, re.compile(
+            r"configured B3 non-renewal notice floor .*?-->30<!--.*?days\)", re.S))
+
+    def test_named_readme_routes_members_through_guided_setup(self):
+        print("ARMED: README advertises the complete guided setup path")
+        readme = (SOURCE / "README.md").read_text()
+        self.assertIn("python3 setup.py", readme)
+        self.assertIn("leasing-config.json", readme)
+        for stale in ("## Setup (manual)", "replace the placeholders",
+                      "cortextos add-agent", "engine/engine.py"):
+            self.assertNotIn(stale, readme)
 
     def test_named_companion_claim_matches_shipped_library(self):
         print("ARMED: companion claim names only the shipped leasing documents")

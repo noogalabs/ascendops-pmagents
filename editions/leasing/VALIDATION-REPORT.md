@@ -31,14 +31,15 @@ criminal-history assessment, legal notice, lease send/execution, and renewal off
 - Move-out inspection ownership points to turnover D2 per turnover `SEAM-2`. Absent owner: held, never guessed.
 - The communications-window pointer is absent until maintenance B8 is present; leasing C5 is explicitly rejected as a fallback by leasing table `X2`.
 - The unrelated prose-valued notice `ORDERING` row is absent; neither leasing table `X2` nor turnover `SEAM-2` mandates it.
-- The POLICY_DIVERGE check is declared with report severity; missing peers remain
-  inert-safe/unbacked under existing engine semantics.
+- The former escalation `POLICY_DIVERGE` row is absent. Leasing D10 combines
+  channels and recipients, while maintenance D6 names channels only; comparing
+  those differently shaped prose answers would manufacture contradictions.
 - The former platform `FACT_MATCH` row is absent. The sealed maintenance payload
   exposes only raw `/answers/D1`, not a normalized platform field, while declared
   measures are validated but not applied by the current shared engine. Comparing
   the two prose answers would report a false contradiction. Shared measure
   application is therefore owned by the canonical-engine successor; the normalized
-  leasing row returns only after that capability lands.
+  leasing platform and escalation rows return only after that capability lands.
 
 ## Armed validation
 
@@ -104,6 +105,22 @@ that floor. The fixture values are 60, 10, and 30; a production-configured varia
 with lead 35 renders 35, 10, and 30 into the stop. Configure-time declarative
 cross-field rejection is booked separately as `task_1787714841791_24557986` after
 the shared PR13 capability work; the member seat does not invent engine machinery.
+
+B3 now requires the first answer line to use the labeled form `Notice days: NN`.
+The fixture begins `Notice days: 30`, and the named production test proves the
+configured `non_renewal_notice_days` value is 30. A repository census finds exactly
+one live mapping declaration of `first_integer`, this leasing B3 row. The remaining
+limitation is explicit: arbitrary nonconforming prose can still expose the wrong
+number until PR13a adds a loud `labeled_integer` extractor and the leasing mapping
+adopts it in its follow-up.
+
+## Supported member setup
+
+The README names `python3 setup.py` as the supported member path and identifies
+`leasing-config.json` as the generated source of truth. The former four-placeholder
+manual instructions were incapable of satisfying the final completeness sweep and
+are removed. The shared engine CLI is deliberately not advertised until PR13a fixes
+its empty-seat-registry default.
 
 ## Companion-document truth
 

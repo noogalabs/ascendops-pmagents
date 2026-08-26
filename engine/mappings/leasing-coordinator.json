@@ -42,9 +42,7 @@
       {"value_name":"deposit_disposition_deadline","owner_seat":"maintenance-coordinator","owner_question_id":"A3","holding_question_id":"B1","owner_value_path":"/answers/A3"},
       {"value_name":"move_out_inspection_owner","owner_seat":"turnover-coordinator","owner_question_id":"D2","holding_question_id":"B9","owner_value_path":"/answers/D2"}
     ],
-    "checks": [
-      {"check_id":"escalation-policy","type":"POLICY_DIVERGE","doctrine":"POLICY_DIVERGE","local_ref":"/answers/D10","peer_seat":"maintenance-coordinator","peer_ref":"/answers/D6","severity":"report"}
-    ],
+    "checks": [],
     "never_graduate": [
       {"gate_id":"housing_decision","question_id":"D7","reason":"human housing decision"},
       {"gate_id":"criminal_assessment","question_id":"A5","reason":"individualized human review"},

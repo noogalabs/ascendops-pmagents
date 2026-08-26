@@ -145,9 +145,9 @@ Hint: A 30-day month-to-month notice is a common working value. Confirm with cou
 
 Answer: ________________________________________
 
-B3. What is your non-renewal notice period and required delivery method?
+B3. What is your non-renewal notice period and required delivery method? Begin the answer with a labeled numeric line: `Notice days: NN`.
 
-Hint: Commonly 30 to 60 days. The property manager or the attorney serves non-renewal notices, never the agent. Confirm with counsel.
+Hint: The first line must be `Notice days: NN`, using the confirmed integer notice period (commonly 30 to 60 days). Put delivery methods and service ownership on following lines. The property manager or the attorney serves non-renewal notices, never the agent. Confirm with counsel.
 
 Answer: ________________________________________
 

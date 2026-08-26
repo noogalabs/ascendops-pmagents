@@ -11,20 +11,11 @@ The agent is intentionally copilot-first:
 - It flags risk, missing data, and fair-housing exposure.
 - It never sends an applicant a decision, executes or sends a lease, sends a renewal offer, or sends any applicant- or resident-facing message without human approval.
 
-Before use, replace the placeholders in the bootstrap files:
-- `{{agent_name}}`
-- `{{company_name}}`
-- `{{operator_name}}`
-- `{{timezone}}`
+## Supported setup
 
-## Setup (manual)
+From the PMAgents repository root, run `python3 setup.py`, choose **Leasing Coordinator**, and answer the guided prompts. Setup validates the complete answer set and writes the declared `leasing-config.json` source of truth alongside the configured library.
 
-This template ships with placeholders, not a guided setup wizard yet. To stand it up:
-
-1. Unzip into your install's `templates/` folder and run `cortextos add-agent my-leasing --template leasing-coordinator-agent-template`.
-2. Replace the placeholders above in the bootstrap files (IDENTITY.md, SOUL.md, GOALS.md, AGENTS.md, CLAUDE.md, MEMORY.md, SYSTEM.md, TOOLS.md, USER.md, HEARTBEAT.md, GUARDRAILS.md, config.json, goals.json) with your own values.
-3. Put this agent's Telegram bot token and chat id in its `.env`.
-4. Start it: `cortextos start my-leasing`.
+Do not install this edition by manually replacing a short placeholder list. The guided setup is the supported path because it collects and validates every value required before activation.
 
 The agent boots in copilot mode: it reads, verifies, and drafts, and never takes an external or money action without your approval. Review the approval guardrails before you connect any live property-management system.
 
