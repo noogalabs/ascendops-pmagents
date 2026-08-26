@@ -246,6 +246,11 @@ class LeasingEditionTests(unittest.TestCase):
 
     def test_named_b3_notice_days_label_controls_configured_floor(self):
         print("ARMED: B3 notice floor comes from the labeled numeric line")
+        mapping = json.loads(MAPPING.read_text())
+        notice = next(row for row in mapping["placeholders"]
+                      if row["placeholder"] == "non_renewal_notice_days")
+        self.assertEqual((notice["extractor"], notice["label"]),
+                         ("labeled_integer", "Notice days"))
         questionnaire = (EDITION / "answers-format.md").read_text()
         self.assertIn("Notice days: NN", questionnaire)
         parsed = engine.validate(FIXTURE, "leasing-coordinator")
@@ -255,6 +260,41 @@ class LeasingEditionTests(unittest.TestCase):
         agents = (output / "AGENTS.md").read_text()
         self.assertRegex(agents, re.compile(
             r"configured B3 non-renewal notice floor .*?-->30<!--.*?days\)", re.S))
+
+    def test_named_b3_labeled_notice_rejects_earlier_unbound_number(self):
+        print("ARMED: labeled notice rejects the earlier-number legal-floor defect")
+        adversarial = self.fixture_variant(
+            "B3", "Use 2 delivery methods at least 60 days before lease end.")
+        output = self.tmp / "unlabeled-notice"
+        with self.assertRaises(engine.IntakeRejected) as caught:
+            self.configure(output, answers=adversarial)
+        self.assertIn("labeled integer line 'Notice days': NN not found",
+                      str(caught.exception.failures))
+        self.assertFalse(output.exists())
+
+    def test_named_all_typed_leasing_cover_values_are_strictly_positive(self):
+        print("ARMED: all five typed leasing cover values reject zero before activation")
+        mapping = json.loads(MAPPING.read_text())
+        labels = {
+            "Prospect response SLA (minutes)": "/prospect_response_sla_minutes",
+            "Application decision SLA (business hours)": "/application_decision_sla_hours",
+            "Leasing approval threshold (USD)": "/leasing_approval_threshold_usd",
+            "Renewal offer lead (days)": "/renewal_offer_lead_days",
+            "Renewal response window (days)": "/renewal_response_window_days",
+        }
+        rows = {row["path"]: row for row in mapping["config_keys"]}
+        self.assertEqual({path: rows[path].get("minimum") for path in labels.values()},
+                         {path: 1 for path in labels.values()})
+        for label, path in labels.items():
+            with self.subTest(path=path):
+                answers = self.cover_variant(label, "0")
+                output = self.tmp / f"zero-{path.rsplit('/', 1)[-1]}"
+                with self.assertRaises(engine.IntakeRejected) as caught:
+                    self.configure(output, answers=answers)
+                self.assertIn(f"mapping.config_keys.{path}",
+                              str(caught.exception.failures))
+                self.assertIn("below minimum 1", str(caught.exception.failures))
+                self.assertFalse(output.exists())
 
     def test_named_readme_routes_members_through_guided_setup(self):
         print("ARMED: README advertises the complete guided setup path")
