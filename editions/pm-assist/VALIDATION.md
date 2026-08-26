@@ -28,3 +28,27 @@ the engine's absent-owner hold state. The configured seat records the pending ow
 and its local holding answer without activating or fabricating the peer value.
 FACT_MATCH, POLICY_DIVERGE, and ORDERING checks are registered independently and
 remain inert with `peer_absent` until the maintenance seat is supplied.
+
+### Per-seam engine disposition
+
+The table register is richer than the edition's executable cross-seat mapping.
+Every table seam is therefore dispositioned explicitly; absence from
+`engine/mappings/pm-assist.json` is never silent.
+
+| Table seam | Engine disposition | Reason |
+|---|---|---|
+| SEAM-1 deposit disposition | Registered | Pointer to maintenance A3, held fail-closed when the owner seat is absent. |
+| SEAM-8 owner approval threshold | Registered | `pm-assist-owner-threshold` reports the declared cross-seat difference. |
+| SEAM-11 property manager of record | Registered | `pm-assist-property-manager-policy` preserves legitimate per-seat policy divergence. |
+| SEAM-12 backup decision-maker | Folded | PM-assist owns its local backup policy; an empty answer becomes a visible phase-zero item rather than a peer pointer. |
+| SEAM-15 platform of record | Registered | Pointer to maintenance D1, held fail-closed when absent. |
+| SEAM-16 channels and sender identity | Folded | The shared channel fact is represented by the platform pointer; sender identity remains install-local policy. |
+| SEAM-17 escalation channels and hours | Folded | Broker escalation channel and same-day hours are PM-assist-owned policy, not a unifiable peer value. |
+| SEAM-19 timezone and day-mode window | Folded | Install timezone and day-mode values are written through the edition's config keys; this edition declares no competing owner value. |
+| SEAM-33 entry notice | Registered | Pointer to maintenance A2, held fail-closed when absent. |
+| SEAM-34 renewal clocks | Folded | PM pipeline windows and leasing execution clocks are nested but independently owned; no equality assertion is valid. |
+| SEAM-35 reserve floor | Deferred | `held_pending_seat: accounting`; richer accounting grain must own promotion without fabricating a peer value here. |
+| SEAM-36 leasing alert thresholds | Folded | Leasing owns execution clocks; PM-assist records only its alert surface, so no duplicate pointer is minted. |
+| SEAM-37 turnover escalation | Folded | Turnover owns board mechanics while PM-assist owns the escalation landing; this is a split workflow, not a shared scalar. |
+| B12 maintenance SLA pointer | Registered | Pointer to maintenance B5, held fail-closed when absent. |
+| B14/C6 accounting split | Deferred | Accounting owns the richer trust-variance and financial-board decomposition; this edition records the local escalation policy pending that owner surface. |
