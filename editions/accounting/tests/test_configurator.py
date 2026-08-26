@@ -559,6 +559,7 @@ class AccountingConfiguratorTests(unittest.TestCase):
             "Georgia late fee grace period is 10 days.",
             "For Georgia, the late fee grace period is 10 calendar days.",
             "10 days late fee grace for Georgia.",
+            "Late fee grace period is 10 days in Georgia.",
         ), 1):
             with self.subTest(conflict=conflict):
                 output = self.tmp / f"prose-form-jurisdiction-clock-{index}"

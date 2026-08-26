@@ -173,7 +173,8 @@ county/parish/city/state/jurisdiction vocabulary, late-fee-grace semantics,
 and an integer day duration. Thus `Georgia late fee grace period is 10 days.`
 and `For Georgia, the late fee grace period is 10 calendar days.` reject;
 signal order is irrelevant, so `10 days late fee grace for Georgia.` also
-rejects. A Georgia deadline without late-fee-grace semantics, a generic grace
+rejects, as does the jurisdiction-last carrier `Late fee grace period is 10
+days in Georgia.` A Georgia deadline without late-fee-grace semantics, a generic grace
 discussion without a jurisdiction subject, and numeric prose without
 grace-clock meaning remain valid. `Counsel confirms this 5-day grace period.`
 remains valid. `Riverside grace
