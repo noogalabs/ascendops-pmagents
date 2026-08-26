@@ -43,5 +43,6 @@ The PM-assist edition was assembled from the reviewed property-manager questionn
 the QA-owned PM-assist mapping table, the fictional Ridgeline PM-assist fixture, and
 the reviewed 67-file PM-assist template package dated 2026-08-25. The product copy
 retains no org-private locator. The per-file manifest and TSV bind the imported
-questionnaire, fixture, mapping, and library tree to their product destinations;
-engine and setup changes are product-native and gain custody through exact-head CI.
+questionnaire, fixture, mapping, and library tree to their product destinations.
+The edition consumes the canonical shared engine and contributes only its
+registry row; shared runtime mechanics remain owned by the foundation PR.
