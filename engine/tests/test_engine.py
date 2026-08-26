@@ -4,6 +4,8 @@ import importlib.util
 import json
 import re
 import shutil
+import subprocess
+import sys
 import tempfile
 import unittest
 from datetime import date
@@ -334,13 +336,15 @@ class GlueEngineTests(unittest.TestCase):
         finally:
             engine.SUPPORTED.pop(seat, None)
 
-    def test_named_mapping_production_entry_supports_literal_and_first_integer(self):
-        print("ARMED: mapping production entry supports literal and first_integer extractors")
+    def test_named_mapping_production_entry_supports_literal_first_and_labeled_integer(self):
+        print("ARMED: mapping production entry supports literal, first_integer, and labeled_integer")
         cases = (
-            ("literal", {"source": "B1", "value": "day"}, "day"),
-            ("first_integer", {"source": "B1"}, "450"),
+            ("literal", {"source": "B1", "value": "day"}, "day", None),
+            ("first_integer", {"source": "B1"}, "450", None),
+            ("labeled_integer", {"source": "B1", "label": "Notice days"}, "60",
+             "Use 2 delivery methods.\n  Notice days: 60"),
         )
-        for kind, extra, expected in cases:
+        for kind, extra, expected, answer_value in cases:
             with self.subTest(extractor=kind):
                 seat = f"test-{kind}"
                 source = self.tmp / f"{seat}-source"
@@ -366,10 +370,50 @@ class GlueEngineTests(unittest.TestCase):
                 }
                 try:
                     output = self.tmp / f"{seat}-output"
-                    engine.configure(source, self.answers, output, seat)
+                    answers = self.answers
+                    if answer_value is not None:
+                        answers = self.tmp / f"{seat}-answers.md"
+                        answers.write_text(replace_answer(self.answers.read_text(), "B1", answer_value))
+                    engine.configure(source, answers, output, seat)
                     self.assertIn(expected, (output / "configured.txt").read_text())
                 finally:
                     engine.SUPPORTED.pop(seat, None)
+
+    def test_named_labeled_integer_missing_anchor_rejects_through_production_entry(self):
+        print("ARMED: labeled integer refuses an unanchored earlier numeral")
+        seat = "test-labeled-integer-missing"
+        source = self.tmp / f"{seat}-source"
+        shutil.copytree(self.source, source)
+        (source / "configured.txt").write_text("value={{configured_value}}\n")
+        answers = self.tmp / f"{seat}-answers.md"
+        answers.write_text(replace_answer(
+            self.answers.read_text(), "B1", "Use 2 delivery methods and allow 60 days"
+        ))
+        mapping = self.tmp / f"{seat}-mapping.json"
+        mapping.write_text(json.dumps({
+            "schema_version": 1,
+            "placeholders": [{
+                "placeholder": "configured_value", "source": "B1",
+                "extractor": "labeled_integer", "label": "Notice days",
+            }],
+            "config_keys": [],
+        }))
+        engine.SUPPORTED[seat] = {
+            "library_id": f"{seat}-2026-08-26",
+            "answers": answers,
+            "library": DEMO / "library-src",
+            "mapping": mapping,
+            "question_ids": list(engine.load_core().QUESTION_IDS),
+            "runner": "mapping",
+        }
+        output = self.tmp / f"{seat}-output"
+        try:
+            with self.assertRaises(engine.IntakeRejected) as caught:
+                engine.configure(source, answers, output, seat, seat_registry={})
+            self.assertIn("Notice days", caught.exception.render())
+            self.assertFalse(output.exists())
+        finally:
+            engine.SUPPORTED.pop(seat, None)
 
     def test_named_unknown_mapping_extractor_fails_closed_before_output(self):
         print("ARMED: unknown mapping extractor fails closed before output")
@@ -403,6 +447,117 @@ class GlueEngineTests(unittest.TestCase):
             self.assertFalse(output.exists())
         finally:
             engine.SUPPORTED.pop(seat, None)
+
+    def test_named_mapping_consumed_unresolved_answers_block_all_types_before_output(self):
+        print("ARMED: every mapping-consumed unresolved answer blocks activation")
+        edition = HERE.parent / "editions" / "leasing"
+        fixture = edition / "fixtures" / "ridgeline-leasing-answers.md"
+        cases = (
+            ("A2", lambda text: replace_answer(text, "A2", "[NEEDS-DAVID] Confirm later")),
+            ("A3", lambda text: replace_answer(text, "A3", "[NEEDS-DAVID] Confirm later")),
+            ("D2", lambda text: replace_answer(text, "D2", "[NEEDS-DAVID] Confirm later")),
+            ("B8", lambda text: replace_answer(text, "B8", "[NEEDS-DAVID] Confirm later")),
+            ("cover.renewal_response_window_days", lambda text: re.sub(
+                r"^Renewal response window \(days\):.*$",
+                "Renewal response window (days): [NEEDS-DAVID] Confirm later",
+                text,
+                count=1,
+                flags=re.M,
+            )),
+        )
+        for field, mutate in cases:
+            with self.subTest(field=field):
+                answers = self.tmp / (field.replace(".", "-") + ".md")
+                answers.write_text(mutate(fixture.read_text()))
+                output = self.tmp / (field.replace(".", "-") + "-output")
+                with self.assertRaises(engine.IntakeRejected) as caught:
+                    engine.configure(
+                        edition / "library-src", answers, output, "leasing-coordinator",
+                        seat_registry={},
+                    )
+                rendered = caught.exception.render()
+                self.assertIn(field, rendered)
+                self.assertIn("confirmed answer and rerun setup", rendered)
+                self.assertFalse(output.exists())
+
+    def test_named_typed_config_key_domains_reject_negative_and_zero_and_accept_valid(self):
+        print("ARMED: typed config-key minimum rejects negative and zero values")
+        seat = "test-domain"
+        fixture, mapping_path = self.register_custom_mapping_seat(seat)
+        mapping = json.loads(mapping_path.read_text())
+        mapping["config_keys"] = [{
+            "path": "/response_days", "source": "B1", "extractor": "first_integer",
+            "value_type": "integer", "mode": "create", "minimum": 1,
+        }]
+        mapping_path.write_text(json.dumps(mapping))
+        try:
+            for value in (-10, 0):
+                with self.subTest(value=value):
+                    answers = self.tmp / f"domain-{value}.md"
+                    answers.write_text(replace_answer(fixture.read_text(), "B1", str(value)))
+                    output = self.tmp / f"domain-{value}-output"
+                    with self.assertRaises(engine.IntakeRejected) as caught:
+                        engine.configure(engine.SUPPORTED[seat]["library"], answers, output, seat,
+                                         seat_registry={})
+                    self.assertIn("/response_days", caught.exception.render())
+                    self.assertIn("below minimum 1", caught.exception.render())
+                    self.assertFalse(output.exists())
+            valid = self.tmp / "domain-valid.md"
+            valid.write_text(replace_answer(fixture.read_text(), "B1", "3"))
+            output = self.tmp / "domain-valid-output"
+            engine.configure(engine.SUPPORTED[seat]["library"], valid, output, seat,
+                             seat_registry={})
+            self.assertEqual(json.loads((output / "config.json").read_text())["response_days"], 3)
+        finally:
+            engine.SUPPORTED.pop(seat, None)
+
+    def test_named_real_cli_cross_seat_and_default_maintenance_paths_exit_zero(self):
+        print("ARMED: real CLI supplies an empty peer registry and preserves default seat")
+        cases = (
+            ("pm-assist", HERE.parent / "editions" / "pm-assist", ["--seat", "pm-assist"]),
+        )
+        for label, edition, extra in cases:
+            with self.subTest(path=label):
+                fixture = next((edition / "fixtures").glob("ridgeline-*-answers.md"))
+                output = self.tmp / f"cli-{label}"
+                result = subprocess.run(
+                    [sys.executable, str(HERE / "engine.py"), str(edition / "library-src"),
+                     str(fixture), str(output), *extra],
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertTrue((output / "seat-config.json").is_file())
+        maintenance = HERE.parent / "editions" / "maintenance"
+        source = self.tmp / "cli-maintenance-source"
+        shutil.copytree(HERE / "tests" / "fixtures" / "raw-maintenance-template", source)
+        substitutions = {
+            "agent_name": "ridge-maint",
+            "org": "ridgeline",
+            "current_timestamp": "2026-08-25T00:00:00Z",
+            "upstream_update_minute": "17",
+        }
+        for path in source.rglob("*"):
+            if not path.is_file() or path.is_symlink():
+                continue
+            try:
+                text = path.read_text()
+            except UnicodeDecodeError:
+                continue
+            for name, value in substitutions.items():
+                text = text.replace("{{" + name + "}}", value)
+            path.write_text(text)
+        output = self.tmp / "cli-maintenance"
+        result = subprocess.run(
+            [sys.executable, str(HERE / "engine.py"), str(source),
+             str(maintenance / "fixtures" / "ridgeline-maintenance-answers.md"), str(output)],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue((output / "seat-config.json").is_file())
 
 
 if __name__ == "__main__":

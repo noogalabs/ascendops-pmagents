@@ -1,12 +1,13 @@
 """Mapping-table-driven managed placeholder application and rerun."""
 from __future__ import annotations
-import json, re
+import json, math, re
 from pathlib import Path
 
 TOKEN = re.compile(r"\{\{([a-zA-Z0-9_]+)\}\}")
 PRESERVED_RUNTIME_TOKENS = {"CTX_ROOT"}
+UNRESOLVED_MARKER = re.compile(r"\[NEEDS-(?:D[A-Z]{4}|CONFIRM)\]", re.I)
 SUPPORTED_EXTRACTORS = {
-    "currency", "emergency_minutes", "first_integer", "first_person",
+    "currency", "emergency_minutes", "first_integer", "first_person", "labeled_integer",
     "identity", "literal", "maintenance_platform", "window_end", "window_start",
 }
 
@@ -46,6 +47,27 @@ def load_mapping(path: Path):
             failures.append((f"mapping.config_keys.{row.get('path')}", "mode must be replace or create"))
         if row.get("value_type", "string") not in {"string", "integer", "number", "boolean"}:
             failures.append((f"mapping.config_keys.{row.get('path')}", "unsupported value_type"))
+        kind = row.get("value_type", "string")
+        for bound in ("minimum", "maximum"):
+            if bound not in row:
+                continue
+            value = row[bound]
+            if kind not in {"integer", "number"}:
+                failures.append((f"mapping.config_keys.{row.get('path')}",
+                                 f"{bound} is only valid for numeric value types"))
+            elif isinstance(value, bool) or not isinstance(value, (int, float)):
+                failures.append((f"mapping.config_keys.{row.get('path')}",
+                                 f"{bound} must be a number"))
+            elif not math.isfinite(value):
+                failures.append((f"mapping.config_keys.{row.get('path')}",
+                                 f"{bound} must be finite"))
+        if (isinstance(row.get("minimum"), (int, float))
+                and not isinstance(row.get("minimum"), bool)
+                and isinstance(row.get("maximum"), (int, float))
+                and not isinstance(row.get("maximum"), bool)
+                and row["minimum"] > row["maximum"]):
+            failures.append((f"mapping.config_keys.{row.get('path')}",
+                             "minimum must not exceed maximum"))
         if row.get("value_from") not in {None, "pointer"}:
             failures.append((f"mapping.config_keys.{row.get('path')}", "value_from must be pointer"))
         if row.get("value_from") == "pointer" and not isinstance(row.get("pointer_name"), str):
@@ -58,6 +80,10 @@ def load_mapping(path: Path):
             if extractor == "literal" and not isinstance(row.get("value"), str):
                 failures.append((f"mapping.config_keys.{row.get('path')}",
                                  "literal extractor requires a string value"))
+            if (extractor == "labeled_integer"
+                    and (not isinstance(row.get("label"), str) or not row["label"].strip())):
+                failures.append((f"mapping.config_keys.{row.get('path')}",
+                                 "labeled_integer requires a string label"))
     if schema_version >= 2:
         timezone_rows = [row for row in config_rows if row.get("path") == "/timezone"]
         if len(timezone_rows) != 1:
@@ -79,6 +105,10 @@ def load_mapping(path: Path):
         if extractor == "literal" and not isinstance(row.get("value"), str):
             failures.append((f"mapping.{row.get('placeholder')}",
                              "literal extractor requires a string value"))
+        if (extractor == "labeled_integer"
+                and (not isinstance(row.get("label"), str) or not row["label"].strip())):
+            failures.append((f"mapping.{row.get('placeholder')}",
+                             "labeled_integer requires a string label"))
         sites = row.get("sites")
         if sites is None:
             continue
@@ -122,6 +152,16 @@ def extract(row, cover, answers, core):
         match = re.search(r"[-+]?\d[\d,]*", value)
         if not match: raise ValueError("integer value not found")
         return match.group(0).replace(",", "")
+    if kind == "labeled_integer":
+        label = row["label"]
+        match = re.search(
+            rf"^\s*{re.escape(label)}\s*:\s*([-+]?\d[\d,]*)\s*$",
+            value,
+            re.I | re.M,
+        )
+        if not match:
+            raise ValueError(f"labeled integer line {label!r}: NN not found")
+        return match.group(1).replace(",", "")
     if kind == "emergency_minutes":
         match = re.search(r"Emergency\s+dispatch(?:\s+within)?\s+(\d+)\s+minutes?", value, re.I)
         if not match: raise ValueError("Emergency dispatch minutes not found")
@@ -172,6 +212,8 @@ def _pointer_parent(data, pointer, *, create=False):
 
 
 def _typed_value(row, value):
+    if UNRESOLVED_MARKER.search(str(value)):
+        raise ValueError("unresolved answer must be confirmed before configuration")
     kind = row.get("value_type", "string")
     try:
         if kind == "string":
@@ -179,9 +221,11 @@ def _typed_value(row, value):
         if kind == "integer":
             if not re.fullmatch(r"[-+]?\d+", str(value).strip()):
                 raise ValueError("not an integer")
-            return int(value)
+            typed = int(value)
+            return _validate_numeric_domain(row, typed)
         if kind == "number":
-            return float(value)
+            typed = float(value)
+            return _validate_numeric_domain(row, typed)
         if kind == "boolean":
             if str(value).strip().lower() not in {"true", "false"}:
                 raise ValueError("not true or false")
@@ -189,6 +233,41 @@ def _typed_value(row, value):
     except (TypeError, ValueError) as exc:
         raise ValueError(f"cannot coerce {value!r} to {kind}: {exc}") from exc
     raise ValueError(f"unsupported value_type {kind}")
+
+
+def _validate_numeric_domain(row, value):
+    if not math.isfinite(value):
+        raise ValueError(f"value {value!r} must be finite")
+    if "minimum" in row and value < row["minimum"]:
+        raise ValueError(f"value {value!r} is below minimum {row['minimum']!r}")
+    if "maximum" in row and value > row["maximum"]:
+        raise ValueError(f"value {value!r} is above maximum {row['maximum']!r}")
+    return value
+
+
+def validate_consumed_values(mapping, raw_cover, raw_answers):
+    """Reject unresolved intake values consumed by mapping activation surfaces."""
+    failures = []
+    seen = set()
+    rows = list(mapping.get("placeholders", [])) + [
+        row for row in mapping.get("config_keys", []) if row.get("value_from") != "pointer"
+    ]
+    for row in rows:
+        if row.get("extractor") == "literal":
+            continue
+        source = row.get("source")
+        if not isinstance(source, str) or source in seen:
+            continue
+        seen.add(source)
+        value = (raw_cover.get(source.split(".", 1)[1])
+                 if source.startswith("cover.") else raw_answers.get(source))
+        if value is not None and UNRESOLVED_MARKER.search(value):
+            failures.append((
+                source,
+                "configuration incomplete: replace the unresolved marker with a confirmed answer and rerun setup",
+            ))
+    if failures:
+        raise PlaceholderRejected(failures)
 
 
 def _plan_config_keys_initial(root, mapping, cover, answers, core):
@@ -292,13 +371,19 @@ def apply_initial(root: Path, mapping, cover, answers, core):
             if count != site["count"]:
                 failures.append((f"mapping.{name}.site.{site['file']}",
                                  f"expected {site['count']} occurrence(s), found {count}"))
+    values = {}
+    for name, row in rows.items():
+        try:
+            values[name] = extract(row, cover, answers, core)
+        except (KeyError, TypeError, ValueError) as exc:
+            failures.append((f"mapping.{name}", f"value extraction failed: {exc}"))
     if failures: raise PlaceholderRejected(failures)
     config_path, config_manifest = _plan_config_keys_initial(
         root, mapping, cover, answers, core
     )
     manifest = []
     for name, row in rows.items():
-        value = extract(row, cover, answers, core)
+        value = values[name]
         for path in sorted(set(occurrences[name])):
             relative = str(path.relative_to(root)); token = "{{" + name + "}}"
             if path.suffix == ".json":
@@ -393,7 +478,11 @@ def apply_rerun(root: Path, mapping, cover, answers, core, old_manifest):
         path = root / file_name
         if not path.is_file():
             failures.append((f"manifest.{name}", f"managed file is missing: {item['file']}")); continue
-        value = extract(row, cover, answers, core)
+        try:
+            value = extract(row, cover, answers, core)
+        except (KeyError, TypeError, ValueError) as exc:
+            failures.append((f"manifest.{name}", f"value extraction failed: {exc}"))
+            continue
         if separator:
             data = json.loads(path.read_text()); node = data
             parts = [part.replace("~1", "/").replace("~0", "~") for part in pointer.split("/")[1:]]

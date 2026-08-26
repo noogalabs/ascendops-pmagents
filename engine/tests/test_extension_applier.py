@@ -506,6 +506,35 @@ class ExtensionApplierTests(unittest.TestCase):
         finally:
             engine.SUPPORTED["maintenance-coordinator"]["mapping"] = original
 
+    def test_named_pointer_numeric_domain_rejects_out_of_range_fallback(self):
+        print("ARMED: pointer-backed numeric config rows enforce the declared domain")
+        mapping = json.loads(engine.SUPPORTED["maintenance-coordinator"]["mapping"].read_text())
+        mapping["cross_seat"] = {"pointers": [{
+            "value_name": "turn_target", "owner_seat": "leasing",
+            "owner_question_id": "B1", "holding_question_id": "A3",
+            "owner_value_path": "/answers/B1",
+        }]}
+        mapping["config_keys"].append({
+            "path": "/turn_target_days", "value_from": "pointer",
+            "pointer_name": "turn_target", "fallback": "-10",
+            "value_type": "integer", "mode": "create", "minimum": 1,
+        })
+        mapping_path = self.tmp / "pointer-domain-mapping.json"
+        mapping_path.write_text(json.dumps(mapping))
+        original = engine.SUPPORTED["maintenance-coordinator"]["mapping"]
+        engine.SUPPORTED["maintenance-coordinator"]["mapping"] = mapping_path
+        try:
+            source = self.tmp / "pointer-domain-source"; prepare_raw(source)
+            output = self.tmp / "pointer-domain-output"
+            with self.assertRaises(engine.IntakeRejected) as caught:
+                engine.configure(source, FIXTURE, output, "maintenance-coordinator", seat_registry={})
+            rendered = caught.exception.render()
+            self.assertIn("mapping.config_keys./turn_target_days", rendered)
+            self.assertIn("below minimum 1", rendered)
+            self.assertFalse(output.exists())
+        finally:
+            engine.SUPPORTED["maintenance-coordinator"]["mapping"] = original
+
 
 if __name__ == "__main__":
     print("ARMED: schema-v2 timezone sourcing and deterministic extension golden")
