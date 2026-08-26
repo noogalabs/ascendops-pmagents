@@ -129,7 +129,7 @@ edition actually ships: `Leasing Message Template Library.md` and
 `Renewal and Rent-Increase Workflow.md`. The introductory and next-step prose was
 narrowed at the same time so no board, process, or judgment-guide artifact is implied.
 Whether to ship the eight absent documents—including the two inspection checklists—is held as the contract decision
-`task_1787714841847_37341306`; no sanitization or authoring begins without a GO. If
+`task_1787718258364_71764421`; no sanitization or authoring begins without a GO. If
 approved, the work requires its own owner-source hygiene bar. The
 companion-claim test pins both current carriers and asserts all six absent names stay
 absent until that successor deliberately ships them.
