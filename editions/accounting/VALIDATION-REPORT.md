@@ -178,6 +178,9 @@ county/parish/city/state/jurisdiction nouns. Exclusive casualties prove that
 `Riverside late fee grace period is 10 days.` is caught by the phrase branch
 and `Georgia grace period is 10 days.` by the vocabulary branch; DC, Puerto
 Rico, and Guam are also armed. One-leg-absent prose remains valid.
+`Riverside grace period is 10 days.` is an accepted residual because an
+unlisted place name without the literal late-fee phrase is indistinguishable
+from benign prose without the deferred per-jurisdiction carrier.
 The fleet member-hygiene gate treats any report named in the member-visible
 manifest as member content: the `-REPORT.md` exemption applies only to internal
 reports, and a planted task id in a visible report kills the gate.
