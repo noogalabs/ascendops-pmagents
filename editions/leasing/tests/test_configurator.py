@@ -91,23 +91,28 @@ class LeasingEditionTests(unittest.TestCase):
         self.assertIn("Do not continue into Session Start", agents)
 
     def test_named_onboarding_failure_cannot_leave_heartbeat_live(self):
-        print("ARMED: onboarding registers heartbeat last and rolls back every cron on failure")
+        print("ARMED: heartbeat registration follows the durable onboarding marker")
         onboarding = (SOURCE / "ONBOARDING.md").read_text()
         heartbeat = onboarding.index('add-cron "$CTX_AGENT_NAME" heartbeat')
+        marker = onboarding.index('touch "$CTX_ROOT/state/$CTX_AGENT_NAME/.onboarded"')
+        self.assertLess(marker, heartbeat)
         for name in (
             "applicant-screening-digest", "renewal-window-am", "renewal-window-pm",
             "lease-abstraction-intake", "fair-housing-presend-sweep",
         ):
             self.assertLess(onboarding.index(f'add-cron "$CTX_AGENT_NAME" {name}'), heartbeat)
-        failure = onboarding.split("|| {", 1)[1]
+        failure = onboarding.split("  else\n", 1)[1]
         self.assertIn("ROLLBACK", failure)
         self.assertIn('rm -f "$CTX_ROOT/state/$CTX_AGENT_NAME/.onboarded"', failure)
         self.assertIn('remove-cron "$CTX_AGENT_NAME" "$c"', failure)
         for name in (
-            "heartbeat", "applicant-screening-digest", "renewal-window-am",
+            "applicant-screening-digest", "renewal-window-am",
             "renewal-window-pm", "lease-abstraction-intake", "fair-housing-presend-sweep",
         ):
             self.assertIn(name, failure)
+        self.assertNotIn("for c in heartbeat", failure)
+        self.assertIn("durably marked complete but heartbeat registration failed", onboarding)
+        self.assertIn("Re-run this block", onboarding)
         self.assertLess(failure.index("rm -f"), failure.index("STOP:"))
         self.assertLess(failure.index("remove-cron"), failure.index("STOP:"))
 
@@ -244,6 +249,7 @@ class LeasingEditionTests(unittest.TestCase):
             "Leasing Process End to End", "The Leasing Board Full System Design",
             "Leasing Coordinator Judgment Guide", "CMA Process and Owner Conversation Scripts",
             "Tenant Offer and Negotiation Scripts", "Leasing Board Template spreadsheet",
+            "Pre-Move-Out Inspection Checklist", "Move-Out Inspection Checklist",
         )
         for path in (EDITION / "answers-format.md", FIXTURE):
             text = path.read_text()
@@ -253,6 +259,17 @@ class LeasingEditionTests(unittest.TestCase):
                 self.assertNotIn(name, text)
         shipped = {path.stem for path in SOURCE.glob("*.md")}
         self.assertTrue(set(claimed).issubset(shipped))
+
+    def test_named_shadow_mode_never_promises_unshipped_autonomy(self):
+        print("ARMED: shadow-mode outcome matches permanent copilot approval policy")
+        banned = ("Autonomy widens by consequence", "graduate to autonomous send",
+                  "graduates to autonomous send")
+        for path in (EDITION / "answers-format.md", FIXTURE):
+            text = path.read_text()
+            self.assertIn("remains a copilot after shadow mode", text)
+            self.assertIn("a human approves every external message", text)
+            for phrase in banned:
+                self.assertNotIn(phrase, text)
 
     def test_named_compliance_promises_reach_value_bound_runtime_gates(self):
         print("ARMED: A1 D2 and B8 compliance promises reach value-bound runtime gates")

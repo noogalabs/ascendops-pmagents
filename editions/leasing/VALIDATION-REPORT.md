@@ -128,7 +128,7 @@ The questionnaire and filled fixture now name only the two companion documents t
 edition actually ships: `Leasing Message Template Library.md` and
 `Renewal and Rent-Increase Workflow.md`. The introductory and next-step prose was
 narrowed at the same time so no board, process, or judgment-guide artifact is implied.
-Whether to ship the six absent documents is held as the contract decision
+Whether to ship the eight absent documents—including the two inspection checklists—is held as the contract decision
 `task_1787714841847_37341306`; no sanitization or authoring begins without a GO. If
 approved, the work requires its own owner-source hygiene bar. The
 companion-claim test pins both current carriers and asserts all six absent names stay
@@ -136,15 +136,24 @@ absent until that successor deliberately ships them.
 
 ## Onboarding failure-path custody
 
-The completion chain registers the heartbeat cron only after the other five role
-crons, then rolls back all six cron names before printing STOP if any later cron,
-listing, file, directory, or marker operation fails. This prevents a partial run
-from leaving a live heartbeat that can write state while `.onboarded` is absent.
-`test_named_onboarding_failure_cannot_leave_heartbeat_live` pins both directions:
-heartbeat is last among the add-cron lines, and the failure branch removes every
-declared cron and deletes `.onboarded` before its STOP. A Bash execution harness for an instruction file is
+The completion chain registers the heartbeat cron only after the durable `.onboarded`
+marker. A kill or power loss before the marker therefore leaves no state-writing cron;
+a termination after the marker but before heartbeat registration is benign and a rerun
+recreates the cron set idempotently. Pre-marker failures remove the five role crons and
+the marker, while post-marker heartbeat failure preserves the marker and loudly asks for
+a rerun. `test_named_onboarding_failure_cannot_leave_heartbeat_live` pins marker-before-
+heartbeat ordering and both failure scopes. A Bash execution harness for an instruction file is
 outside this content-only edition boundary; textual ordering plus the documented
 retro-write invariant is the enforcement grain for member prose.
+
+## Promise truth at questionnaire boundaries
+
+B9 now asks the operator to record the approved inspection process and checklist
+location without claiming this edition ships either inspection checklist. The two
+checklists join the six companion artifacts in the owner-authorization decision lane.
+The post-shadow text now states the shipped permanent copilot posture: a human approves
+every external message, and any future message-class change requires an explicit policy
+and runtime change. The named test bans the former autonomous-graduation promise.
 
 ## CI edition-suite census
 

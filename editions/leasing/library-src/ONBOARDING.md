@@ -176,7 +176,7 @@ else
   # that exists pre-completion reopens the daemon retro-write trigger
   # (agent-process.ts existsSync(heartbeatPath)) and the agent is marked onboarded
   # WITHOUT its role crons. The MEMORY.md <!-- --> strip + touch .onboarded are the
-  # final &&-chained steps on purpose.
+  # durable completion boundary. Heartbeat registration happens only afterward.
   # Idempotent: clear any crons left by a prior partial run so re-running this
   # block is safe (add-cron errors on a duplicate name).
   for c in heartbeat applicant-screening-digest renewal-window-am renewal-window-pm lease-abstraction-intake fair-housing-presend-sweep; do cortextos bus remove-cron "$CTX_AGENT_NAME" "$c" 2>/dev/null; done
@@ -185,18 +185,19 @@ else
     && cortextos bus add-cron "$CTX_AGENT_NAME" renewal-window-pm "0 17 * * 1-5" "Run renewals-coordinator in evening mode: surface changed renewal flags and deadline pressure only." \
     && cortextos bus add-cron "$CTX_AGENT_NAME" lease-abstraction-intake "0 9 * * 1-5" "Run lease-abstraction on any newly received leases: extract terms into structured data and flag missing, ambiguous, or contradictory clauses." \
     && cortextos bus add-cron "$CTX_AGENT_NAME" fair-housing-presend-sweep "30 8 * * *" "Run fair-housing-guard over any pending applicant- or resident-facing drafts and screening criteria before anything is surfaced." \
-    && cortextos bus add-cron "$CTX_AGENT_NAME" heartbeat "2h" "Read HEARTBEAT." \
     && cortextos bus list-crons "$CTX_AGENT_NAME" \
     && grep -vF '<!-- This memory is written during onboarding and as you work. It starts empty on purpose. -->' MEMORY.md > MEMORY.md.tmp && mv MEMORY.md.tmp MEMORY.md \
     && mkdir -p "$CTX_ROOT/state/$CTX_AGENT_NAME" \
-    && touch "$CTX_ROOT/state/$CTX_AGENT_NAME/.onboarded" \
-    && echo "onboarding complete: configured, crons added, online" \
-    || {
-      # ROLLBACK: a partial failure must leave no recurring job able to write state.
-      rm -f "$CTX_ROOT/state/$CTX_AGENT_NAME/.onboarded"
-      for c in heartbeat applicant-screening-digest renewal-window-am renewal-window-pm lease-abstraction-intake fair-housing-presend-sweep; do cortextos bus remove-cron "$CTX_AGENT_NAME" "$c" 2>/dev/null; done
-      echo "STOP: onboarding completion failed (see the error above). All six crons were removed and .onboarded was NOT written - fix the issue and re-run this block."
-    }
+    && touch "$CTX_ROOT/state/$CTX_AGENT_NAME/.onboarded"; then
+      cortextos bus add-cron "$CTX_AGENT_NAME" heartbeat "2h" "Read HEARTBEAT." \
+        && echo "onboarding complete: configured, crons added, online" \
+        || echo "STOP: onboarding is durably marked complete but heartbeat registration failed. Re-run this block; it removes and recreates the cron set idempotently."
+  else
+    # ROLLBACK: pre-marker failure removes only the role crons created in this attempt.
+    rm -f "$CTX_ROOT/state/$CTX_AGENT_NAME/.onboarded"
+    for c in applicant-screening-digest renewal-window-am renewal-window-pm lease-abstraction-intake fair-housing-presend-sweep; do cortextos bus remove-cron "$CTX_AGENT_NAME" "$c" 2>/dev/null; done
+    echo "STOP: onboarding completion failed before the durable marker (see the error above). Role crons were removed and .onboarded was NOT written - fix the issue and re-run this block."
+  fi
 fi
 ```
 

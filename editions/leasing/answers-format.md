@@ -183,7 +183,7 @@ Answer: ________________________________________
 
 B9. Does your company conduct a pre-move-out walkthrough inspection while the tenant still occupies the unit, and if yes, who conducts it?
 
-Hint: Answer Y or N, and if yes name the seat that performs it. Some states, for example California, require offering a pre-move-out inspection on the tenant's request; confirm with counsel. This optional walkthrough happens roughly 1 to 2 weeks before move-out and is separate from the binding move-out inspection done after the unit is vacant. If your company runs one, the Pre-Move-Out Inspection Checklist in this library covers it; if not, the company goes straight to the Move-Out Inspection Checklist.
+Hint: Answer Y or N, and if yes name the seat that performs it. Some states, for example California, require offering a pre-move-out inspection on the tenant's request; confirm with counsel. This optional walkthrough happens roughly 1 to 2 weeks before move-out and is separate from the binding move-out inspection done after the unit is vacant. Record the approved inspection process and checklist location; this edition does not ship inspection checklist artifacts.
 
 Answer: ________________________________________
 
@@ -257,7 +257,7 @@ Answer: ________________________________________
 
 D6. What is the outbound identity for prospect communications: SMS number, email identity, and sender persona?
 
-Hint: A common practice while a new agent proves itself: outbound goes under an approved company persona with pre-send review until a message class graduates to autonomous send.
+Hint: Outbound goes under an approved company persona with human pre-send review. This shipped edition does not autonomously send external messages.
 
 Answer: ________________________________________
 
@@ -290,7 +290,7 @@ Your answers do three things, in order:
 
 - The configured agent gets your values. Your Group A criteria, Group B clocks, and Group C showing rules become the configuration and operational instructions its checks, time clocks, and escalation flags read from.
 - The agent boots in shadow mode. For about the first week the agent runs the daily board sweep silently, drafts every message it would have sent, and reports a calibration digest to the people you named in Group D. Nothing outbound, no actions. Shadow mode ends when a week of drafts matches what the property manager would have sent.
-- Autonomy widens by consequence. Prospect replies, showing scheduling, and file chasing graduate to autonomous send one message class at a time as they prove clean, lowest consequence first. Some gates never graduate at any setting: application approvals and denials, adverse action notices, legal notices, money and committed terms, holds, and key or code release. Those always end with a human.
+- The agent remains a copilot after shadow mode: it prepares prospect replies, showing schedules, and file-chasing drafts, and a human approves every external message. Any future change to a message class requires an explicit operator-and-owner policy decision and a corresponding runtime configuration change. Application approvals and denials, adverse action notices, legal notices, money and committed terms, holds, and key or code release always end with a human.
 
 Keep the answers current. When a criterion, a person, a property, or a platform changes, the config changes the same day; the questionnaire is a living document, not a one-time form.
 
