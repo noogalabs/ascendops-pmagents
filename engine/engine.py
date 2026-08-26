@@ -26,6 +26,7 @@ ENGINE_VERSION = "1.1.0"
 ROOT = Path(__file__).resolve().parents[1]
 MAINTENANCE_EDITION = ROOT / "editions" / "maintenance"
 PM_ASSIST_EDITION = ROOT / "editions" / "pm-assist"
+LEASING_EDITION = ROOT / "editions" / "leasing"
 SEALED_CORE = MAINTENANCE_EDITION / "configure_agent.py"
 SEALED_CORE_SHA256 = "0540ea08aa8d47ecb1aebbb7f51db85c5a67ab252172804e9ba24e56c2403551"
 SUPPORTED = {
@@ -43,6 +44,14 @@ SUPPORTED = {
         "library": PM_ASSIST_EDITION / "library-src",
         "mapping": Path(__file__).resolve().parent / "mappings" / "pm-assist.json",
         "question_ids": [*(f"A{i}" for i in range(1, 11)), *(f"B{i}" for i in range(1, 15)), *(f"C{i}" for i in range(1, 9)), *(f"D{i}" for i in range(1, 10))],
+        "runner": "mapping",
+    },
+    "leasing-coordinator": {
+        "library_id": "leasing-2026-08-25",
+        "answers": LEASING_EDITION / "answers-format.md",
+        "library": LEASING_EDITION / "library-src",
+        "mapping": Path(__file__).resolve().parent / "mappings" / "leasing-coordinator.json",
+        "question_ids": [*(f"A{i}" for i in range(1, 15)), *(f"B{i}" for i in range(1, 10)), *(f"C{i}" for i in range(1, 7)), *(f"D{i}" for i in range(1, 11))],
         "runner": "mapping",
     },
 }

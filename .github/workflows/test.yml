@@ -23,5 +23,15 @@ jobs:
         run: python3 -m unittest discover -s engine/tests -p 'test_*.py'
       - name: Guided zero-touch setup suite
         run: python3 -m unittest -v tests.test_zero_touch_setup
-      - name: Sealed maintenance configurator suite
-        run: python3 -m unittest editions/maintenance/tests/test_configurator.py
+      - name: Manifest generator custody suite
+        run: python3 -m unittest -v tests.test_manifest_generation
+      - name: Every edition configurator suite
+        run: |
+          set -euo pipefail
+          found=0
+          for suite in editions/*/tests; do
+            [ -d "$suite" ] || continue
+            found=1
+            python3 -m unittest discover -s "$suite" -p 'test_*.py' -v
+          done
+          test "$found" -eq 1

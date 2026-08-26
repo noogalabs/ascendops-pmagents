@@ -46,3 +46,14 @@ retains no org-private locator. The per-file manifest and TSV bind the imported
 questionnaire, fixture, mapping, and library tree to their product destinations.
 The edition consumes the canonical shared engine and contributes only its
 registry row; shared runtime mechanics remain owned by the foundation PR.
+
+## Leasing edition
+
+The leasing edition was assembled from the mapping-owner-reviewed leasing table,
+the fictional Ridgeline leasing fixture, the reviewed leasing questionnaire, and
+the 29-file leasing and renewals template package. The renewal workflow and
+message-library carriers were imported from owner-reviewed operating-library
+sources, stripped of org-private metadata, and bound as artifacts 151–152. Its
+five additional cover fields are declared in mapping data and consumed by the canonical engine. The
+edition contributes only its registry row; shared runtime mechanics remain owned
+by the foundation PR.
