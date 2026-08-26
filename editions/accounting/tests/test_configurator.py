@@ -555,18 +555,33 @@ class AccountingConfiguratorTests(unittest.TestCase):
 
     def test_named_accounting_prose_form_jurisdiction_clock_rejects_loudly(self):
         print("ARMED: prose-form jurisdiction grace clock cannot silently flatten")
-        output = self.tmp / "prose-form-jurisdiction-clock"
-        fixture = self.fixture_variant(
-            "A1",
-            "Late fee grace days: 5\n"
-            "  Georgia late fee grace period is 10 days.\n"
-            "  Counsel confirmed both jurisdictions.",
-        )
-        with self.assertRaises(engine.IntakeRejected) as caught:
-            engine.configure(self.source, fixture, output, "accounting", seat_registry={})
-        self.assertIn("A1 accepts exactly one structured day-count line",
-                      caught.exception.render())
-        self.assertFalse(output.exists())
+        for index, conflict in enumerate((
+            "Georgia late fee grace period is 10 days.",
+            "For Georgia, the late fee grace period is 10 calendar days.",
+        ), 1):
+            with self.subTest(conflict=conflict):
+                output = self.tmp / f"prose-form-jurisdiction-clock-{index}"
+                fixture = self.fixture_variant(
+                    "A1",
+                    "Late fee grace days: 5\n"
+                    f"  {conflict}\n"
+                    "  Counsel confirmed both jurisdictions.",
+                )
+                with self.assertRaises(engine.IntakeRejected) as caught:
+                    engine.configure(self.source, fixture, output, "accounting",
+                                     seat_registry={})
+                self.assertIn("A1 accepts exactly one structured day-count line",
+                              caught.exception.render())
+                self.assertFalse(output.exists())
+
+    def test_named_accounting_unlisted_place_grace_prose_is_accepted_residual(self):
+        print("ARMED: unlisted place prose remains outside the closed jurisdiction vocabulary")
+        output = self.tmp / "unlisted-place-grace-prose"
+        engine.configure(self.source, self.fixture_variant(
+            "A1", "Late fee grace days: 6\n  Riverside grace period is 10 days."
+        ), output, "accounting", seat_registry={})
+        self.assertEqual(json.loads((output / "config.json").read_text())[
+            "late_fee_grace_days"], 6)
 
     def test_named_accounting_single_punctuated_clock_preserves_raw_then_refuses_extraction(self):
         print("ARMED: punctuated canonical passes guard without rewriting raw extraction bytes")

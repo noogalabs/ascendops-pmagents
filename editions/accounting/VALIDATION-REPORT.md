@@ -158,10 +158,14 @@ loudly at raw labeled-integer extraction rather than silently rewriting input.
 Canonical-label qualifier classification is position-independent: prefix,
 suffix (`for Georgia`), and parenthetical (`(Georgia)`) qualifiers with a
 numeric value are scoped conflicts and reject rather than falling through.
-Prose-form jurisdiction clocks that combine late-fee-grace semantics with a
-numeric day count, such as `Georgia late fee grace period is 10 days.`, enter
-the same conflict set. Prose numerals without late-fee-grace semantics remain
-valid.
+Prose-form jurisdiction clocks enter the same conflict set only when all three
+signals are present: a subject from the closed 50-state or explicit
+county/parish/city/state/jurisdiction vocabulary, late-fee-grace semantics,
+and an integer day duration. Thus `Georgia late fee grace period is 10 days.`
+and `For Georgia, the late fee grace period is 10 calendar days.` reject, while
+`Counsel confirms this 5-day grace period.` remains valid. `Riverside grace
+period is 10 days.` is an accepted residual: an unlisted place name cannot be
+distinguished from benign prose without the deferred per-jurisdiction carrier.
 The fleet member-hygiene gate treats any report named in the member-visible
 manifest as member content: the `-REPORT.md` exemption applies only to internal
 reports, and a planted task id in a visible report kills the gate.
