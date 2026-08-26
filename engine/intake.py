@@ -108,7 +108,8 @@ def _validate_semantics(answers: dict[str, str], raw: dict[str, str], failures: 
             failures.append(("D9", "report time is outside 00:00-23:59"))
 
 
-def preflight(path: Path, question_ids: list[str]) -> IntakeResult:
+def preflight(path: Path, question_ids: list[str], *, cover_fields=None,
+              semantic_profile: str = "maintenance") -> IntakeResult:
     failures: list[tuple[str, str]] = []
     try:
         text = path.read_text(encoding="utf-8")
@@ -116,7 +117,8 @@ def preflight(path: Path, question_ids: list[str]) -> IntakeResult:
         raise IntakeRejected([("file", f"cannot read questionnaire as UTF-8: {exc}")]) from exc
 
     raw_cover: dict[str, str] = {}
-    for label, key in COVER_FIELDS.items():
+    active_cover_fields = COVER_FIELDS if cover_fields is None else cover_fields
+    for label, key in active_cover_fields.items():
         hits = re.findall(rf"^{re.escape(label)}:\s*(.*)$", text, re.M)
         if len(hits) != 1 or not (hits[0].strip(" _") if hits else ""):
             failures.append((f"cover.{label}", "required exactly once with a nonblank value"))
@@ -148,7 +150,8 @@ def preflight(path: Path, question_ids: list[str]) -> IntakeResult:
         cover[key], provenance[f"cover.{key}"] = _tagged(value, f"cover.{key}", failures)
     for question, value in raw_answers.items():
         answers[question], provenance[question] = _tagged(value, question, failures)
-    _validate_semantics(answers, raw_answers, failures)
+    if semantic_profile == "maintenance":
+        _validate_semantics(answers, raw_answers, failures)
     if failures:
         raise IntakeRejected(failures)
     return IntakeResult(text, cover, answers, raw_cover, raw_answers, provenance)
