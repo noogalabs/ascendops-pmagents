@@ -50,7 +50,7 @@ def questionnaire_fields(template: str, cover_fields=None) -> list[PromptField]:
         PromptField(f"cover.{label}", label, rf"^{re.escape(label)}:\s*.*$" )
         for label in active_cover_fields
     ]
-    for match in re.finditer(r"^([A-D]\d+)\.\s+(.+)$", template, re.M):
+    for match in engine.intake.QUESTION_HEADING.finditer(template):
         fields.append(PromptField(match.group(1), f"{match.group(1)}. {match.group(2)}", ""))
     return fields
 
@@ -64,7 +64,7 @@ def answer_values(text: str, cover_fields=None) -> dict[str, str]:
             values[f"cover.{label}"] = match.group(1).strip()
     current = None
     for line in text.splitlines():
-        question = re.match(r"^([A-D]\d+)\.\s", line)
+        question = engine.intake.QUESTION_LINE.match(line)
         if question:
             current = question.group(1)
         elif current and line.startswith("Answer:") and line.partition(":")[2].strip(" _"):
@@ -87,7 +87,7 @@ def atomic_text(path: Path, text: str) -> None:
 
 
 def rejection_rule(row: str, fields: dict[str, PromptField] | None = None):
-    if re.fullmatch(r"[A-D]\d+", row):
+    if engine.intake.QUESTION_ID.fullmatch(row):
         question = fields[row].label if fields and row in fields else row
         return (question, "the answer did not meet the question's required format", "Example: enter a confirmed answer, or use 'unsure' to confirm it later")
     if row.startswith("cover."):

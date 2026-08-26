@@ -131,6 +131,48 @@ class ZeroTouchSetupTests(unittest.TestCase):
         ) if field.key.startswith("cover.")]
         self.assertEqual(prompted, list(setup.engine.intake.COVER_FIELDS))
 
+    def test_named_guided_setup_collects_declared_e_questions(self):
+        print("ARMED: production guided setup collects declared E questions")
+        template = self.tmp / "e-question-answers-format.md"
+        template.write_text(
+            "Company name: ____________________\n"
+            "Org short-name: ____________________\n"
+            "Forward email: ____________________\n"
+            "Timezone: ____________________\n\n"
+            "E1. What is the turnover escalation rule?\n\n"
+            "Answer: ____________________\n"
+        )
+        answers = self.tmp / "e-question-answers.md"
+        seat = "test-e-question"
+        setup.engine.SUPPORTED[seat] = {
+            "library_id": "test-e-question-2026-08-26",
+            "answers": template,
+            "library": ROOT / "editions" / "maintenance" / "library-src",
+            "mapping": setup.engine.SUPPORTED["maintenance-coordinator"]["mapping"],
+            "question_ids": ["E1"],
+            "runner": "mapping",
+        }
+        try:
+            responses = iter([
+                "Example Company", "example", "ops@example.invalid", "America/Denver",
+                "Escalate after operator review",
+            ])
+            setup.guided_answers(answers, lambda _prompt: next(responses), io.StringIO(), seat)
+            text = answers.read_text()
+            self.assertIn("E1. What is the turnover escalation rule?", text)
+            self.assertIn("Answer: [documented] Escalate after operator review", text)
+            self.assertEqual(
+                setup.answer_values(text)["E1"],
+                "[documented] Escalate after operator review",
+            )
+            parsed = setup.engine.validate(answers, seat)
+            self.assertEqual(
+                parsed.raw_answers["E1"],
+                "[documented] Escalate after operator review",
+            )
+        finally:
+            setup.engine.SUPPORTED.pop(seat, None)
+
     def test_named_create_then_reconfigure_succeeds_through_wrapper(self):
         print("ARMED: wrapper create then reconfigure uses the production rerun entry")
         output = self.tmp / "configured"

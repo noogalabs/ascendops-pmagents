@@ -74,6 +74,28 @@ class IntakeTests(unittest.TestCase):
         self.assertEqual(result.provenance["D6"], "NEEDS-DAVID")
         self.assertTrue(result.answers["D6"].startswith("[NEEDS-DAVID]"))
 
+    def test_named_declared_e_question_parses_and_undeclared_id_rejects(self):
+        print("ARMED: declared E questions parse and undeclared question ids reject loudly")
+        text = self.path.read_text() + "\nE1. What is the turnover escalation rule?\n\nAnswer: [documented] Escalate after review.\n"
+        self.path.write_text(text)
+        parsed = intake.preflight(self.path, [*QIDS, "E1"])
+        self.assertEqual(parsed.raw_answers["E1"], "[documented] Escalate after review.")
+        with self.assertRaises(intake.IntakeRejected) as caught:
+            intake.preflight(self.path, QIDS)
+        self.assertIn(
+            ("E1", "question id is not declared for this edition"),
+            caught.exception.failures,
+        )
+
+    def test_named_question_id_consumers_use_the_canonical_surface(self):
+        print("ARMED: question-id consumers cannot regress to an A-D spelling")
+        for path in [
+            HERE / "intake.py",
+            HERE.parent / "setup.py",
+            HERE.parent / "tests" / "test_review_sweeps.py",
+        ]:
+            self.assertNotIn("[A-D]", path.read_text(), str(path))
+
 
 if __name__ == "__main__":
     print("ARMED: complete intake aggregation, semantic validation, and provenance")

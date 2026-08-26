@@ -4,18 +4,32 @@ import json
 import hashlib
 import re
 import subprocess
+import sys
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 ENGINE = ROOT / "engine"
+sys.path.insert(0, str(ENGINE))
+import intake  # noqa: E402
 MAPPINGS = ENGINE / "mappings"
 LEDGER = ENGINE / "edition-review-ledger.json"
 STANDARD_COVER = {"company_name", "org_short_name", "forward_email", "timezone"}
 PROMISE_WORDS = re.compile(
     r"\b(must|blocker|never|each|every|graduate|autonomous|automatically)\b", re.I
 )
-QUESTION = re.compile(r"^([A-D]\d+)\.")
+
+
+def questionnaire_sections(text):
+    current = "INTRO"
+    sections = {current: []}
+    for line in text.splitlines():
+        match = intake.QUESTION_LINE.match(line)
+        if match:
+            current = match.group(1)
+            sections.setdefault(current, [])
+        sections[current].append(line)
+    return sections
 
 
 def load_ledger():
@@ -106,14 +120,7 @@ class ReviewSweepTests(unittest.TestCase):
                           "graduate", "autonomous", "automatically"])
         for seat, row in ledger["editions"].items():
             questionnaire = ROOT / "editions" / row["edition"] / "answers-format.md"
-            current = "INTRO"
-            sections = {current: []}
-            for line in questionnaire.read_text().splitlines():
-                match = QUESTION.match(line)
-                if match:
-                    current = match.group(1)
-                    sections.setdefault(current, [])
-                sections[current].append(line)
+            sections = questionnaire_sections(questionnaire.read_text())
             candidates = {
                 subject: hashlib.sha256(
                     (("\n".join(lines).strip() + "\n").encode())
@@ -133,6 +140,15 @@ class ReviewSweepTests(unittest.TestCase):
                     or "successor_task" in disposition
                 )
                 self.assertTrue(valid, f"{seat} {subject} has no reviewable disposition")
+
+    def test_named_promise_sectioner_tracks_e_questions(self):
+        print("ARMED: promise sectioner attributes E-row promises to the E subject")
+        sections = questionnaire_sections(
+            "Intro text.\nE1. What must happen?\n\nHint: never proceed silently.\n\nAnswer: value\n"
+        )
+        self.assertIn("E1", sections)
+        self.assertNotIn("E1. What must happen?", "\n".join(sections["INTRO"]))
+        self.assertIn("never proceed silently", "\n".join(sections["E1"]))
 
 
 if __name__ == "__main__":
