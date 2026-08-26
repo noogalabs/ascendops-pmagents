@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "seat": "business-development",
+  "library_id": "business-development-2026-08-25",
+  "source_table": "mapping-tables/bd.md",
+  "structured_answers_file": "business-development-config.json",
+  "placeholders": [
+    {"placeholder":"bd_manager_name","source":"C2","extractor":"first_person"},
+    {"placeholder":"legal_counsel","source":"C4","extractor":"first_person"},
+    {"placeholder":"broker_of_record","source":"C3","extractor":"first_person"},
+    {"placeholder":"escalation_turnaround","source":"B12","extractor":"identity"},
+    {"placeholder":"referral_fee_payer","source":"C7","extractor":"first_person"},
+    {"placeholder":"pipeline_board_platform","source":"D1","extractor":"identity"},
+    {"placeholder":"pipeline_board_location","source":"D1","extractor":"identity"},
+    {"placeholder":"onboarding_specialist","source":"C5","extractor":"first_person"},
+    {"placeholder":"handoff_channel","source":"C5","extractor":"identity"},
+    {"placeholder":"property_access_coordinator","source":"C6","extractor":"first_person"},
+    {"placeholder":"esignature_tool","source":"D4","extractor":"identity"},
+    {"placeholder":"pma_signer","source":"D4","extractor":"identity"},
+    {"placeholder":"owner_intake_form_link","source":"D3","extractor":"identity"},
+    {"placeholder":"company_name","source":"cover.company_name","extractor":"identity"},
+    {"placeholder":"day_mode_start","source":"cover.timezone","extractor":"identity"},
+    {"placeholder":"day_mode_end","source":"cover.timezone","extractor":"identity"},
+    {"placeholder":"agent_name","source":"cover.org_short_name","extractor":"identity"},
+    {"placeholder":"org","source":"cover.org_short_name","extractor":"identity"},
+    {"placeholder":"org_name","source":"cover.org_short_name","extractor":"identity"},
+    {"placeholder":"current_timestamp","source":"cover.timezone","extractor":"identity"}
+  ],
+  "config_keys": [
+    {"path":"/timezone","source":"cover.timezone","extractor":"identity","value_type":"string","mode":"replace"}
+  ],
+  "cross_seat": {
+    "fill_exempt": ["quotable_standards", "protection_program_terms_verbatim", "pet_damage_coverage", "leasing_guarantee_program"],
+    "never_graduate": ["fair-housing", "contract-change", "legal-advice", "fee-deviation", "red-flag-property"],
+    "checks": [
+      {"check_id":"BD-2","type":"FACT_MATCH","peer_seat":"maintenance-coordinator","local_ref":"/answers/B10","peer_ref":"/answers/B1","severity":"report"},
+      {"check_id":"BD-4","type":"POLICY_DIVERGE","peer_seat":"maintenance-coordinator","local_ref":"/answers/C2","peer_ref":"/answers/C1","severity":"report"},
+      {"check_id":"BD-1-ordering","type":"ORDERING","peer_seat":"maintenance-coordinator","local_ref":"/answers/D10","peer_ref":"/answers/B5","operator":"lte","severity":"report"}
+    ],
+    "cross_seat_lane": [
+      {"lane_id":"BD-14","from_seat":"business-development","to_seat":"leasing"}
+    ]
+  }
+}

@@ -24,6 +24,7 @@ import transaction
 ENGINE_VERSION = "1.1.0"
 ROOT = Path(__file__).resolve().parents[1]
 MAINTENANCE_EDITION = ROOT / "editions" / "maintenance"
+BD_EDITION = ROOT / "editions" / "business-development"
 SEALED_CORE = MAINTENANCE_EDITION / "configure_agent.py"
 SEALED_CORE_SHA256 = "0540ea08aa8d47ecb1aebbb7f51db85c5a67ab252172804e9ba24e56c2403551"
 SUPPORTED = {
@@ -32,7 +33,15 @@ SUPPORTED = {
         "answers": MAINTENANCE_EDITION / "answers-format.md",
         "library": MAINTENANCE_EDITION / "library-src",
         "mapping": Path(__file__).resolve().parent / "mappings" / "maintenance-coordinator.json",
-    }
+    },
+    "business-development": {
+        "library_id": "business-development-2026-08-25",
+        "answers": BD_EDITION / "answers-format.md",
+        "library": BD_EDITION / "library-src",
+        "mapping": Path(__file__).resolve().parent / "mappings" / "business-development.json",
+        "generic": True,
+        "question_ids": [*(f"A{i}" for i in range(1, 10)), *(f"B{i}" for i in range(1, 13)), *(f"C{i}" for i in range(1, 10)), *(f"D{i}" for i in range(1, 13))],
+    },
 }
 
 
@@ -49,7 +58,12 @@ def read_member_json(path: Path, subject: str):
     return payload
 
 
-def load_core():
+def load_core(seat="maintenance-coordinator"):
+    if SUPPORTED.get(seat, {}).get("generic"):
+        import generic_configurator
+        generic_configurator.QUESTION_IDS = list(SUPPORTED[seat]["question_ids"])
+        generic_configurator.SEAT = seat
+        return generic_configurator
     actual = hashlib.sha256(SEALED_CORE.read_bytes()).hexdigest()
     if actual != SEALED_CORE_SHA256:
         raise RuntimeError(f"sealed-core: byte identity mismatch: {actual}")
@@ -75,6 +89,9 @@ def run_sealed_core(core, source: Path, answers: Path, output: Path, library: Pa
                 configuration_date.day,
             )
 
+    if core.__name__ == "generic_configurator":
+        core.run(source, answers, output, library)
+        return configuration_date.isoformat()
     original_datetime = core.datetime
     core.datetime = types.SimpleNamespace(date=InvocationDate)
     try:
@@ -87,7 +104,11 @@ def run_sealed_core(core, source: Path, answers: Path, output: Path, library: Pa
 def validate(path: Path, seat: str):
     if seat not in SUPPORTED:
         raise IntakeRejected([("seat", f"no mapping table/library is installed for {seat!r}")])
-    return intake.preflight(path, load_core().QUESTION_IDS)
+    return intake.preflight(
+        path,
+        load_core(seat).QUESTION_IDS,
+        validate_semantics=not SUPPORTED[seat].get("generic", False),
+    )
 
 
 def copy_protected(source: Path, staged: Path):
@@ -128,7 +149,7 @@ def stamp(staged: Path, seat: str, managed_surfaces, preserved_tokens, provenanc
 def configure(source: Path, answers: Path, output: Path, seat: str,
               *, clock=datetime.date.today, seat_registry=None):
     parsed_intake = validate(answers, seat)  # complete validation before staging or writes
-    core = load_core()
+    core = load_core(seat)
     if output.exists() and not output.is_dir():
         raise IntakeRejected([("output", "existing output must be an agent directory")])
     output.parent.mkdir(parents=True, exist_ok=True)
