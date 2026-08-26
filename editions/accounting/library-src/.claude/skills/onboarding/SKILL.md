@@ -1,48 +1,99 @@
 ---
 name: onboarding
-description: "This agent has not been onboarded yet, or the user asked to run onboarding. Run the bookkeeping seat setup interview: the shared 4-field cover sheet plus the 46-question Bookkeeping Agent Setup Questionnaire (Group A state rules, Group B company thresholds, Group C roles and people, Group D platform, banking, and wiring). Write every answer into accounting-config.json with its question id, start the agent in shadow mode, and create the .onboarded marker only at the end."
-triggers: ["onboarding", "run onboarding", "/onboarding", "first boot", "not onboarded", "setup", "set me up", "configure the agent", "questionnaire", "bookkeeping questionnaire", "resume onboarding", "finish setup"]
+description: "You have just booted for the first time (there is no .onboarded flag in your state directory) and you need to set up your identity, connect your Telegram bot, configure your goals, capture how the operator runs their business, and start running their work. Or onboarding was interrupted and the user asked you to run it again. This skill walks you through becoming a functioning agent by INTERVIEWING the operator (you ask, they answer) and writing the answers into your own config. Do not skip steps. Do not start normal operations until onboarding is complete."
+triggers: ["onboarding", "/onboarding", "first boot", "run onboarding", "setup", "not onboarded", "configure agent", "set up identity", "establish identity", "set goals", "onboard me", "start onboarding", "redo onboarding", "onboarding interrupted", "first time setup", "initial setup", "agent setup"]
 ---
 
 # Onboarding
 
-The full script lives in `ONBOARDING.md` at the agent root. Read it and follow it top to bottom.
+This skill runs on your FIRST BOOT or when explicitly triggered. It is the only thing you should do until it is complete. It is a reverse-prompting interview: YOU ask the operator questions over Telegram, and you write their answers into your own configuration. The operator does not hand-edit files; you do it for them from the conversation.
 
-## Before you start
+---
+
+## Step 0: Make sure your Telegram bot is wired
+
+This interview happens over Telegram, so your bot must be connected first. If this agent's `.env` has no `BOT_TOKEN`/`CHAT_ID` yet:
+
+1. In Telegram, message **@BotFather**, send `/newbot`, pick a display name, then a username ending in `bot`. Copy the **BOT_TOKEN** it returns (looks like `123456789:AA...`).
+2. Capture the chat id without manual hunting:
+   ```bash
+   cortextos detect-chat-id --agent "$CTX_AGENT_NAME" --org "$CTX_ORG"
+   ```
+   Paste the token when asked, then send `/start` to the bot username it prints. It writes `BOT_TOKEN`/`CHAT_ID`/`ALLOWED_USER` into this agent's `.env` (chmod 600) the moment you message the bot. It times out cleanly, just re-run it. (Interactive alternative: `cortextos bot create "$CTX_AGENT_NAME"`.)
+
+IMPORTANT: if you just wrote your Telegram credentials with `detect-chat-id` in THIS session, the daemon loaded your `.env` when it spawned you, so it will not receive the operator's Telegram replies until it reloads. Restart now so the interview can hear the operator:
+```bash
+cortextos bus self-restart --reason "loaded Telegram credentials, restarting to pick them up"
+```
+Onboarding resumes automatically on the next boot (the `.onboarded` flag is still absent, so this skill fires again and the interrupted-onboarding section below picks up where you left off). If the operator set `BOT_TOKEN`/`CHAT_ID` in `.env` BEFORE they started you (the recommended path), skip this restart, your credentials are already live.
+
+Only after the bot is wired AND its credentials are live does the rest of onboarding run.
+
+---
+
+## Step 1: Check onboarding status
 
 ```bash
 [[ -f "${CTX_ROOT}/state/${CTX_AGENT_NAME}/.onboarded" ]] && echo "ONBOARDED" || echo "NEEDS_ONBOARDING"
 ```
 
-If the marker exists, do not re-run the interview unless the user explicitly asks for it. If they do, resume from the first unanswered value rather than re-asking everything.
+If already `ONBOARDED`, skip to normal session start. Do not re-run onboarding unless the user explicitly asks.
 
-## What onboarding actually produces
+---
 
-| Artifact | What lands in it |
-|---|---|
-| `accounting-config.json` | Every threshold, state marker, clock, and named role, each carrying its question id |
-| `SYSTEM.md` | Platform, account inventory (no account numbers), read paths, board and log locations, jurisdictions |
-| `USER.md` | Who the user is, how they want to be reached, what counts as urgent to them |
-| `SOUL.md` → `## Custom Rules` | Anything standing the customer asked for |
-| `config.json` | Timezone, day-mode hours, crons |
-| `.onboarded` marker | Created last, and only last |
+## Step 2: Read ONBOARDING.md and run the interview
 
-## The three rules that matter most
+```bash
+cat ONBOARDING.md
+```
 
-1. **An unanswered value is not a defaulted value.** It stays as its placeholder, its dependent check is DISABLED, and it goes in `unanswered[]`. A confidently wrong deposit deadline is worse than a missing one.
-2. **A Group A answer that has not been through counsel is written `"confirmed": false`.** The agent flags on unconfirmed legal values; it never acts on them. "Confirm with counsel" is a legitimate answer to leave in place.
-3. **Shadow mode is on when onboarding ends.** Checks run silently, a calibration digest goes to the human bookkeeper, nothing goes outbound. Only the property manager ends shadow mode, and only after two consecutive weeks of digests matching reality.
+`ONBOARDING.md` is the interview script for your specific role. Follow it in order: you greet the operator, explain briefly how you work, then ask the questions it lists one topic at a time, and write each answer into your config as you go. Do not improvise the questions; do not dump them all at once.
 
-## Phase-zero flags
+---
 
-Some answers are not configuration, they are findings. Raise each one plainly, create a `[HUMAN]` task, and say which checks stay dark until it clears:
+## Step 3: What the interview establishes
 
-- No separate security-deposit trust account in a state that requires one (D3 vs A7)
-- No suspense or clearing account (D5) — there is nowhere legitimate to park an unidentified payment
-- No tracking board and no PM decision log (D6)
-- No 1099 tracker (D9)
-- No named backup decision-maker (C4) — a statutory deadline with nobody available to decide it is a company structure problem
+You are not done until all of these are written from the operator's answers:
 
-## If the customer already filled in the questionnaire
+| Item | Where it goes |
+|------|-------------|
+| Your name, role, and identity | `IDENTITY.md` (replace the onboarding markers and declared template placeholders) |
+| Company / owner / operator / timezone | `IDENTITY.md`, `USER.md`, `SYSTEM.md`, `config.json` |
+| Behavior, autonomy posture (copilot-first) | `SOUL.md` |
+| Goals and current focus | `GOALS.md`, `goals.json` |
+| The operator's business shape + software stack | `SYSTEM.md` |
+| The operator's SOPs / rules / preferences | a knowledge file you ingest to the KB so you operate THEIR way |
+| Telegram bot connected and tested | `.env` |
+| Recommended role crons added | `config.json` via `cortextos bus add-cron` (final step, see ONBOARDING.md) |
+| `.onboarded` flag written | `$CTX_ROOT/state/$CTX_AGENT_NAME/.onboarded` (written ONLY by ONBOARDING.md's final block, after the crons, see Step 4) |
 
-Read their answers, transcribe them into `accounting-config.json` with question ids intact, and use the interview only for gaps and for the four cover-sheet fields. Do not re-ask what they already answered.
+---
+
+## Step 4: Mark complete (single authority: ONBOARDING.md's final step)
+
+There is exactly ONE place that writes `.onboarded`: the final block in `ONBOARDING.md` (its "Finalize and add the recommended crons" step). Do NOT write `.onboarded` from this skill or by hand. That block is the single completion authority, and it does three things in order: (1) the final placeholder-and-marker sweep, a hard gate that refuses to finish while any `{{...}}` placeholder or the unfilled `## Name` marker remains anywhere across your bootstrap files, `CLAUDE.md`, and every `.claude/skills/**/SKILL.md`; (2) registers your recommended role crons; and (3) only THEN writes `.onboarded`, `&&`-chained after the crons so that if a cron fails to register, `.onboarded` is not written.
+
+This single-writer rule is load-bearing. If `.onboarded` were ever written before the crons, or by a second path that skips them, you would end up onboarded WITHOUT your role crons, and the `.onboarded` flag suppresses re-onboarding, so the crons would never get added. So do not duplicate the completion here: finish by running ONBOARDING.md's final block, and let that block be the thing that writes `.onboarded`.
+
+Only after that block writes `.onboarded` (placeholders clean AND crons registered) are you done. Then send the operator a Telegram message that you are online, configured, and running in copilot mode.
+
+---
+
+## If onboarding is interrupted
+
+If a crash or restart interrupts onboarding mid-way:
+
+1. Check which steps completed (which files were written).
+2. Resume from the first incomplete step.
+3. Do NOT restart from the beginning if some steps already completed.
+4. Re-run `/onboarding` if needed to trigger this skill again.
+
+---
+
+## Critical rules
+
+- Do NOT tell the operator you are online until onboarding is complete.
+- Do NOT add crons until IDENTITY.md and GOALS.md are written from the interview.
+- Do NOT start processing real work until `.onboarded` is written.
+- You operate copilot-first throughout: you draft and propose, the operator approves, and nothing external or money-moving goes out without their approval.
+- The operator is waiting: be efficient, ask one topic at a time, but do not skip steps.

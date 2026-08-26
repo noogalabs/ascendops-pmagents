@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
-import hashlib, importlib.util, json, shutil, tempfile, unittest
+import datetime, hashlib, importlib.util, io, json, re, shutil, subprocess, tempfile, unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 SPEC = importlib.util.spec_from_file_location("pmagents_engine", ROOT / "engine" / "engine.py")
 engine = importlib.util.module_from_spec(SPEC); SPEC.loader.exec_module(engine)
+SETUP_SPEC = importlib.util.spec_from_file_location("pmagents_setup", ROOT / "setup.py")
+setup = importlib.util.module_from_spec(SETUP_SPEC); SETUP_SPEC.loader.exec_module(setup)
 FIXTURE = ROOT / "editions" / "accounting" / "fixtures" / "ridgeline-accounting-answers.md"
+SOURCE = ROOT / "editions" / "accounting" / "library-src"
+MAPPING = ROOT / "engine" / "mappings" / "accounting.json"
 
 
 def digest(root):
@@ -16,38 +20,271 @@ def digest(root):
 class AccountingConfiguratorTests(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="pmagents-accounting-"))
-        self.source = self.tmp / "source"
-        shutil.copytree(ROOT / "engine" / "tests" / "fixtures" / "raw-maintenance-template", self.source)
-        replacements = {"agent_name": "ridge-accounting", "org": "ridgeline",
-                        "current_timestamp": "2026-08-25T00:00:00Z", "upstream_update_minute": "17"}
-        for path in self.source.rglob("*"):
-            if path.is_file():
-                text = path.read_text()
-                for name, value in replacements.items(): text = text.replace("{{" + name + "}}", value)
-                path.write_text(text)
+        self.source = SOURCE
 
     def tearDown(self): shutil.rmtree(self.tmp)
+
+    def fixture_variant(self, question_id, answer):
+        text = FIXTURE.read_text()
+        pattern = re.compile(
+            rf"(?ms)^({re.escape(question_id)}\..*?\n(?:.*?\n)*?Answer: ).*?"
+            rf"(?=\n{engine.intake.QUESTION_ID_PATTERN}\.|\Z)"
+        )
+        changed, count = pattern.subn(rf"\g<1>{answer}\n", text, count=1)
+        self.assertEqual(count, 1, f"fixture substitution drifted for {question_id}")
+        path = self.tmp / f"{question_id}-variant.md"
+        path.write_text(changed)
+        return path
 
     def test_production_entry_and_declared_filename(self):
         print("ARMED: wrong declared accounting filename rejects by name")
         out = self.tmp / "out"
-        engine.configure(self.source, FIXTURE, out, "accounting")
+        engine.configure(self.source, FIXTURE, out, "accounting", seat_registry={})
         self.assertTrue((out / "accounting-config.json").is_file())
         self.assertFalse((out / "seat-config.json").exists())
         self.assertEqual(json.loads((out / "accounting-config.json").read_text())["seat"], "accounting")
 
     def test_create_then_reconfigure_is_byte_stable(self):
         out = self.tmp / "out"
-        clock = lambda: __import__("datetime").date(2026, 8, 25)
-        engine.configure(self.source, FIXTURE, out, "accounting", clock=clock)
-        engine.configure(out, FIXTURE, out, "accounting", clock=clock)
+        clock = lambda: datetime.date(2026, 8, 25)
+        engine.configure(self.source, FIXTURE, out, "accounting", clock=clock, seat_registry={})
+        engine.configure(out, FIXTURE, out, "accounting", clock=clock, seat_registry={})
         payload = json.loads((out / "accounting-config.json").read_text())
         self.assertEqual(payload["configuration_engine"]["configuration_date"], "2026-08-25")
         self.assertTrue((out / "GUARDRAILS.md").is_file())
 
+    def test_declared_filename_mutation_rejects_by_name(self):
+        mapping = json.loads(MAPPING.read_text())
+        mapping["structured_answers_file"] = "../wrong.json"
+        with self.assertRaises(engine.cross_seat.CrossSeatRejected) as caught:
+            engine.cross_seat.structured_answers_filename(mapping)
+        self.assertIn("structured_answers_file", str(caught.exception.failures))
+
+    def test_named_zero_touch_wrapper_equals_direct_and_uses_accounting_labels(self):
+        print("ARMED: setup renders accounting labels and wrapper bytes equal direct configure")
+        wrapped, direct = self.tmp / "wrapped", self.tmp / "direct"
+        seat_number = next(number for number, row in enumerate(setup.SEATS, 1)
+                           if row["id"] == "accounting")
+        scripted = iter([str(seat_number), str(self.source), str(wrapped), "2", str(FIXTURE)])
+        stdout = io.StringIO()
+        self.assertEqual(setup.run_setup(ask=lambda _p: next(scripted), out=stdout,
+                                         clock=lambda: datetime.date(2026, 8, 25)), 0)
+        engine.configure(self.source, FIXTURE, direct, "accounting",
+                         clock=lambda: datetime.date(2026, 8, 25), seat_registry={})
+        self.assertEqual(digest(wrapped), digest(direct))
+        labels = setup.questionnaire_fields(FIXTURE.read_text(),
+                                             engine.cover_fields_for_seat("accounting"))
+        self.assertIn("D9. Where are W-9s stored, and does a current 1099 tracker exist?",
+                      {row.label for row in labels})
+
+    def test_named_content_divergent_fixture_cannot_substitute_for_accounting(self):
+        print("ARMED: accounting production intake rejects a sibling fixture without writes")
+        output = self.tmp / "divergent"
+        sibling = ROOT / "editions" / "maintenance" / "fixtures" / "ridgeline-maintenance-answers.md"
+        with self.assertRaises(engine.IntakeRejected) as caught:
+            engine.configure(self.source, sibling, output, "accounting",
+                             clock=lambda: datetime.date(2026, 8, 25), seat_registry={})
+        self.assertIn("A17", caught.exception.render())
+        self.assertFalse(output.exists())
+
     def test_sealed_core_unchanged(self):
         self.assertEqual(hashlib.sha256(engine.SEALED_CORE.read_bytes()).hexdigest(),
                          "0540ea08aa8d47ecb1aebbb7f51db85c5a67ab252172804e9ba24e56c2403551")
+
+    def test_named_accounting_readme_routes_only_through_guided_setup(self):
+        print("ARMED: accounting README names guided setup and bans manual replacement")
+        readme = (SOURCE / "README.md").read_text()
+        self.assertIn("python3 setup.py", readme)
+        self.assertIn("`accounting-config.json` is the\nsource of truth", readme)
+        self.assertNotIn("Setup (manual)", readme)
+        self.assertNotIn("replace the placeholders", readme.casefold())
+
+    def test_named_accounting_onboarding_verifies_config_without_second_interview(self):
+        print("ARMED: accounting first boot verifies configured custody without recollecting answers")
+        onboarding = (SOURCE / "ONBOARDING.md").read_text()
+        self.assertIn("Read `accounting-config.json` in full", onboarding)
+        self.assertIn("only new values collected at first boot are the Telegram bot token and chat", onboarding)
+        self.assertIn("rerun\n   `python3 setup.py`", onboarding)
+        for stale in ("what should my name be", "Which accounting system", "approval thresholds"):
+            self.assertNotIn(stale, onboarding)
+
+    def test_named_accounting_completion_preserves_five_custody_properties(self):
+        print("ARMED: accounting completion is gated, rollback-safe, durable, and heartbeat-last")
+        onboarding = (SOURCE / "ONBOARDING.md").read_text()
+        gate = onboarding.index("## First Boot Gate")
+        remove_set = onboarding.index("for c in ar-digest")
+        first_role = onboarding.index('add-cron "$CTX_AGENT_NAME" ar-digest')
+        marker = onboarding.index('touch "$CTX_ROOT/state/$CTX_AGENT_NAME/.onboarded"')
+        heartbeat = onboarding.index('add-cron "$CTX_AGENT_NAME" heartbeat')
+        self.assertLess(gate, remove_set)
+        self.assertLess(remove_set, first_role)
+        self.assertLess(first_role, marker)
+        self.assertLess(marker, heartbeat)
+        failure = onboarding.split("  else\n", 1)[1]
+        self.assertIn('rm -f "$CTX_ROOT/state/$CTX_AGENT_NAME/.onboarded"', failure)
+        self.assertIn("for c in ar-digest bank-rec-am bank-rec-pm", failure)
+        self.assertNotIn("for c in heartbeat ar-digest", failure)
+
+    def test_named_every_accounting_onboarding_bash_block_parses(self):
+        print("ARMED: every embedded accounting onboarding Bash block passes bash -n")
+        blocks = re.findall(
+            r"(?m)^([ \t]*)```bash\n(.*?)\n\1```$", (SOURCE / "ONBOARDING.md").read_text(), re.S
+        )
+        self.assertEqual(len(blocks), 1)
+        for index, (_indent, block) in enumerate(blocks, 1):
+            parsed = subprocess.run(["bash", "-n"], input=block, text=True,
+                                    capture_output=True, check=False)
+            self.assertEqual(parsed.returncode, 0,
+                             f"ONBOARDING bash block {index}: {parsed.stderr}")
+
+    def test_named_accounting_companion_claim_matches_shipped_reality(self):
+        print("ARMED: accounting companion claim says no separate documents ship")
+        claim = "No separate companion documents ship in this edition."
+        self.assertIn(claim, (ROOT / "editions/accounting/answers-format.md").read_text())
+        self.assertIn(claim, FIXTURE.read_text())
+        for stale in ("five generic bookkeeping documents", "Bookkeeping Tracking Board in this folder"):
+            self.assertNotIn(stale, (ROOT / "editions/accounting/answers-format.md").read_text())
+            self.assertNotIn(stale, FIXTURE.read_text())
+
+    def test_named_accounting_day_mode_has_no_false_local_value(self):
+        print("ARMED: accounting day mode awaits the maintenance-owned config window")
+        config = json.loads((SOURCE / "config.json").read_text())
+        self.assertNotIn("day_mode_start", config)
+        self.assertNotIn("day_mode_end", config)
+        soul = (SOURCE / "SOUL.md").read_text()
+        self.assertNotIn("08:00 – 17:00", soul)
+        self.assertNotIn("Day Mode", soul)
+
+    def test_named_accounting_historical_credential_blast_rejects_before_writes(self):
+        print("ARMED: accounting AKIA regression rejects before config and onboarding writes")
+        fixture = self.fixture_variant("B1", "$375 AKIAABCDEFGHIJKLMNOP")
+        output = self.tmp / "credential-blast"
+        with self.assertRaises(engine.IntakeRejected) as caught:
+            engine.configure(self.source, fixture, output, "accounting", seat_registry={})
+        self.assertIn("credential-scan", caught.exception.render())
+        self.assertFalse(output.exists())
+
+    def test_named_accounting_seam_contract_is_single_authority_and_graded(self):
+        print("ARMED: accounting seams preserve table authority and deferred boundaries")
+        mapping = json.loads(MAPPING.read_text())
+        pointers = {row["value_name"]: row for row in mapping["cross_seat"]["pointers"]}
+        self.assertEqual(set(pointers), {
+            "deposit_disposition_deadline", "deposit_clock_trigger", "licensed_trades",
+            "deposit_chargeback_threshold", "eviction_attorney", "accounting_platform",
+            "decision_log_location",
+        })
+        self.assertEqual(
+            (pointers["deposit_chargeback_threshold"]["owner_seat"],
+             pointers["deposit_chargeback_threshold"]["owner_question_id"],
+             pointers["deposit_chargeback_threshold"]["holding_question_id"]),
+            ("turnover-coordinator", "C7", "B13"),
+        )
+        self.assertNotIn("day_mode_window", pointers)
+        self.assertEqual(
+            {row["check_id"] for row in mapping["cross_seat"]["checks"]},
+            {"SEAM-8", "SEAM-11", "SEAM-12", "SEAM-17"},
+        )
+        self.assertEqual(
+            {row["gate_id"] for row in mapping["cross_seat"]["never_graduate"]},
+            {"vendor_payment", "owner_draw", "deposit_disposition", "trust_reconciliation",
+             "ledger_adjustment", "vendor_banking_change", "external_financial_send"},
+        )
+
+    def test_named_classroom_destination_retarget_reaches_runtime(self):
+        print("ARMED: QAd semantic values reach the reviewed classroom tree")
+        output = self.tmp / "classroom-retarget"
+        engine.configure(self.source, FIXTURE, output, "accounting", seat_registry={})
+        self.assertIn("Read `accounting-config.json` in full", (output / "AGENTS.md").read_text())
+        payload = json.loads((output / "accounting-config.json").read_text())
+        self.assertEqual(payload["answers"]["B1"].splitlines()[0], "$375. Below it the bookkeeper pays on a matched work order; at or above it the property")
+        for path in output.rglob("*"):
+            if path.is_file():
+                self.assertNotRegex(path.read_text(errors="ignore"), r"\{\{(?:agent_name|company_name|operator_name|owner_name|timezone|maintenance_agent_name|leasing_agent_name)\}\}")
+
+    def test_named_accounting_numeric_config_is_strict_positive_and_semantically_labeled(self):
+        print("ARMED: every declared accounting numeric uses a positive domain and no first-number guess")
+        mapping = json.loads(MAPPING.read_text())
+        numeric = {row["path"]: row for row in mapping["config_keys"]
+                   if row.get("value_type") == "integer"}
+        self.assertEqual(set(numeric), {
+            "/late_fee_grace_days", "/nonpayment_notice_days", "/deposit_return_days",
+            "/nsf_fee_cap", "/file_or_hold_decision_days", "/trust_record_retention_years",
+            "/contractor_license_threshold", "/decision_log_retention_years",
+            "/vendor_bill_approval_threshold", "/dual_auth_threshold", "/reserve_floor",
+            "/unidentified_payment_escalation_threshold", "/reconciliation_variance_threshold",
+            "/variance_alert_amount", "/variance_alert_age_days", "/owner_draw_deadline_day",
+            "/owner_draw_target_day", "/owner_statement_release_day",
+            "/deposit_chargeback_per_line", "/deposit_chargeback_per_unit",
+        })
+        self.assertTrue(all(row.get("minimum") == 1 for row in numeric.values()))
+        self.assertTrue(all(row.get("mode") == "create" for row in numeric.values()))
+        self.assertNotIn("first_integer", {row["extractor"] for row in numeric.values()})
+        for row in numeric.values():
+            if row["extractor"] == "labeled_integer":
+                self.assertTrue(row.get("label"), row["path"])
+
+    def test_named_accounting_fixture_numbers_land_in_config(self):
+        print("ARMED: accounting fixture values reach typed runtime config exactly")
+        output = self.tmp / "typed-config"
+        engine.configure(self.source, FIXTURE, output, "accounting", seat_registry={})
+        config = json.loads((output / "config.json").read_text())
+        self.assertEqual({key: config[key] for key in (
+            "late_fee_grace_days", "nonpayment_notice_days", "deposit_return_days",
+            "nsf_fee_cap", "file_or_hold_decision_days", "trust_record_retention_years",
+            "contractor_license_threshold", "decision_log_retention_years",
+            "vendor_bill_approval_threshold", "dual_auth_threshold", "reserve_floor",
+            "unidentified_payment_escalation_threshold", "reconciliation_variance_threshold",
+            "variance_alert_amount", "variance_alert_age_days", "owner_draw_deadline_day",
+            "owner_draw_target_day", "owner_statement_release_day",
+            "deposit_chargeback_per_line", "deposit_chargeback_per_unit",
+        )}, {
+            "late_fee_grace_days": 5, "nonpayment_notice_days": 14,
+            "deposit_return_days": 30, "nsf_fee_cap": 30,
+            "file_or_hold_decision_days": 3, "trust_record_retention_years": 7,
+            "contractor_license_threshold": 2500, "decision_log_retention_years": 7,
+            "vendor_bill_approval_threshold": 375, "dual_auth_threshold": 1500,
+            "reserve_floor": 400, "unidentified_payment_escalation_threshold": 550,
+            "reconciliation_variance_threshold": 40, "variance_alert_amount": 10,
+            "variance_alert_age_days": 3, "owner_draw_deadline_day": 15,
+            "owner_draw_target_day": 10, "owner_statement_release_day": 12,
+            "deposit_chargeback_per_line": 150, "deposit_chargeback_per_unit": 400,
+        })
+
+    def test_named_accounting_zero_numeric_values_reject_before_activation(self):
+        print("ARMED: zero timeline and money values reject before accounting writes")
+        for question_id, answer in (
+            ("A1", "Late fee grace days: 0"),
+            ("B1", "$0. No vendor payment may bypass the configured review gate."),
+        ):
+            with self.subTest(question_id=question_id):
+                output = self.tmp / f"zero-{question_id}"
+                with self.assertRaises(engine.IntakeRejected) as caught:
+                    engine.configure(self.source, self.fixture_variant(question_id, answer), output,
+                                     "accounting", seat_registry={})
+                self.assertIn("minimum", caught.exception.render())
+                self.assertFalse(output.exists())
+
+    def test_named_accounting_legal_clock_requires_its_labeled_line(self):
+        print("ARMED: accounting legal clock rejects an earlier unrelated numeral")
+        output = self.tmp / "unlabeled-clock"
+        fixture = self.fixture_variant(
+            "A1", "Use 2 reminder attempts; the counsel-confirmed grace period is 5 days."
+        )
+        with self.assertRaises(engine.IntakeRejected) as caught:
+            engine.configure(self.source, fixture, output, "accounting", seat_registry={})
+        self.assertIn("labeled integer line 'Late fee grace days'", caught.exception.render())
+        self.assertFalse(output.exists())
+
+    def test_named_accounting_deferred_money_value_rejects_before_activation(self):
+        print("ARMED: unresolved accounting money sentinel names B1 and writes nothing")
+        output = self.tmp / "deferred-money"
+        with self.assertRaises(engine.IntakeRejected) as caught:
+            engine.configure(self.source, self.fixture_variant("B1", "[NEEDS-CONFIRM]"), output,
+                             "accounting", seat_registry={})
+        rendered = caught.exception.render()
+        self.assertIn("B1", rendered)
+        self.assertIn("human confirmation is required", rendered)
+        self.assertFalse(output.exists())
 
 
 if __name__ == "__main__": unittest.main()

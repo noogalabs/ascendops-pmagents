@@ -1,90 +1,72 @@
 ---
 name: trust-reconciliation
-description: "Run the monthly three-way trust reconciliation: bank leg, owner ledger leg, resident deposit leg, agreeing to the penny. Verify and flag only — never move funds, never auto-correct a trust ledger, never post a plug entry to force balance. Covers judgment scenario 9 in both its small and large forms."
-triggers: ["reconciliation", "three-way", "trust reconciliation", "bank rec", "out of balance", "variance", "does not reconcile", "trust balance", "reconcile to bank", "ledger total", "unreconciled"]
+description: "Run trust reconciliation as verify-and-flag only. Use for bank=book=liability checks, bank-rec at 8am/5pm, and discrepancy reporting. Never move money or auto-correct ledgers."
 ---
 
-# Three-Way Trust Reconciliation
+# Trust Reconciliation
 
-Source: monthly workflow Step 10, plus judgment scenario 9. This is the most important financial control in property management and it runs every month without exception.
+{{agent_name}} uses this skill for the three-way trust rec:
 
----
+`bank balance = book balance = owner/resident liability total`
 
-## The three legs
-
-| Leg | What it confirms |
-|---|---|
-| **Bank** | The trust bank statement reconciles to the platform's bank register. Every deposit and every payment matches. |
-| **Owner ledgers** | The sum of all owner ledger balances — what the platform says is owed to owners. |
-| **Resident deposits** | The sum of all resident security deposit balances and any resident credit balances held in trust. |
-
-## The test
-
-```
-reconciled bank balance
-  = sum of owner ledgers
-  + sum of resident deposit balances
-  + any other trust liabilities
-```
-
-**To the penny.** If these do not agree, there is an error or a trust violation. Stop and find it before the month closes.
+This skill verifies and flags. It never fixes.
 
 ---
 
-## Preflight
+## Hard Gate
 
-- the bank statement for the period is available
-- all transactions for the month are posted
-- all draws and deposits have cleared
-- the period is not already locked
-
-Where `platform.has_builtin_trust_reconciliation` (D1) is true, the platform's module runs the ledger side. It does not replace reconciling to the actual bank statement; that leg is still done against the statement itself, every month.
+Trust-ledger corrections, fund transfers, journal entries, and clearing adjustments are Ring-3 actions and require human approval.
 
 ---
 
-## Scenario 9A — small variance (under `thresholds.reconciliation_variance_threshold`, B5)
+## Inputs
 
-**Do right now.** Do not force it. Trace every transaction for the period: bank fees, rounding, timing differences, a transposed digit. Give it one full business day.
-
-**Never.** Never post a reconciliation adjustment to make it balance without knowing what caused it. Small unexplained variances are how embezzlement starts and stays undetected.
-
-**Escalate when.** You cannot find the source within one business day.
-
-**Write down.** Amount off, period, every step taken, resolution or escalation.
-
-## Scenario 9B — large variance (at or above B5, or any amount you cannot explain)
-
-**Do right now.** Stop all non-essential disbursements. Notify the property manager immediately. Do not send owner statements. Pull every transaction for the period.
-
-**Never.** Never send statements over an account that does not reconcile. Never post an adjustment to force a balance. Never assume it will work itself out.
-
-**Escalate when.** Immediately, the same hour. The property manager decides whether to notify the broker, pause disbursements, or bring in legal or outside accounting.
-
-**Write down.** Amount, period, every transaction reviewed, time the PM was notified, resolution.
+- Trust bank statement or bank-feed export
+- Trust {{agent_name}} book / general ledger balance
+- Owner and resident sub-ledger liability totals
+- Outstanding deposits, checks, NSF, reversals, and timing items
+- Prior reconciliation report
 
 ---
 
-## The alert thresholds
+## Workflow
 
-- Any variance at or above `thresholds.variance_alert_amount` (B6) open for `thresholds.variance_alert_age_days` (B6) or more → bookkeeper alert.
-- Any leg open more than 7 days → property-manager escalation.
-
-An open variance blocks statement release. That is not a soft coupling.
+1. Confirm source timestamps and account scope.
+2. Compute bank balance after known outstanding items.
+3. Compute book balance from the ledger.
+4. Compute total liability from owner/resident sub-ledgers.
+5. Compare all three values to the penny.
+6. Classify discrepancies:
+   - timing item
+   - missing bank item
+   - missing book item
+   - sub-ledger mismatch
+   - unsupported/unknown
+7. Surface changed breaks only unless asked for a full report.
+8. Stop before any corrective action.
 
 ---
 
-## Sign-off and retention
+## Output Contract
 
-`roles.principal_or_managing_broker` (C2), or whoever `state_rules.trust_reconciliation_signer` (A13) names, reviews and signs. **This agent does not sign a reconciliation** — `reconciliation_signoff` is in the `never_graduate` set. Signing is a licensed act and it is the point of the control.
+Return:
+- bank balance
+- adjusted bank balance
+- book balance
+- liability total
+- variance table
+- suspected source rows
+- risk severity
+- proposed next human action, if any
 
-Cadence comes from `state_rules.trust_reconciliation_cadence` (A13); retention from `state_rules.trust_record_retention_years` (A13); the regulator that can audit from `state_rules.trust_audit_regulator` (A13). The broker's license is what is at risk when a trust account is out of balance.
-
-**Target: completed within 5 business days of month end.**
+Every proposed correction must be marked `APPROVAL REQUIRED`.
 
 ---
 
-## Hard gates
+## Validation
 
-- Verify and flag. Never move funds, never correct a ledger, never clear a variance on judgment.
-- A plug entry is never the answer, at any amount.
-- If a source document is missing, that is a stated blind spot in the report, not a leg quietly skipped.
+- All three totals are sourced.
+- Variance math is shown.
+- No ledger write occurred.
+- No money moved.
+- No discrepancy was cleared without human approval.

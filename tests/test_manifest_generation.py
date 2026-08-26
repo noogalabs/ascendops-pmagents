@@ -25,6 +25,7 @@ class ManifestGenerationTests(unittest.TestCase):
             for path in (ROOT / "editions").glob("*/tests") if path.is_dir()
         )
         self.assertEqual(suite_dirs, [
+            "editions/accounting/tests",
             "editions/leasing/tests",
             "editions/maintenance/tests",
             "editions/pm-assist/tests",

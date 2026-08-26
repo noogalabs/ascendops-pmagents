@@ -1,7 +1,4 @@
-local/
 .env
-memory/
+memory/*.md
 *.log
-.cache/
-statements/
-exports/
+*.tmp

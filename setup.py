@@ -16,6 +16,7 @@ import engine  # noqa: E402
 
 
 SEAT_LABELS = {
+    "accounting": "Accounting",
     "maintenance-coordinator": "Maintenance coordinator",
     "turnover-coordinator": "Turnover coordinator",
 }

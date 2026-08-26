@@ -1,66 +1,58 @@
 ---
 name: owner-draws
-description: "Calculate owner draws net of the reserve floor and authorized holdbacks, run the preflight that catches unreversed NSFs and unposted bills, and route the disbursement for approval. The reserve floor is never drawn down. The draw is always a draft; a human releases it."
-triggers: ["owner draw", "owner disbursement", "distribution", "draw calculation", "reserve floor", "holdback", "disburse to owner", "draw window", "net distribution"]
+description: "Draft owner draw recommendations from reconciled owner/property balances. Use for distribution calculations. Draw disbursement is always approval-gated."
 ---
 
 # Owner Draws
 
-Source: monthly workflow Step 8. The draw is the single largest money movement this seat touches and it is never unattended.
+{{agent_name}} uses this skill to prepare owner distribution drafts. {{agent_name}} does not disburse owner funds.
 
 ---
 
-## The calculation
+## Hard Gate
 
-```
-available balance
-  − reserve requirement          (thresholds.reserve_floor, B3, or this owner's override)
-  − authorized holdbacks         (written PM instruction only)
-  = draw amount
-```
-
-If the result is at or below zero, **there is no draw.** Generate a contribution request instead — `.claude/skills/owner-contributions/SKILL.md`.
-
-**The reserve floor is never drawn down.** Not to make a draw work, not because the owner asked, not because next month's rent will cover it.
-
-**A holdback requires written authorization** from the property manager, naming the reason and the amount — a large repair pending, a vendor bill expected. A holdback with no written basis is just a number somebody remembered.
+Sending an owner draw is money movement. Draft only, then approval.
 
 ---
 
-## Preflight — every item, every owner, every month
+## Inputs
 
-| Check | Why it matters |
-|---|---|
-| All income posted | A missing receipt understates the draw |
-| All bills posted | A missing payable overstates it, and the shortfall lands next month |
-| All fees posted and verified | Fees come out before the draw, not after |
-| **Every NSF reversal complete** | A draw computed over an unreversed NSF distributes money that is not there |
-| No pending items that would change the balance | Pending is not cleared |
-| Three-way reconciliation balances | Same gate as statements |
-| Owner balance clears the reserve floor after the draw | Otherwise it is a contribution, not a draw |
+- Owner ledger
+- Property {{agent_name}} balance
+- Reserve requirements
+- Pending AP
+- Security deposit and trust constraints
+- Prior statement period
 
 ---
 
-## Timing
+## Workflow
 
-`policy.owner_draw_deadline_day` (B8) is the outside date; `policy.owner_draw_target_day` is the goal. Both must match what the management agreements promise, and both must be reachable after the reconciliation finishes.
-
-Where `state_rules.owner_disbursement_statutory_deadline` (A12) carries a value, it governs and it is a legal clock, not a policy preference. Where it is empty, the management agreement governs.
-
----
-
-## The draft
-
-Every draw draft carries: opening balance, income, expenses, fees, reserve held and why, holdbacks and their written authorization, the computed draw, and the destination account by purpose label — never by account number.
-
-Route it with the statement. The property manager reviews both together; the draw releases only after that approval.
+1. Confirm the statement period and owner/property scope.
+2. Tie beginning balance, income, expenses, reserves, and ending balance.
+3. Deduct required reserves and known pending liabilities.
+4. Calculate proposed draw amount.
+5. Flag any trust restriction, negative balance, unresolved AP, or stale ledger export.
+6. Draft approval request for draw release only if the calculation ties out.
 
 ---
 
-## Hard gates
+## Output Contract
 
-- This agent does not initiate an ACH, cut a check, or release a distribution.
-- The reserve floor does not flex.
-- A holdback with no written authorization does not exist.
-- An unreversed NSF stops the draw for that owner, alone, without stopping the others.
-- `money_movement` is in the `never_graduate` set. No accuracy record changes this.
+Return:
+- owner/property
+- period
+- available {{agent_name}} calculation
+- reserve and holdback rationale
+- proposed draw
+- unresolved blockers
+- approval draft marked `APPROVAL REQUIRED`
+
+---
+
+## Validation
+
+- Available {{agent_name}} ties to source.
+- Draw never exceeds eligible available balance.
+- Trust funds are not commingled with operating funds.
+- No disbursement was initiated.

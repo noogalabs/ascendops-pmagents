@@ -67,3 +67,23 @@ questionnaire and fixture use owner-reviewed attribution and make only companion
 claims that match files shipped in the product tree. The edition consumes the
 canonical shared engine and contributes only its registry row; shared runtime
 mechanics remain owned by foundation fix-forwards.
+
+## Accounting edition
+
+The accounting edition imports the owner-reviewed 28-file classroom package at
+`deliverables/classroom/downloads/accounting-agent-template/`, together with the
+reviewed accounting mapping table and fictional Ridgeline fixture. Artifacts
+167-194 bind every classroom source file to its product destination by SHA-256.
+Byte-identical rows say so; the four platform-conformance adaptations carry
+distinct source and destination hashes: the placeholder spelling in the
+onboarding skill, the session-start structured-config read, the guided-only
+README, and verify-not-reenter first boot. These are the narrowly authorized
+repository-platform deltas and add no new accounting policy.
+
+The mapping runner contributes the product-native `seat-config.json` baseline;
+the configured artifact remains the mapping's declared
+`accounting-config.json`. The larger in-fan `accounting-seat` draft is not
+shipped: its member-facing extras remain pending owner review. The reviewed
+mapping table still governs semantic question-to-value ownership, while every
+destination retarget from that draft to the classroom tree is documented and
+covered by the declared-consumer and production-runtime casualties.

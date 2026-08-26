@@ -1,8 +1,7 @@
 ---
 title: "Bookkeeping Agent Setup Questionnaire"
-source: "Derived from the bookkeeping and accounting agent spec (owner-reviewed, 2026-08-21) and the five generic bookkeeping library docs"
+source: "Owner-reviewed bookkeeping and accounting configuration contract"
 converted: 2026-08-21
-library_folder: 1ZwUwZHnK422qze2av6d0U2RT9haXxdYz
 audience: all agents
 status: reference
 ---
@@ -28,10 +27,10 @@ leasing sibling fixtures so cross-seat fixtures cohere.
 ## Bookkeeping Agent Setup Questionnaire
 Residential Property Management, Platform-Agnostic. The setup interview that turns the generic bookkeeping and accounting agent into your company's agent.
 
-Companion documents in this folder: Bookkeeping and Accounting Monthly Workflow, Bookkeeping Tracking Board, Bookkeeper Judgment and Lookup Guide, PM Decision Log Template, and the Vendor Banking Change Verification Protocol. Your state addendum fills in the bracketed state markers those documents carry.
+No separate companion documents ship in this edition. The configured bootstrap library and its accounting skills are the complete shipped surface.
 
 ### What This Is and How To Use It
-The bookkeeping agent ships as a generic baseline: a monthly workflow, a tracking board, a judgment guide, a decision log, and a set of hard gates that work for any residential property management company. Nothing company-specific is baked in. This questionnaire is the one door your company's specifics enter through. Your answers become the agent's configuration file; every check, every deadline clock, and every alert the agent runs reads from that file, and the generic documents themselves are never edited.
+The bookkeeping agent ships as a generic, approval-gated baseline. Nothing company-specific is baked in. This questionnaire is the one door your company's specifics enter through. Your answers become the agent's configuration file; every check, deadline clock, and alert reads from that file.
 
 There are 46 questions in four groups: state rules, company thresholds and policy, roles and people, and platform, banking, and wiring. Most answers take a minute. Group A leans heavily on your attorney or your state's landlord-tenant statute; those questions are marked in the hint, and it is fine to write "confirm with counsel" as a first answer and come back. Expect 60 to 90 minutes for a complete first pass, plus the counsel round trip on Group A.
 
@@ -43,7 +42,8 @@ A1. How many days must rent be late before a late fee may be posted?
 
 Hint: Grace periods are set by state law in most jurisdictions; the agent will not flag a missing late fee before this day. Confirm with counsel.
 
-Answer: 5 days. Rent is due on the 1st; a late fee may not post before the 6th in either fictional
+Answer: Late fee grace days: 5
+  Rent is due on the 1st; a late fee may not post before the 6th in either fictional
   jurisdiction. Counsel confirmed for both. CONFIRMED=true.
 
 A2. What is your state's late fee cap: a flat amount, a daily rate, or a total percentage of past-due rent?
@@ -57,7 +57,8 @@ A3. What notice period does your state require for nonpayment before an eviction
 
 Hint: The number of days from service of the notice, and what counts as service. Confirm with counsel.
 
-Answer: 14 days from service of the notice. Service means personal delivery to an adult occupant, or
+Answer: Nonpayment notice days: 14
+  Service means personal delivery to an adult occupant, or
   posting on the unit door plus first-class mail the same day. Counsel confirmed for both
   fictional jurisdictions. CONFIRMED=true.
 
@@ -82,7 +83,8 @@ A6. What is the security deposit return deadline in your state, and what date st
 
 Hint: Many states use 30 days. The trigger date matters as much as the count: move-out, termination of tenancy, and key return are different days. Confirm with counsel.
 
-Answer: 30 calendar days, and the clock starts at termination of the tenancy. (CROSS-SEAT: the
+Answer: Deposit return days: 30
+  The clock starts at termination of the tenancy. (CROSS-SEAT: the
   deadline is the same fact the maintenance seat's A3 answer carries; recorded here as a
   pointer, not a second copy. The date that starts the clock is owned by the leasing seat's B1
   answer; pointer as well.) MIGRATION-READY: when this bookkeeper seat ships into templates/
@@ -123,8 +125,9 @@ A11. Once the nonpayment notice period runs, how soon may an eviction be filed, 
 
 Hint: Common working shape: the PM makes the file-or-hold decision within a few days of the notice expiring, so accounts never age without a decision. Confirm the filing rules with counsel.
 
-Answer: An eviction may be filed the first business day after the 14-day notice period expires.
-  Ridgeline's file-or-hold decision window is 3 business days from expiry, so no noticed account
+Answer: File-or-hold decision days: 3
+  An eviction may be filed the first business day after the 14-day notice period expires.
+  Ridgeline's decision window runs from expiry, so no noticed account
   ages without a recorded decision. Counsel confirmed the filing rules. CONFIRMED=true.
 
 A12. Does your state set a statutory deadline for owner disbursements?
@@ -139,8 +142,8 @@ A13. What are your state's trust account reconciliation requirements: how often,
 
 Hint: The common shape is monthly reconciliation signed by the responsible broker, with a multi-year retention period and audit rights held by the state real estate regulator. Confirm with counsel.
 
-Answer: Monthly three-way reconciliation, signed by the principal broker, Harlan Beck. Records
-  retained 7 years. The fictional Basin State Real Estate Commission holds audit rights over
+Answer: Trust record retention years: 7
+  Monthly three-way reconciliation, signed by the principal broker, Harlan Beck. The fictional Basin State Real Estate Commission holds audit rights over
   both trust accounts. Counsel confirmed. CONFIRMED=true.
 
 A14. Does your state require state-level 1099 filing in addition to the federal filing?
@@ -166,7 +169,8 @@ A16. What retention period will you apply to the PM decision log?
 
 Hint: Matching your trust-record retention period is the common choice, so the log survives as long as the records it explains. Confirm with counsel.
 
-Answer: 7 years, matching the trust-record retention period in A13, so the log survives as long as the
+Answer: Decision log retention years: 7
+  This matches the trust-record retention period in A13, so the log survives as long as the
   records it explains. Counsel confirmed. CONFIRMED=true.
 
 A17. Which landlord-tenant statute applies in each county or jurisdiction in your portfolio?
@@ -227,7 +231,8 @@ B6. At what variance amount and age does an unreconciled item fire an alert?
 
 Hint: Example: any variance of $5 or more that stays open 3 or more days fires an alert to the PM.
 
-Answer: Any variance of $10 or more that stays open 3 or more business days fires an alert to the
+Answer: Variance alert days: 3
+  Any variance of $10 or more that stays open that many business days fires an alert to the
   property manager.
 
 B7. What payment application order is set in your platform when a resident pays less than everything owed?
@@ -242,7 +247,9 @@ B8. What is your owner draw window and target date?
 
 Hint: Common baseline: draws out by the 15th with a goal of the 10th. The dates must match what your management agreements promise.
 
-Answer: Owner draws out by the 15th, target the 10th. The 15th is what the Ridgeline standard
+Answer: Owner draw deadline day: 15
+  Owner draw target day: 10
+  The 15th is what the Ridgeline standard
   management agreement promises owners, so it is a commitment and not just an internal goal.
 
 B9. On which dates do vendor bill payment runs go out?
@@ -256,7 +263,8 @@ B10. On what date are owner statements released?
 
 Hint: Statements should not release while the trust account is unreconciled; the release date and the reconciliation date need to agree.
 
-Answer: The 12th, and never over an unreconciled trust account. The 12th sits after the monthly
+Answer: Owner statement release day: 12
+  Never release over an unreconciled trust account. The 12th sits after the monthly
   reconciliation completes and before the 15th draw deadline, so the sequence is reconcile,
   release statements, then draw.
 
@@ -282,7 +290,9 @@ B13. What deposit-chargeback threshold does Bookkeeping enforce at the Deposit P
 
 Hint: Do not set a new number here. This is the same per-line and per-unit chargeback threshold configured in the turnover coordinator setup (its Group C). Bookkeeping enforces that one configured number as the review gate on the Deposit Packet: at or above either number, or on any dispute or missing documentation, the disposition goes to the PM before it is sent. Both seats read the same number, so record it here only to confirm the two match. This is distinct from the vendor-bill PM-approval threshold in B1; that gates repair-spend authority, this gates deposit-deduction authority.
 
-Answer: $150 per line item and $400 per unit total. CONFIRMED TO MATCH the turnover coordinator's C7
+Answer: Per-line chargeback: 150
+  Per-unit chargeback: 400
+  CONFIRMED TO MATCH the turnover coordinator's C7
   configuration exactly; no new number was set here. (CROSS-SEAT: owned by the turnover seat's
   C7 answer; this seat holds a pointer and enforces the same number as the review gate on the
   Deposit Packet.) These gate deposit-deduction authority and are distinct from B1's $375, which
@@ -395,14 +405,12 @@ Answer: Yes. A LedgerPeak clearing account named Suspense - Unidentified Receipt
 
 D6. Where do the tracking board and the PM decision log live, and do they exist yet?
 
-Hint: The baseline is spreadsheet-first. If neither exists, bootstrapping both from the templates in this library is a phase-zero task before the agent watches anything.
+Hint: Name the existing systems of record. If either is absent, creating it is a phase-zero task before the agent watches anything; no board or decision-log template ships in this edition.
 
-Answer: SPLIT ANSWER. The Ridgeline Bookkeeping Board exists: a spreadsheet built from the Bookkeeping
-  Tracking Board template in this library, stored in the company cloud drive, and it is the
-  single board of record. The PM decision log does NOT exist yet. PHASE-ZERO: bootstrapping the
-  decision log from the PM Decision Log Template in this folder is a task before the agent
-  watches anything that depends on it, and it is the dependency B12's waiver authority is
-  currently missing.
+Answer: SPLIT ANSWER. The Ridgeline Bookkeeping Board exists as the company cloud-drive spreadsheet
+  and is the single board of record. The PM decision log does NOT exist yet. PHASE-ZERO:
+  creating and reviewing that log is a task before the agent watches anything that depends on
+  it, and it is the dependency B12's waiver authority is currently missing.
 
 D7. What read-only access paths exist for platform reports and bank statements or feeds?
 
@@ -435,10 +443,10 @@ Answer: W-9s live in the cloud drive under Vendors, one folder per vendor. A cur
 ### What Happens Next
 Your answers do three things, in order:
 
-- The board gets your values. The Bookkeeping Tracking Board in this folder carries a State Rules reference tab of bracketed state markers and threshold-driven alerts. Your Group A answers fill the state markers, your Group B answers set the alert thresholds, and every clock and alert on the board reads from those values.
-- The agent boots in shadow mode. For the first weeks the agent runs its daily and weekly checks silently and sends a calibration digest to the people you named in Group C. Nothing outbound, no flags to owners or residents. Shadow mode ends when the digests match reality for two consecutive weeks.
+- The configured bootstrap and accounting skills receive your values. Group A supplies the state markers, Group B supplies the operating thresholds, and the structured config remains the authority for every clock and alert.
+- The agent begins in operator-supervised copilot mode. A human reviews every draft and every flag; no automated calibration digest or automatic graduation mechanism is shipped.
 - The agent never moves money, at any setting. It reads, reconciles, tracks deadlines, drafts, and flags. Posting a ledger entry, releasing a payment, approving a disbursement, signing off a reconciliation, changing a vendor record, and sending anything to an owner, resident, or vendor always end with a human, and read-only access is how the agent is wired, not just a policy it follows.
 
 Keep the answers current. When a threshold, a person, a bank account, or a statute changes, the config changes the same day; the questionnaire is a living document, not a one-time form.
 
-Ascend Operations Library, generic baseline document. Derived from the bookkeeping and accounting agent specification and the five generic bookkeeping documents in this library. Nothing in this document is legal advice; confirm every state-law answer with your attorney.
+Generic baseline document derived from the owner-reviewed bookkeeping and accounting contract. Nothing in this document is legal advice; confirm every state-law answer with your attorney.

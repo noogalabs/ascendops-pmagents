@@ -1,70 +1,50 @@
 ---
 name: owner-statement-drafting
-description: "Draft owner statements that explain themselves: opening balance, income received, expenses paid, fees charged, reserve activity, and net distribution, with every line traceable to a source record. Statements never release over an unreconciled trust account, and no statement goes out without property-manager approval."
-triggers: ["owner statement", "monthly statement", "statement drafting", "owner report", "statement release", "explainable statement", "statement review", "owner ledger summary"]
+description: "Draft owner statements with explainable line items and owner-draw recommendations. Use for monthly owner reporting. External send and draw release are approval-gated."
 ---
 
 # Owner Statement Drafting
 
-Source: monthly workflow Step 8, plus judgment scenario 13.
+{{agent_name}} uses this skill to build owner-facing statement drafts. The statement is draft-first, and any external send requires human approval.
 
 ---
 
-## Preflight — must all be true before drafting
+## Inputs
 
-- all income for the period is posted
-- all vendor bills for the period are posted
-- all management and leasing fees are posted and verified against the agreements
-- every NSF reversal is complete
-- no pending item would change the balance
-- **the three-way trust reconciliation balances**
-
-If the last one is false, stop. See below.
+- Owner ledger
+- Property/unit income and expense detail
+- AP paid/unpaid status
+- Reserve and draw calculation
+- Prior-period statement, if available
 
 ---
 
-## What a statement carries
+## Workflow
 
-| Section | Content |
-|---|---|
-| Opening balance | Prior period ending, tied to the prior statement |
-| Income received | Rent and other receipts, by property, collected in the period |
-| Expenses paid | By category, each traceable to an invoice and a work order |
-| Fees charged | Management, leasing, and other agreement fees, itemized |
-| Reserve activity | Movement against the reserve floor, and the ending reserve |
-| Net distribution | Available balance minus reserve minus any authorized holdback |
-
-Every line answers where the number came from. An owner who asks "what is this $340" gets an invoice number and a work order, not a category name.
+1. Confirm owner, property set, and period.
+2. Build line items: rent, fees, concessions, maintenance, management fees, reserves, prior balance, and ending balance.
+3. Tie statement totals to the owner ledger.
+4. Add plain-English explanations for unusual line items.
+5. Attach owner-draw draft if applicable.
+6. Mark the artifact draft-only and route any external send or draw disbursement through approval.
 
 ---
 
-## The hard rule: unreconciled means no release
+## Output Contract
 
-`policy.owner_statement_release_day` (B10) and the reconciliation date have to agree. Statements do not release while the trust account is unreconciled — not "we'll fix the variance after," not "it's only $12."
-
-### Scenario 13 — it is statement day and the three-way does not balance
-
-**Do right now.** Do not send. Notify the property manager that statements will be delayed. Begin the systematic trace: bank vs ledger first, then ledger vs the sum of sub-ledgers. Isolate which leg is off. Check timing items, unposted transactions, and any manual entry made during the period.
-
-**Never.** Never send statements over an unbalanced trust account. Never post a plug entry to force balance. Never tell owners statements are "on the way" when the account does not reconcile.
-
-**Escalate when.** Immediately on discovery. The property manager communicates the delay. A large or unexplained variance may pull in the broker or an outside accountant.
-
-**Write down.** Date discovered, which leg is off, amount, steps taken, resolution, and the date statements ultimately went out. Decision-log scenario S13.
+Produce a draft statement package with:
+- summary totals
+- explainable line items
+- source references
+- unresolved discrepancies
+- draft owner-facing notes
+- approval status for external send and any draw
 
 ---
 
-## Review and release
+## Validation
 
-The property manager reviews the full month's statements before any of them go out — the month-end "owner statement pre-send review." Then, and only then, statements publish to the owner portal or send by the configured method.
-
-This is an external financial send. It is approval-gated and it is in the `never_graduate` set.
-
----
-
-## Hard gates
-
-- This agent does not publish, email, or portal-post a statement.
-- A statement never leaves over an open variance.
-- No line on a statement carries a number that was not re-derived from source this cycle.
-- Owners see statements and ledgers read-only; they never initiate a transaction.
+- Statement total ties to ledger.
+- Every adjustment has a source.
+- No external statement was sent without approval.
+- Owner draw remains draft-only until approved.

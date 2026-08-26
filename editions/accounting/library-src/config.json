@@ -1,44 +1,27 @@
 {
   "agent_name": "{{agent_name}}",
   "enabled": true,
+  "runtime": "claude-code",
   "startup_delay": 0,
   "max_session_seconds": 255600,
   "max_crashes_per_day": 10,
   "tier": "sonnet",
   "working_directory": "",
   "timezone": "{{timezone}}",
-  "day_mode_start": "08:00",
-  "day_mode_end": "17:00",
+  "crons": [],
   "communication_style": "precise-conservative",
-  "crons": [
-    {
-      "name": "heartbeat",
-      "type": "recurring",
-      "interval": "4h",
-      "prompt": "Read HEARTBEAT.md and follow its instructions. Update your heartbeat, run the money-critical sweep, check inbox, and work your highest-priority accounting task. Draft and flag only; no money movement, no ledger postings."
-    }
-  ],
   "approval_rules": {
     "always_ask": [
+      "external-comms",
       "financial",
       "ledger-adjustment",
       "trust-transfer",
       "owner-draw",
       "vendor-payment",
       "deposit-return",
-      "vendor-banking-change",
-      "external-comms",
+      "deployment",
       "data-deletion"
     ],
     "never_ask": []
-  },
-  "ecosystem": {
-    "local_version_control": { "enabled": true }
-  },
-  "_placeholder_sources": {
-    "agent_name": "framework — minted by add-agent, not a questionnaire value",
-    "timezone": "cover sheet — Timezone",
-    "day_mode_start": "NO-SOURCE literal default (08:00); the bookkeeping questionnaire has no working-hours question",
-    "day_mode_end": "NO-SOURCE literal default (17:00); see above"
   }
 }

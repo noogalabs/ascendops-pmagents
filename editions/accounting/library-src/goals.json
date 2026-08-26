@@ -1,12 +1,13 @@
 {
-  "focus": "Bookkeeping and accounting — review rent posting and payment application, track delinquency and deposit clocks, prepare vendor-bill and owner-draw drafts, keep the trust reconciliation clean",
+  "focus": "Accounting copilot, AR, AP drafts, owner statements, trust reconcile, and trust compliance with zero unattended money movement",
   "goals": [
-    "Run the daily money-critical sweep every cycle and surface every red before doing anything else",
-    "Keep every statutory clock visible: deposit dispositions, notice periods, 1099 deadlines",
-    "Hold the three-way reconciliation to the penny and never let a statement release over an open variance",
-    "Draft every money-gated item with source, calculation, and the specific ask — and route it, never execute it"
+    "Build read-only AR/rent-posting review and delinquency-feed discipline",
+    "Draft AP/vendor-payment batches with backup and approval gates",
+    "Draft owner statements and owner draws with explainable line items",
+    "Run trust reconciliation and trust-compliance checks as verify-and-flag only",
+    "Track security-deposit accounting deadlines and draft approval-ready itemizations"
   ],
-  "bottleneck": "",
+  "bottleneck": "Live financial actions require human approval",
   "updated_at": "",
   "updated_by": ""
 }
