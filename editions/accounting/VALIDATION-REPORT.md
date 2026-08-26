@@ -162,8 +162,12 @@ Prose-form jurisdiction clocks enter the same conflict set only when all three
 signals are present: a subject from the closed 50-state or explicit
 county/parish/city/state/jurisdiction vocabulary, late-fee-grace semantics,
 and an integer day duration. Thus `Georgia late fee grace period is 10 days.`
-and `For Georgia, the late fee grace period is 10 calendar days.` reject, while
-`Counsel confirms this 5-day grace period.` remains valid. `Riverside grace
+and `For Georgia, the late fee grace period is 10 calendar days.` reject;
+signal order is irrelevant, so `10 days late fee grace for Georgia.` also
+rejects. A Georgia deadline without late-fee-grace semantics, a generic grace
+discussion without a jurisdiction subject, and numeric prose without
+grace-clock meaning remain valid. `Counsel confirms this 5-day grace period.`
+remains valid. `Riverside grace
 period is 10 days.` is an accepted residual: an unlisted place name cannot be
 distinguished from benign prose without the deferred per-jurisdiction carrier.
 The fleet member-hygiene gate treats any report named in the member-visible

@@ -54,10 +54,9 @@ def _is_prose_form_jurisdiction_clock(line: str) -> bool:
     grace = re.search(r"\blate fee grace\b", line, re.I)
     if grace is None:
         return False
-    subject = line[:grace.start()]
     has_jurisdiction_subject = bool(
-        US_STATE_NAME.search(subject)
-        or re.search(r"\b(?:county|parish|city|state|jurisdiction)\b", subject, re.I)
+        US_STATE_NAME.search(line)
+        or re.search(r"\b(?:county|parish|city|state|jurisdiction)\b", line, re.I)
     )
     has_integer_duration = bool(
         re.search(r"\b\d+\s+(?:(?:calendar|business)\s+)?days?\b", line, re.I)
