@@ -17,6 +17,8 @@ jobs:
         run: python3 ci/member-hygiene.py
       - name: Hygiene falsifiability tests
         run: python3 ci/test-member-hygiene.py
+      - name: Verify tracked manifest custody
+        run: python3 ci/generate-manifest.py --check
       - name: Engine and frozen-baseline suites
         run: python3 -m unittest discover -s engine/tests -p 'test_*.py'
       - name: Guided zero-touch setup suite

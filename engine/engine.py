@@ -42,6 +42,47 @@ SUPPORTED = {
 IntakeRejected = intake.IntakeRejected
 
 
+def load_seat_mapping(seat: str):
+    if seat not in SUPPORTED:
+        raise IntakeRejected([("seat", f"no mapping table/library is installed for {seat!r}")])
+    try:
+        return placeholders.load_mapping(SUPPORTED[seat]["mapping"])
+    except placeholders.PlaceholderRejected as exc:
+        raise IntakeRejected(exc.failures) from exc
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise IntakeRejected([("mapping", f"cannot read valid JSON: {exc}")]) from exc
+
+
+def cover_fields_for_mapping(mapping):
+    rows = mapping.get("cover_fields")
+    if rows is None:
+        return dict(intake.COVER_FIELDS)
+    failures = []
+    fields = {}
+    if not isinstance(rows, list) or not rows:
+        failures.append(("mapping.cover_fields", "must be a nonempty list of label/key objects"))
+    else:
+        for index, row in enumerate(rows):
+            subject = f"mapping.cover_fields[{index}]"
+            if not isinstance(row, dict) or set(row) != {"label", "key"}:
+                failures.append((subject, "must contain exactly string label and key fields"))
+                continue
+            label, key = row["label"], row["key"]
+            if not isinstance(label, str) or not label.strip() or not isinstance(key, str) or not key.strip():
+                failures.append((subject, "label and key must be nonblank strings"))
+            elif label in fields or key in fields.values():
+                failures.append((subject, "label and key must each be unique"))
+            else:
+                fields[label] = key
+    if failures:
+        raise IntakeRejected(failures)
+    return fields
+
+
+def cover_fields_for_seat(seat: str):
+    return cover_fields_for_mapping(load_seat_mapping(seat))
+
+
 def read_member_json(path: Path, subject: str):
     try:
         payload = json.loads(path.read_text())
@@ -93,6 +134,7 @@ def validate(path: Path, seat: str):
     return intake.preflight(
         path,
         SUPPORTED[seat]["question_ids"],
+        cover_fields=cover_fields_for_seat(seat),
         semantic_profile="maintenance" if seat == "maintenance-coordinator" else "structural",
     )
 
@@ -181,12 +223,7 @@ def configure(source: Path, answers: Path, output: Path, seat: str,
             raise IntakeRejected(exc.failures) from exc
         cover, parsed, raw_cover, raw_answers = (parsed_intake.cover, parsed_intake.answers,
                                                   parsed_intake.raw_cover, parsed_intake.raw_answers)
-        try:
-            mapping = placeholders.load_mapping(SUPPORTED[seat]["mapping"])
-        except placeholders.PlaceholderRejected as exc:
-            raise IntakeRejected(exc.failures)
-        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-            raise IntakeRejected([("mapping", f"cannot read valid JSON: {exc}")]) from exc
+        mapping = load_seat_mapping(seat)
         try:
             structured_filename = cross_seat.structured_answers_filename(mapping)
         except cross_seat.CrossSeatRejected as exc:

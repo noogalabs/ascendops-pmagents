@@ -13,6 +13,10 @@ SPEC.loader.exec_module(manifest)
 
 
 class ManifestGenerationTests(unittest.TestCase):
+    def test_named_ci_runs_tracked_manifest_check(self):
+        workflow = (ROOT / ".github" / "workflows" / "test.yml").read_text()
+        self.assertIn("python3 ci/generate-manifest.py --check", workflow)
+
     def test_named_untracked_cache_can_never_enter_manifest(self):
         print("ARMED: untracked __pycache__ is outside the tracked manifest census")
         with tempfile.TemporaryDirectory(dir=ROOT) as directory:

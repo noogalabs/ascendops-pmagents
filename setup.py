@@ -44,19 +44,21 @@ class PromptField(NamedTuple):
     marker: str
 
 
-def questionnaire_fields(template: str) -> list[PromptField]:
+def questionnaire_fields(template: str, cover_fields=None) -> list[PromptField]:
+    active_cover_fields = engine.intake.COVER_FIELDS if cover_fields is None else cover_fields
     fields = [
         PromptField(f"cover.{label}", label, rf"^{re.escape(label)}:\s*.*$" )
-        for label in engine.intake.COVER_FIELDS
+        for label in active_cover_fields
     ]
     for match in re.finditer(r"^([A-D]\d+)\.\s+(.+)$", template, re.M):
         fields.append(PromptField(match.group(1), f"{match.group(1)}. {match.group(2)}", ""))
     return fields
 
 
-def answer_values(text: str) -> dict[str, str]:
+def answer_values(text: str, cover_fields=None) -> dict[str, str]:
+    active_cover_fields = engine.intake.COVER_FIELDS if cover_fields is None else cover_fields
     values: dict[str, str] = {}
-    for label in engine.intake.COVER_FIELDS:
+    for label in active_cover_fields:
         match = re.search(rf"^{re.escape(label)}:\s*(.*)$", text, re.M)
         if match and match.group(1).strip(" _"):
             values[f"cover.{label}"] = match.group(1).strip()
@@ -115,11 +117,11 @@ def render_rejection(
         print(example, file=err)
 
 
-def answer_field_map(answers: Path) -> dict[str, PromptField]:
+def answer_field_map(answers: Path, cover_fields=None) -> dict[str, PromptField]:
     try:
         return {
             field.key: field
-            for field in questionnaire_fields(answers.read_text(encoding="utf-8"))
+            for field in questionnaire_fields(answers.read_text(encoding="utf-8"), cover_fields)
         }
     except (OSError, UnicodeError):
         return {}
@@ -148,14 +150,15 @@ def fix_named_answer(
 
 
 def guided_answers(path: Path, ask: Callable[[str], str], out: TextIO, seat: str = "maintenance-coordinator") -> Path:
+    cover_fields = engine.cover_fields_for_seat(seat)
     if path.exists():
         text = path.read_text(encoding="utf-8")
         print(f"Resuming {path}", file=out)
     else:
         text = engine.SUPPORTED[seat]["answers"].read_text(encoding="utf-8")
         atomic_text(path, text)
-    complete = answer_values(text)
-    fields = questionnaire_fields(text)
+    complete = answer_values(text, cover_fields)
+    fields = questionnaire_fields(text, cover_fields)
     for field in fields:
         if field.key in complete:
             continue
@@ -225,7 +228,7 @@ def run_setup(
                 configure_fn(actual_source, answers, output, seat, clock=clock, seat_registry={})
                 break
             except engine.IntakeRejected as exc:
-                editable = answer_field_map(answers)
+                editable = answer_field_map(answers, engine.cover_fields_for_seat(seat))
                 render_rejection(exc, err, editable)
                 if not fix_named_answer(answers, exc.failures, ask, editable):
                     return 2

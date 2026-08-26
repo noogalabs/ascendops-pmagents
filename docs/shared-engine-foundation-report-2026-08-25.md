@@ -9,6 +9,8 @@ and `setup.py`. The five heads carried four incompatible registry/validation
 signatures and multiple mapping runners. The canonical blend is:
 
 - PR5's mapping materialization flow;
+- PR6's five-field leasing cover sheet, preserved as optional mapping-declared
+  `cover_fields` data with the standard four as the exact absent-key default;
 - PR7's explicit runner/structural-intake registry contract;
 - PR9's registry-derived `SEAT_LABELS` setup list;
 - no PR8 `generic_configurator.py` fork.
@@ -42,6 +44,10 @@ explicit for sealed and mapping paths without modifying the sealed file.
 - Disabling both shared scan calls kills the mapping casualty by name while the
   sealed twin remains green, proving the twin is independent rather than a
   duplicate assertion.
+- Ignoring a mapping's declared `cover_fields` kills the production guided-flow
+  extra-field casualty by name; drifting the absent-key default kills the exact
+  standard-four casualty.
+- Removing the manifest workflow step kills the named CI custody test.
 
 ## Manifest custody
 
@@ -49,12 +55,14 @@ explicit for sealed and mapping paths without modifying the sealed file.
 `git ls-files`. `tests/test_manifest_generation.py` plants an untracked
 `__pycache__/planted.pyc` and proves it can never enter the manifest. Generation
 fails if any tracked input is missing; `--check` compares the tracked census to
-the committed manifest.
+the committed manifest. The PMAgents workflow runs that exact check, and a
+custody test pins the workflow carrier.
 
 ## Validation
 
 - Engine: 77/77.
-- Repository tests: 26/26.
+- Guided setup + manifest custody: 29/29.
+- Sealed maintenance suite: 26/26.
 - Tracked manifest check: green.
 - Sealed core SHA-256: unchanged.
 - `git diff --check`: clean.
