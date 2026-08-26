@@ -9,6 +9,8 @@ preserves continuation lines in the questionnaire, and reads only the answer
 line plus indented continuations when deciding whether a field is complete.
 Replacement is bounded to that same answer span, so the next section heading
 and final questionnaire guidance remain byte-present.
+Cover fields use the same indented-continuation representation and the shared
+intake parser preserves those continuations instead of silently truncating them.
 Single-line answers use the same protocol with an immediate blank terminator.
 Correction prompts use the identical collector, so the retry path cannot
 reintroduce the one-line limitation.

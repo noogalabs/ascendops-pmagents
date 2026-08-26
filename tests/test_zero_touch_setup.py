@@ -111,15 +111,17 @@ class ZeroTouchSetupTests(unittest.TestCase):
             (self.source / "seat-config.json").write_text("{}\n")
             scripted = iter([
                 str(len(setup.SEATS)), str(self.source), str(output), "1", str(answers),
-                "portfolio-17", "",
+                "portfolio-17\nsecondary", "",
             ])
             self.assertEqual(setup.run_setup(
                 ask=lambda _prompt: next(scripted),
                 clock=lambda: datetime.date(2026, 8, 25),
             ), 0)
             configured = json.loads((output / "seat-config.json").read_text())
-            self.assertEqual(configured["cover_sheet"]["portfolio_code"], "[documented] portfolio-17")
-            self.assertIn("Portfolio code: [documented] portfolio-17", answers.read_text())
+            self.assertEqual(configured["cover_sheet"]["portfolio_code"],
+                             "[documented] portfolio-17\nsecondary")
+            self.assertIn("Portfolio code: [documented] portfolio-17\n  secondary",
+                          answers.read_text())
         finally:
             setup.SEATS = original_seats
             setup.engine.SUPPORTED.pop(seat, None)

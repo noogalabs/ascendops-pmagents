@@ -61,10 +61,20 @@ def questionnaire_fields(template: str, cover_fields=None) -> list[PromptField]:
 def answer_values(text: str, cover_fields=None) -> dict[str, str]:
     active_cover_fields = engine.intake.COVER_FIELDS if cover_fields is None else cover_fields
     values: dict[str, str] = {}
+    lines = text.splitlines()
     for label in active_cover_fields:
-        match = re.search(rf"^{re.escape(label)}:\s*(.*)$", text, re.M)
-        if match and match.group(1).strip(" _"):
-            values[f"cover.{label}"] = match.group(1).strip()
+        for index, line in enumerate(lines):
+            match = re.match(rf"^{re.escape(label)}:\s*(.*)$", line)
+            if not match:
+                continue
+            value_lines = [match.group(1).strip()]
+            cursor = index + 1
+            while cursor < len(lines) and re.match(r"^[ \t]+\S", lines[cursor]):
+                value_lines.append(lines[cursor].strip())
+                cursor += 1
+            value = "\n".join(value_lines).strip()
+            if value.strip(" _\n"):
+                values[f"cover.{label}"] = value
     current = None
     lines = text.splitlines()
     for index, line in enumerate(lines):
@@ -87,7 +97,9 @@ def answer_values(text: str, cover_fields=None) -> dict[str, str]:
 
 def set_answer(text: str, field: PromptField, value: str) -> str:
     if field.key.startswith("cover."):
-        return re.sub(field.marker, f"{field.label}: {value}", text, count=1, flags=re.M)
+        rendered = value.rstrip().replace("\n", "\n  ")
+        pattern = rf"^{re.escape(field.label)}:[^\n]*(?:\n[ \t]+\S[^\n]*)*"
+        return re.sub(pattern, f"{field.label}: {rendered}", text, count=1, flags=re.M)
     pattern = (
         rf"(^({re.escape(field.key)})\..*?^Answer:)[^\n]*"
         rf"(?:\n[ \t]+\S[^\n]*)*"
