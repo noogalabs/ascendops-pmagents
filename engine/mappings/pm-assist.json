@@ -1,0 +1,59 @@
+{
+  "schema_version": 2,
+  "seat": "pm-assist",
+  "library_id": "pm-assist-2026-08-25",
+  "source_table": "mapping-tables/pm-assist.md",
+  "structured_answers_file": "seat-config.json",
+  "placeholders": [
+    {"placeholder":"property_manager_name","source":"A2","extractor":"first_person"},
+    {"placeholder":"broker_name","source":"A3","extractor":"first_person"},
+    {"placeholder":"broker_channel","source":"A3","extractor":"identity"},
+    {"placeholder":"owner_approval_threshold","source":"B1","extractor":"currency"},
+    {"placeholder":"coordinator_spend_authority","source":"B2","extractor":"currency"},
+    {"placeholder":"pm_emergency_authority","source":"B3","extractor":"currency"},
+    {"placeholder":"broker_emergency_threshold","source":"B3","extractor":"currency"},
+    {"placeholder":"owner_followup_1_hours","source":"B4","extractor":"identity"},
+    {"placeholder":"owner_followup_2_hours","source":"B4","extractor":"identity"},
+    {"placeholder":"owner_escalate_hours","source":"B4","extractor":"identity"},
+    {"placeholder":"owner_reserve_minimum","source":"B5","extractor":"currency"},
+    {"placeholder":"delinquency_alert_day","source":"B6","extractor":"identity"},
+    {"placeholder":"renewal_lookahead_days","source":"B9","extractor":"identity"},
+    {"placeholder":"owner_decision_days","source":"B9","extractor":"identity"},
+    {"placeholder":"trust_variance_broker_threshold","source":"B14","extractor":"currency"},
+    {"placeholder":"backup_decision_maker","source":"C5","extractor":"first_person"},
+    {"placeholder":"followthrough_sweep_day","source":"C8","extractor":"identity"},
+    {"placeholder":"promise_overdue_hours","source":"C8","extractor":"identity"},
+    {"placeholder":"pm_platform","source":"D1","extractor":"identity"},
+    {"placeholder":"operating_board_location","source":"D2","extractor":"identity"},
+    {"placeholder":"owner_report_day","source":"D6","extractor":"identity"},
+    {"placeholder":"decision_log_location","source":"D7","extractor":"identity"},
+    {"placeholder":"deposit_disposition_days","source":"A7","extractor":"identity"},
+    {"placeholder":"timezone","source":"cover.timezone","extractor":"identity"},
+    {"placeholder":"company_name","source":"cover.company_name","extractor":"identity"},
+    {"placeholder":"org_name","source":"cover.org_short_name","extractor":"identity"},
+    {"placeholder":"forward_email","source":"cover.forward_email","extractor":"identity"},
+    {"placeholder":"day_mode_start","source":"C8","extractor":"literal","value":"08:00"},
+    {"placeholder":"day_mode_end","source":"C8","extractor":"literal","value":"20:00"},
+    {"placeholder":"agent_name","source":"A2","extractor":"literal","value":"pm-assist"},
+    {"placeholder":"org","source":"cover.org_short_name","extractor":"identity"},
+    {"placeholder":"current_timestamp","source":"C8","extractor":"literal","value":"configured-by-pmagents"}
+  ],
+  "config_keys": [
+    {"path":"/timezone","source":"cover.timezone","extractor":"identity","value_type":"string","mode":"replace"}
+  ],
+  "cross_seat": {
+    "pointers": [
+      {"value_name":"deposit_disposition_days","owner_seat":"maintenance-coordinator","owner_question_id":"A3","holding_question_id":"A7","owner_value_path":"/answers/A3"},
+      {"value_name":"entry_notice_hours","owner_seat":"maintenance-coordinator","owner_question_id":"A2","holding_question_id":"A6","owner_value_path":"/answers/A2"},
+      {"value_name":"maintenance_sla","owner_seat":"maintenance-coordinator","owner_question_id":"B5","holding_question_id":"B12","owner_value_path":"/answers/B5"},
+      {"value_name":"platform_of_record","owner_seat":"maintenance-coordinator","owner_question_id":"D1","holding_question_id":"D1","owner_value_path":"/answers/D1"}
+    ],
+    "checks": [
+      {"check_id":"pm-assist-owner-threshold","type":"FACT_MATCH","severity":"report","value_name":"owner_approval_threshold","local_ref":"/answers/B1","peer_seat":"maintenance-coordinator","peer_ref":"/answers/B1","measure":"currency"},
+      {"check_id":"pm-assist-property-manager-policy","type":"POLICY_DIVERGE","severity":"report","value_name":"property_manager_of_record","local_ref":"/answers/A2","peer_seat":"maintenance-coordinator","peer_ref":"/answers/C1"},
+      {"check_id":"pm-assist-response-order","type":"ORDERING","operator":"gte","severity":"report","value_name":"owner_response_order","local_ref":"/derived/owner_nonresponse_first_hours","peer_seat":"maintenance-coordinator","peer_ref":"/derived/owner_nonresponse_first_hours"}
+    ],
+    "never_graduate":["housing","housing_protected_class","money","legal","relationship"],
+    "fill_exempt":[]
+  }
+}

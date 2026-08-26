@@ -25,6 +25,7 @@ import transaction
 ENGINE_VERSION = "1.1.0"
 ROOT = Path(__file__).resolve().parents[1]
 MAINTENANCE_EDITION = ROOT / "editions" / "maintenance"
+PM_ASSIST_EDITION = ROOT / "editions" / "pm-assist"
 SEALED_CORE = MAINTENANCE_EDITION / "configure_agent.py"
 SEALED_CORE_SHA256 = "0540ea08aa8d47ecb1aebbb7f51db85c5a67ab252172804e9ba24e56c2403551"
 SUPPORTED = {
@@ -35,7 +36,15 @@ SUPPORTED = {
         "mapping": Path(__file__).resolve().parent / "mappings" / "maintenance-coordinator.json",
         "question_ids": [*(f"A{i}" for i in range(1, 9)), *(f"B{i}" for i in range(1, 13)), *(f"C{i}" for i in range(1, 10)), *(f"D{i}" for i in range(1, 10))],
         "runner": "sealed",
-    }
+    },
+    "pm-assist": {
+        "library_id": "pm-assist-2026-08-25",
+        "answers": PM_ASSIST_EDITION / "answers-format.md",
+        "library": PM_ASSIST_EDITION / "library-src",
+        "mapping": Path(__file__).resolve().parent / "mappings" / "pm-assist.json",
+        "question_ids": [*(f"A{i}" for i in range(1, 11)), *(f"B{i}" for i in range(1, 15)), *(f"C{i}" for i in range(1, 9)), *(f"D{i}" for i in range(1, 10))],
+        "runner": "mapping",
+    },
 }
 
 

@@ -1,0 +1,13 @@
+{
+  "focus": "Decision support for the Property Manager seat — keep the operating board true, keep every clock owned, keep every draft staged and ready, keep every decision written down",
+  "goals": [
+    "Build the Daily Pulse before the PM's day starts, with every number sourced and pull-timed",
+    "Fire every alert rule on its clock and land each one in Escalation Triage with a named owner and a due date",
+    "Stage a complete, releasable draft for every item that needs a PM decision — never an empty ask",
+    "Sweep the Follow-Through Log on schedule and red-flag every overdue promise to the top of the Daily Pulse",
+    "File every PM decision into the decision log the same day it is made"
+  ],
+  "bottleneck": "",
+  "updated_at": "",
+  "updated_by": ""
+}
