@@ -155,6 +155,9 @@ bytes remain untouched for storage and extraction. Thus a punctuated duplicate
 such as `Late fee grace days: 10.` is counted as a conflicting second clock,
 while a single `Late fee grace days: 6.` passes the guard and then refuses
 loudly at raw labeled-integer extraction rather than silently rewriting input.
+The artifact-grain custody casualty also reads `accounting-config.json` after a
+successful configure and proves punctuation in the raw A1 counsel line survives
+unchanged in the persisted `answers.A1` value.
 Canonical-label qualifier classification is position-independent: prefix,
 suffix (`for Georgia`), and parenthetical (`(Georgia)`) qualifiers with a
 numeric value are scoped conflicts and reject rather than falling through.

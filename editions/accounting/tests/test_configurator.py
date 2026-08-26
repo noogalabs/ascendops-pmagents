@@ -615,6 +615,19 @@ class AccountingConfiguratorTests(unittest.TestCase):
                       caught.exception.render())
         self.assertFalse(output.exists())
 
+    def test_named_accounting_punctuated_prose_survives_persisted_artifact_exactly(self):
+        print("ARMED: persisted accounting answers retain operator punctuation byte-for-byte")
+        answer = (
+            "Late fee grace days: 6\n"
+            "  Counsel confirmed this rule (Georgia)."
+        )
+        expected = "Late fee grace days: 6\nCounsel confirmed this rule (Georgia)."
+        output = self.tmp / "punctuated-prose-persistence"
+        engine.configure(self.source, self.fixture_variant("A1", answer), output,
+                         "accounting", seat_registry={})
+        persisted = json.loads((output / "accounting-config.json").read_text())
+        self.assertEqual(persisted["answers"]["A1"], expected)
+
     def test_named_accounting_unstructured_qualified_duration_prose_configures_exactly(self):
         print("ARMED: qualified duration prose without labeled clock shape remains valid")
         output = self.tmp / "qualified-duration-prose"
