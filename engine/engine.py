@@ -27,6 +27,7 @@ ROOT = Path(__file__).resolve().parents[1]
 MAINTENANCE_EDITION = ROOT / "editions" / "maintenance"
 PM_ASSIST_EDITION = ROOT / "editions" / "pm-assist"
 LEASING_EDITION = ROOT / "editions" / "leasing"
+TURNOVER_EDITION = ROOT / "editions" / "turnover"
 SEALED_CORE = MAINTENANCE_EDITION / "configure_agent.py"
 SEALED_CORE_SHA256 = "0540ea08aa8d47ecb1aebbb7f51db85c5a67ab252172804e9ba24e56c2403551"
 SUPPORTED = {
@@ -52,6 +53,14 @@ SUPPORTED = {
         "library": LEASING_EDITION / "library-src",
         "mapping": Path(__file__).resolve().parent / "mappings" / "leasing-coordinator.json",
         "question_ids": [*(f"A{i}" for i in range(1, 15)), *(f"B{i}" for i in range(1, 10)), *(f"C{i}" for i in range(1, 7)), *(f"D{i}" for i in range(1, 11))],
+        "runner": "mapping",
+    },
+    "turnover-coordinator": {
+        "library_id": "turnover-2026-08-25",
+        "answers": TURNOVER_EDITION / "answers-format.md",
+        "library": TURNOVER_EDITION / "library-src",
+        "mapping": Path(__file__).resolve().parent / "mappings" / "turnover-coordinator.json",
+        "question_ids": [*(f"A{i}" for i in range(1, 7)), *(f"B{i}" for i in range(1, 7)), *(f"C{i}" for i in range(1, 8)), *(f"D{i}" for i in range(1, 8)), *(f"E{i}" for i in range(1, 9))],
         "runner": "mapping",
     },
 }

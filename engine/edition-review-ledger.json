@@ -91,6 +91,55 @@
         "D7": {"gate_surface": "cross_seat.never_graduate housing_decision", "named_test": "test_named_d7_and_cross_seat_contract_rows_match_authority"},
         "D10": {"gate_surface": "questionnaire permanent copilot statement", "named_test": "test_named_shadow_mode_never_promises_unshipped_autonomy"}
       }
+    },
+    "turnover-coordinator": {
+      "edition": "turnover",
+      "mapping": "turnover-coordinator.json",
+      "mapping_driven": true,
+      "companions": [
+        "in-house-tech-vs-vendor-dispatch-decision-matrix.md",
+        "make-ready-checklist.md",
+        "monthly-turnover-performance-report-template.md",
+        "move-out-final-inspection-checklist.md",
+        "owner-make-ready-communication-templates.md",
+        "pre-move-out-inspection-checklist.md",
+        "the-coordinator-scope-playbook-move-out-inspection-to-make-ready-decision-guide.md",
+        "the-make-ready-deep-dive-process-flow-and-board-design.md",
+        "turn-time-and-make-ready-budget-benchmarks-by-property-class.md",
+        "turnover-tracking-board-full-system-design.md"
+      ],
+      "companion_claim": "Companion documents shipped in this folder: In-House Tech vs. Vendor Dispatch Decision Matrix, Make-Ready Checklist, Monthly Turnover Performance Report Template, Move-Out Final Inspection Checklist, Owner Make-Ready Communication Templates, Pre-Move-Out Inspection Checklist, The Coordinator Scope Playbook, The Make-Ready Deep Dive, Turn-Time and Make-Ready Budget Benchmarks by Property Class, and Turnover Tracking Board Full System Design.",
+      "banned_companion_claims": ["eleven turnover library docs", "Turnover Board Template spreadsheet", "Move-In Checklist", "Turnover Grading Framework", "Remote Maintenance Coordinator KPI Addendum A"],
+      "promise_subject_sha256": {
+        "INTRO": "1a5327048e40f38bd48e5b0efc704cadfd8559810a14e625e68da2a967757afe",
+        "A1": "aba05b16ee332d5a3d7a062d795272ac05b13b494f9a62359c3c722d933c859f",
+        "A5": "16c0e31586266bb212124e8423dd2294fd44a9c4a142605435b26fb75c56cc4c",
+        "B1": "ac11464218515f2fc38839bdba2e6d09e964040f9a816539a9e2d29604579385",
+        "C1": "b6a4bc6254ed30fc2d5601b79e29f0f5836ac5b5de9617a55b7aa4d00cd77600",
+        "C4": "1b6aa731e4e8b80219376f461d2ba7da04c8f9f0a78b3659f73d1895986157eb",
+        "C5": "b77d238392154b833a520672250db58407ba4e64fb2f3bfaa4b168f5036c989e",
+        "C6": "1606a0fd0409486589ca1aefa6d1f4c1ebdd097b1e2c566d6f3bdb8c5fc01646",
+        "C7": "fd7af7392e5daa822c30181243c5d4292ecf7deb46881252487b7ee43d464ada",
+        "D3": "ac0ffb7b4fbf502b4733a5f506f672f9c1210a25f207c5073a744da42ad037fc",
+        "D6": "382294d1e15c9239155334e96233057469a71eed80a8939f01c145a9f67dd1c7",
+        "E6": "e6fed8c9af2dafc543f850f52a11c0a256ae7848b790ae957244f9c629d5baae",
+        "E8": "44b5c238f9b77db3df3378d97fe5cb0007c36325a8d765274c161967789f230c"
+      },
+      "promise_ledger": {
+        "INTRO": {"no_gate_reason": "format, shipped-library truth, and legal-review disclosure"},
+        "A1": {"no_gate_reason": "question collects the jurisdiction-specific disposition deadline"},
+        "A5": {"no_gate_reason": "question collects the approved lease-section source"},
+        "B1": {"no_gate_reason": "question collects the per-unit property-class map"},
+        "C1": {"gate_surface": "cross_seat.never_graduate make_ready_scope_budget", "named_test": "test_named_turnover_seam_contract_and_permanent_human_gates"},
+        "C4": {"no_gate_reason": "question collects the human silent-owner decision rule"},
+        "C5": {"no_gate_reason": "question collects owner-approved upgrade options"},
+        "C6": {"no_gate_reason": "question collects standing no-approval work"},
+        "C7": {"gate_surface": "cross_seat.never_graduate deposit_deductions", "named_test": "test_named_turnover_seam_contract_and_permanent_human_gates"},
+        "D3": {"no_gate_reason": "question collects human approval ownership"},
+        "D6": {"no_gate_reason": "question identifies the bookkeeping-owned disposition sender"},
+        "E6": {"no_gate_reason": "question collects the evidence storage convention"},
+        "E8": {"gate_surface": "questionnaire permanent human-release statement and cross_seat.never_graduate", "named_test": "test_named_turnover_seam_contract_and_permanent_human_gates"}
+      }
     }
   }
 }

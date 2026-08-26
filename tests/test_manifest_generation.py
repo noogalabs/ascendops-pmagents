@@ -28,6 +28,7 @@ class ManifestGenerationTests(unittest.TestCase):
             "editions/leasing/tests",
             "editions/maintenance/tests",
             "editions/pm-assist/tests",
+            "editions/turnover/tests",
         ])
         self.assertIn("for suite in editions/*/tests", workflow)
         self.assertIn('python3 -m unittest discover -s "$suite"', workflow)

@@ -57,3 +57,13 @@ sources, stripped of org-private metadata, and bound as artifacts 151–152. Its
 five additional cover fields are declared in mapping data and consumed by the canonical engine. The
 edition contributes only its registry row; shared runtime mechanics remain owned
 by the foundation PR.
+
+## Turnover edition
+
+The turnover edition was assembled from the reviewed turnover mapping table,
+the fictional Ridgeline turnover fixture, the owner-reviewed questionnaire, and
+the ten generic make-ready documents in the reviewed operating library. The
+questionnaire and fixture use owner-reviewed attribution and make only companion
+claims that match files shipped in the product tree. The edition consumes the
+canonical shared engine and contributes only its registry row; shared runtime
+mechanics remain owned by foundation fix-forwards.

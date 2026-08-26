@@ -8,6 +8,9 @@ The repository starts with the reviewed maintenance edition and the six-seat map
 
 - `engine/` — intake, validation, substitution, cross-seat, and atomic-transaction code.
 - `editions/maintenance/` — sealed maintenance configurator, answer format, and source library.
+- `editions/pm-assist/` — mapping-driven property-manager assistant edition.
+- `editions/leasing/` — mapping-driven leasing and renewals edition.
+- `editions/turnover/` — mapping-driven turnover questionnaire, fictional fixture, tests, and make-ready library.
 - `mapping-tables/` — the six authoritative mapping tables; collectively they are the cross-seat seam register.
 - `fixtures/ridgeline/` — fictional integration fixtures.
 - `provenance/` — source and destination hashes plus excluded-evidence custody.
