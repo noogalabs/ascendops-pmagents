@@ -58,6 +58,15 @@ python setup.py
 Note the last command is `python`, not `python3`. The stock python.org
 installer for Windows registers `python.exe`, not a `python3` command.
 
+**Crash-durability note (Windows only)**: if the computer loses power in the
+narrow instant right after setup completes a step but before the next write,
+POSIX systems (macOS/Linux/VPS) are guaranteed to recover cleanly on the next
+run; on native Windows, that specific guarantee is weaker (the file content
+itself is always safe either way, this is only about a rename landing durably
+on disk before an actual power loss). This is a known, declared tradeoff, not
+a bug, and does not affect normal use (it only matters for the rare case of
+losing power mid-setup).
+
 ### VPS / headless server
 
 Follow the macOS/Linux steps above exactly; a VPS is Linux underneath. The one
