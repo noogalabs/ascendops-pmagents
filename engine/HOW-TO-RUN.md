@@ -1,5 +1,8 @@
 # AscendOps PMAgents glue engine — operator runbook (v1, we-run-and-hand-back)
 
+Commands below use `python3` (macOS/Linux/VPS). On native Windows, use `python`
+instead; see the README's "Setup by platform" section for the full Windows flow.
+
 1. Receive the filled questionnaire as a Markdown file. Do not run against a live member directory; begin with a provisioning copy.
 2. Run:
 
