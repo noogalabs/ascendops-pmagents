@@ -216,6 +216,15 @@ class WindowsPlatformShapeTests(unittest.TestCase):
             "the sys.platform branch, matching the fcntl/msvcrt split",
         )
         self.assertIn('_IS_WINDOWS = sys.platform == "win32"', source)
+        open_sites = re.findall(r"os\.open\(", source)
+        self.assertEqual(
+            len(open_sites), 1,
+            "a new bare os.open( call site appeared; a hand-rolled directory-fsync "
+            "(or any other raw os.open) bypasses this census and the _IS_WINDOWS "
+            "branch entirely, since os is imported unconditionally on both platforms "
+            "and adds no _fsync_directory( token. Route any new directory-durability "
+            "need through _fsync_directory itself instead of a fresh os.open call.",
+        )
 
 
 if __name__ == "__main__":
