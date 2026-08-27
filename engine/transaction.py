@@ -1,14 +1,21 @@
 """Crash-recoverable directory replacement primitives for the Betty glue wrapper."""
 from __future__ import annotations
 
-import fcntl
 import json
 import os
 import re
 import shutil
+import sys
 from contextlib import nullcontext
 from pathlib import Path
 from typing import Callable, NamedTuple
+
+_IS_WINDOWS = sys.platform == "win32"
+
+if _IS_WINDOWS:
+    import msvcrt
+else:
+    import fcntl
 
 
 class TransactionError(RuntimeError):
@@ -34,11 +41,59 @@ def _sidecar(destination: Path, suffix: str) -> Path:
 
 
 def _fsync_directory(path: Path) -> None:
+    """Durably record a directory-entry change (e.g. after ``os.replace``).
+
+    Windows has no CRT-level directory-handle fsync (``os.open`` on a
+    directory raises ``OSError`` there), so this is an explicit, DECLARED
+    no-op on that platform, not a silent one. What is weaker: on POSIX, a
+    rename that completed just before a crash or power loss is guaranteed
+    recorded because the parent directory's entry is fsynced immediately
+    after; that specific guarantee does not hold on Windows. What stays
+    equally strong on both platforms: every journal write in this module
+    fsyncs its own regular file handle first (see ``_write_journal`` and
+    ``DestinationLock.__enter__``), which this no-op does not touch. A real
+    Windows-durable rename (``MoveFileExW`` with ``MOVEFILE_WRITE_THROUGH``
+    via ctypes) is a named successor, not implemented here: the
+    durable-rename call sites in this file are scattered across five places
+    rather than funneled through one chokepoint, so a targeted ctypes fix
+    was deferred
+    rather than rushed.
+    """
+    if _IS_WINDOWS:
+        return
     descriptor = os.open(path, os.O_RDONLY)
     try:
         os.fsync(descriptor)
     finally:
         os.close(descriptor)
+
+
+def _lock_exclusive_nonblocking(handle) -> None:
+    """Acquire a non-blocking exclusive lock; raise ``BlockingIOError`` on contention.
+
+    ``fcntl.flock`` and ``msvcrt.locking`` give the same operational
+    guarantee ``DestinationLock`` depends on: the lock is kernel-owned and
+    releases automatically the instant the holding process dies or its
+    handle closes, so a crashed configurator never leaves a stale lock
+    behind. Any failure other than contention propagates unchanged; this
+    never silently degrades to an unlocked state.
+    """
+    if _IS_WINDOWS:
+        handle.seek(0)
+        try:
+            msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+        except OSError as exc:
+            raise BlockingIOError(exc.errno, exc.strerror) from exc
+    else:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+
+def _unlock(handle) -> None:
+    if _IS_WINDOWS:
+        handle.seek(0)
+        msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+    else:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
 class DestinationLock:
@@ -53,7 +108,7 @@ class DestinationLock:
         self.destination.parent.mkdir(parents=True, exist_ok=True)
         self._handle = self.path.open("a+", encoding="utf-8")
         try:
-            fcntl.flock(self._handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            _lock_exclusive_nonblocking(self._handle)
         except BlockingIOError as exc:
             self._handle.close()
             self._handle = None
@@ -69,7 +124,7 @@ class DestinationLock:
 
     def __exit__(self, exc_type, exc, traceback):
         if self._handle is not None:
-            fcntl.flock(self._handle.fileno(), fcntl.LOCK_UN)
+            _unlock(self._handle)
             self._handle.close()
             self._handle = None
 

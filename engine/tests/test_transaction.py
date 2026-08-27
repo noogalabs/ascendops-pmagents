@@ -2,17 +2,38 @@
 import importlib.util
 import multiprocessing
 import os
+import re
 import shutil
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 
 HERE = Path(__file__).resolve().parents[1]
-SPEC = importlib.util.spec_from_file_location("glue_transaction", HERE / "transaction.py")
+TRANSACTION_SOURCE = HERE / "transaction.py"
+SPEC = importlib.util.spec_from_file_location("glue_transaction", TRANSACTION_SOURCE)
 transaction = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader
 SPEC.loader.exec_module(transaction)
+
+
+def load_windows_shaped_module(fake_msvcrt):
+    """Load a fresh transaction module as if running natively on Windows.
+
+    Patches ``sys.platform`` to ``win32`` and hides the real ``fcntl``
+    module (raising ``ImportError`` for it, exactly as a real Windows host
+    would) for the duration of the exec, so the module's own platform
+    branch is what determines which lock/fsync path gets wired up, not an
+    accident of running on a POSIX CI runner.
+    """
+    spec = importlib.util.spec_from_file_location("glue_transaction_win32", TRANSACTION_SOURCE)
+    module = importlib.util.module_from_spec(spec)
+    with patch.object(sys, "platform", "win32"), \
+         patch.dict(sys.modules, {"fcntl": None, "msvcrt": fake_msvcrt}):
+        spec.loader.exec_module(module)
+    return module
 
 
 def hold_lock(destination: str, ready, release):
@@ -113,6 +134,90 @@ class TransactionTests(unittest.TestCase):
         self.assertEqual(census["daily_logs"], ["logs", "memory/2026-08-24.md"])
 
 
+class WindowsPlatformShapeTests(unittest.TestCase):
+    def test_named_windows_shaped_import_succeeds_without_real_fcntl_or_msvcrt(self):
+        print("ARMED: fcntl-absent import crash and directory-fsync-on-windows crash both regressed here")
+        module = load_windows_shaped_module(MagicMock())
+        self.assertTrue(hasattr(module, "DestinationLock"))
+        self.assertTrue(hasattr(module, "_fsync_directory"))
+
+    def test_named_windows_branch_engages_lk_nblck_and_lock_failure_raises(self):
+        print("ARMED: windows lock path must call LK_NBLCK and must raise on contention, never swallow")
+        fake_msvcrt = MagicMock()
+        fake_msvcrt.LK_NBLCK = "NBLCK-SENTINEL"
+        fake_msvcrt.LK_UNLCK = "UNLCK-SENTINEL"
+        module = load_windows_shaped_module(fake_msvcrt)
+        fake_handle = MagicMock()
+        fake_handle.fileno.return_value = 7
+
+        module._lock_exclusive_nonblocking(fake_handle)
+        fake_msvcrt.locking.assert_called_once_with(7, "NBLCK-SENTINEL", 1)
+        fake_handle.seek.assert_called_with(0)
+
+        fake_msvcrt.locking.side_effect = OSError(13, "Permission denied")
+        with self.assertRaises(BlockingIOError):
+            module._lock_exclusive_nonblocking(fake_handle)
+
+        fake_msvcrt.reset_mock(side_effect=True)
+        module._unlock(fake_handle)
+        fake_msvcrt.locking.assert_called_once_with(7, "UNLCK-SENTINEL", 1)
+
+    def test_named_windows_mocked_two_locker_contention_named_refusal(self):
+        print("ARMED: windows-mocked second locker is rejected by name before any destination write")
+        fake_msvcrt = MagicMock()
+        fake_msvcrt.LK_NBLCK = 1
+        fake_msvcrt.LK_UNLCK = 0
+        acquire_attempts = {"count": 0}
+
+        def locking_side_effect(fd, mode, length):
+            if mode == fake_msvcrt.LK_UNLCK:
+                return None
+            acquire_attempts["count"] += 1
+            if acquire_attempts["count"] == 1:
+                return None
+            raise OSError(13, "Permission denied")
+
+        fake_msvcrt.locking.side_effect = locking_side_effect
+        module = load_windows_shaped_module(fake_msvcrt)
+
+        tmp = Path(tempfile.mkdtemp(prefix="glue-transaction-win32-test-"))
+        try:
+            destination = tmp / "agent"
+            destination.mkdir()
+            (destination / "value").write_text("before", encoding="utf-8")
+            before = (destination / "value").read_bytes()
+
+            first = module.DestinationLock(destination)
+            first.__enter__()
+            try:
+                with self.assertRaises(module.ConcurrentTransactionError) as caught:
+                    with module.DestinationLock(destination):
+                        self.fail("second windows-mocked lock unexpectedly acquired")
+                self.assertIn(str(destination), str(caught.exception))
+                self.assertEqual((destination / "value").read_bytes(), before)
+            finally:
+                first.__exit__(None, None, None)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_named_transaction_posix_only_call_site_census_is_pinned(self):
+        print("ARMED: a new _fsync_directory caller or bare posix-only import must update this census")
+        source = TRANSACTION_SOURCE.read_text()
+        call_sites = re.findall(r"(?<!def )_fsync_directory\(", source)
+        self.assertEqual(
+            len(call_sites), 6,
+            "call-site count changed; review the new site's cross-platform behavior "
+            "and update this pin deliberately, do not just bump the number",
+        )
+        self.assertNotRegex(
+            source,
+            r"(?m)^import (fcntl|termios|grp|pwd|resource|posix|pty|syslog|curses|tty|crypt)\b",
+            "a bare unix-only stdlib import reappeared at module scope; it must live inside "
+            "the sys.platform branch, matching the fcntl/msvcrt split",
+        )
+        self.assertIn('_IS_WINDOWS = sys.platform == "win32"', source)
+
+
 if __name__ == "__main__":
-    print("ARMED: transactional replacement crash, lock, rerun-source, and census checks")
+    print("ARMED: transactional replacement crash, lock, rerun-source, census, and windows-shape checks")
     unittest.main(verbosity=2)
