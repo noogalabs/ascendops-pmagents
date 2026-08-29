@@ -107,7 +107,7 @@ def _count_os_open_call_sites(source: str) -> int:
         receiver = func.value
         if isinstance(receiver, ast.Name) and receiver.id in os_module_names:
             count += 1
-        elif isinstance(receiver, ast.Attribute) and receiver.attr == "os":
+        elif isinstance(receiver, ast.Attribute) and receiver.attr in os_module_names:
             count += 1
     return count
 
@@ -384,6 +384,17 @@ class WindowsPlatformShapeTests(unittest.TestCase):
             _count_os_open_call_sites(unrelated_nested_receiver_source), 0,
             "an unrelated .something.open( chain that doesn't end in .os.open must not "
             "false-positive",
+        )
+
+        nested_aliased_receiver_source = (
+            "class Holder:\n    import os as platform_os\n\n\n"
+            "def f(path):\n    holder = Holder()\n    return holder.platform_os.open(path, 0)\n"
+        )
+        self.assertEqual(
+            _count_os_open_call_sites(nested_aliased_receiver_source), 1,
+            "`holder.platform_os.open(...)` must still be counted; the nested-receiver "
+            "check must compare against the same os_module_names alias set the direct-"
+            "receiver check uses, not a hardcoded literal 'os'",
         )
 
         dotted_submodule_source = "import curses.ascii\n"
