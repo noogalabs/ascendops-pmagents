@@ -48,6 +48,65 @@ def die_after_old_move(candidate: str, destination: str):
     )
 
 
+def _count_os_open_call_sites(source: str) -> int:
+    """Count real os.open( call sites in `source`, resolving both import-alias
+    evasion shapes: `import os as X` (rebinds the module name) and
+    `from os import open as Y` (binds the function name directly). Scanned
+    file-wide via ast.walk, not scope-restricted, so a locally scoped alias
+    import inside a function body is still caught.
+    """
+    tree = ast.parse(source)
+    os_module_names = {"os"}
+    os_open_direct_names = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == "os":
+                    os_module_names.add(alias.asname or alias.name)
+        elif isinstance(node, ast.ImportFrom) and node.module == "os":
+            for alias in node.names:
+                if alias.name == "open":
+                    os_open_direct_names.add(alias.asname or alias.name)
+
+    count = 0
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        if (
+            isinstance(func, ast.Attribute)
+            and func.attr == "open"
+            and isinstance(func.value, ast.Name)
+            and func.value.id in os_module_names
+        ):
+            count += 1
+        elif isinstance(func, ast.Name) and func.id in os_open_direct_names:
+            count += 1
+    return count
+
+
+BANNED_UNIX_MODULES = {
+    "fcntl", "termios", "grp", "pwd", "resource",
+    "posix", "pty", "syslog", "curses", "tty", "crypt",
+}
+
+
+def _bare_unix_module_imports(tree: ast.Module) -> list:
+    """Module-scope `import X` statements whose TOP-LEVEL package is a
+    unix-only stdlib module. Compares the top-level component
+    (`alias.name.split(".", 1)[0]`), not the full dotted name, so a
+    submodule import like `import curses.ascii` is still caught even
+    though its exact spelling never equals the banned root "curses".
+    """
+    return [
+        alias.name
+        for node in tree.body
+        if isinstance(node, ast.Import)
+        for alias in node.names
+        if alias.name.split(".", 1)[0] in BANNED_UNIX_MODULES
+    ]
+
+
 class TransactionTests(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="glue-transaction-test-"))
@@ -204,34 +263,13 @@ class WindowsPlatformShapeTests(unittest.TestCase):
         print("ARMED: a new _fsync_directory caller or bare posix-only import must update this census")
         source = TRANSACTION_SOURCE.read_text()
         tree = ast.parse(source, filename=str(TRANSACTION_SOURCE))
-        banned_unix_modules = {
-            "fcntl", "termios", "grp", "pwd", "resource",
-            "posix", "pty", "syslog", "curses", "tty", "crypt",
-        }
 
         fsync_directory_calls = 0
-        os_open_calls = 0
         for node in ast.walk(tree):
-            if not isinstance(node, ast.Call):
-                continue
-            func = node.func
-            if isinstance(func, ast.Name) and func.id == "_fsync_directory":
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "_fsync_directory":
                 fsync_directory_calls += 1
-            elif (
-                isinstance(func, ast.Attribute)
-                and func.attr == "open"
-                and isinstance(func.value, ast.Name)
-                and func.value.id == "os"
-            ):
-                os_open_calls += 1
-
-        bare_unix_imports = [
-            alias.name
-            for node in tree.body
-            if isinstance(node, ast.Import)
-            for alias in node.names
-            if alias.name in banned_unix_modules
-        ]
+        os_open_calls = _count_os_open_call_sites(source)
+        bare_unix_imports = _bare_unix_module_imports(tree)
 
         # AST Call/Import nodes only ever describe executable code, never comments
         # or string literals, so this census cannot be false-tripped by a comment
@@ -256,6 +294,36 @@ class WindowsPlatformShapeTests(unittest.TestCase):
             "and adds no _fsync_directory( token. Route any new directory-durability "
             "need through _fsync_directory itself instead of a fresh os.open call.",
         )
+
+    def test_named_census_helpers_resolve_alias_and_dotted_import_evasions(self):
+        print("ARMED: os.open alias shapes and dotted unix-import shapes must not evade the census helpers")
+        literal_source = "import os\n\n\ndef f(path):\n    return os.open(path, 0)\n"
+        module_alias_source = "import os as o\n\n\ndef f(path):\n    return o.open(path, 0)\n"
+        from_import_alias_source = "from os import open as raw_open\n\n\ndef f(path):\n    return raw_open(path, 0)\n"
+        unrelated_source = "import os\n\n\ndef f(path):\n    return len(path)\n"
+
+        self.assertEqual(_count_os_open_call_sites(literal_source), 1)
+        self.assertEqual(
+            _count_os_open_call_sites(module_alias_source), 1,
+            "`import os as o` then `o.open(...)` must still be counted as a real os.open call site",
+        )
+        self.assertEqual(
+            _count_os_open_call_sites(from_import_alias_source), 1,
+            "`from os import open as raw_open` then `raw_open(...)` must still be counted",
+        )
+        self.assertEqual(_count_os_open_call_sites(unrelated_source), 0)
+
+        dotted_submodule_source = "import curses.ascii\n"
+        exact_root_source = "import curses\n"
+        unrelated_import_source = "import json\n"
+
+        self.assertEqual(
+            _bare_unix_module_imports(ast.parse(dotted_submodule_source)), ["curses.ascii"],
+            "`import curses.ascii` must still be flagged as a banned-root unix import, "
+            "not evade the check just because the dotted spelling isn't an exact match",
+        )
+        self.assertEqual(_bare_unix_module_imports(ast.parse(exact_root_source)), ["curses"])
+        self.assertEqual(_bare_unix_module_imports(ast.parse(unrelated_import_source)), [])
 
 
 if __name__ == "__main__":
