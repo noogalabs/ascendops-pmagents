@@ -70,11 +70,17 @@ def _count_fsync_directory_call_sites(source: str) -> int:
 
 
 def _count_os_open_call_sites(source: str) -> int:
-    """Count real os.open( call sites in `source`, resolving both import-alias
-    evasion shapes: `import os as X` (rebinds the module name) and
-    `from os import open as Y` (binds the function name directly). Scanned
-    file-wide via ast.walk, not scope-restricted, so a locally scoped alias
-    import inside a function body is still caught.
+    """Count real os.open( call sites in `source`, resolving three evasion
+    shapes the retired substring regex `os\\.open\\(` incidentally caught:
+    `import os as X` (rebinds the module name), `from os import open as Y`
+    (binds the function name directly), and a nested attribute chain ending
+    `.os.open` (e.g. `holder.os.open(...)`) - the retired regex matched that
+    last shape as a plain literal substring regardless of what precedes
+    `.os.open(`, so the AST census fails closed on it the same way: ANY
+    attribute-call whose immediate receiver is itself an attribute access
+    named "os" counts, regardless of what that receiver's own receiver is.
+    Scanned file-wide via ast.walk, not scope-restricted, so a locally
+    scoped alias import inside a function body is still caught.
     """
     tree = ast.parse(source)
     os_module_names = {"os"}
@@ -94,14 +100,14 @@ def _count_os_open_call_sites(source: str) -> int:
         if not isinstance(node, ast.Call):
             continue
         func = node.func
-        if (
-            isinstance(func, ast.Attribute)
-            and func.attr == "open"
-            and isinstance(func.value, ast.Name)
-            and func.value.id in os_module_names
-        ):
+        if not (isinstance(func, ast.Attribute) and func.attr == "open"):
+            if isinstance(func, ast.Name) and func.id in os_open_direct_names:
+                count += 1
+            continue
+        receiver = func.value
+        if isinstance(receiver, ast.Name) and receiver.id in os_module_names:
             count += 1
-        elif isinstance(func, ast.Name) and func.id in os_open_direct_names:
+        elif isinstance(receiver, ast.Attribute) and receiver.attr in os_module_names:
             count += 1
     return count
 
@@ -113,19 +119,28 @@ BANNED_UNIX_MODULES = {
 
 
 def _bare_unix_module_imports(tree: ast.Module) -> list:
-    """Module-scope `import X` statements whose TOP-LEVEL package is a
-    unix-only stdlib module. Compares the top-level component
-    (`alias.name.split(".", 1)[0]`), not the full dotted name, so a
-    submodule import like `import curses.ascii` is still caught even
-    though its exact spelling never equals the banned root "curses".
+    """Module-scope `import X` and `from X import Y` statements whose
+    TOP-LEVEL package is a unix-only stdlib module. Compares the top-level
+    component (`name.split(".", 1)[0]`), not the full dotted name, so a
+    submodule import like `import curses.ascii` (or `from curses.ascii
+    import isprint`) is still caught even though its exact spelling never
+    equals the banned root "curses".
     """
-    return [
+    hits = [
         alias.name
         for node in tree.body
         if isinstance(node, ast.Import)
         for alias in node.names
         if alias.name.split(".", 1)[0] in BANNED_UNIX_MODULES
     ]
+    hits.extend(
+        node.module
+        for node in tree.body
+        if isinstance(node, ast.ImportFrom)
+        and node.module
+        and node.module.split(".", 1)[0] in BANNED_UNIX_MODULES
+    )
+    return hits
 
 
 class TransactionTests(unittest.TestCase):
@@ -351,9 +366,43 @@ class WindowsPlatformShapeTests(unittest.TestCase):
         )
         self.assertEqual(_count_os_open_call_sites(unrelated_source), 0)
 
+        nested_receiver_source = (
+            "class Holder:\n    import os\n\n\n"
+            "def f(path):\n    holder = Holder()\n    return holder.os.open(path, 0)\n"
+        )
+        unrelated_nested_receiver_source = (
+            "class Holder:\n    pass\n\n\n"
+            "def f(holder, path):\n    return holder.zipfile.open(path)\n"
+        )
+        self.assertEqual(
+            _count_os_open_call_sites(nested_receiver_source), 1,
+            "`holder.os.open(...)` (nested attribute chain ending .os.open) must still be "
+            "counted; the retired regex caught this as a plain `os.open(` substring match "
+            "regardless of what precedes it",
+        )
+        self.assertEqual(
+            _count_os_open_call_sites(unrelated_nested_receiver_source), 0,
+            "an unrelated .something.open( chain that doesn't end in .os.open must not "
+            "false-positive",
+        )
+
+        nested_aliased_receiver_source = (
+            "class Holder:\n    import os as platform_os\n\n\n"
+            "def f(path):\n    holder = Holder()\n    return holder.platform_os.open(path, 0)\n"
+        )
+        self.assertEqual(
+            _count_os_open_call_sites(nested_aliased_receiver_source), 1,
+            "`holder.platform_os.open(...)` must still be counted; the nested-receiver "
+            "check must compare against the same os_module_names alias set the direct-"
+            "receiver check uses, not a hardcoded literal 'os'",
+        )
+
         dotted_submodule_source = "import curses.ascii\n"
         exact_root_source = "import curses\n"
         unrelated_import_source = "import json\n"
+        from_import_dotted_source = "from curses.ascii import isprint\n"
+        from_import_exact_source = "from fcntl import flock\n"
+        from_import_unrelated_source = "from pathlib import Path\n"
 
         self.assertEqual(
             _bare_unix_module_imports(ast.parse(dotted_submodule_source)), ["curses.ascii"],
@@ -362,6 +411,16 @@ class WindowsPlatformShapeTests(unittest.TestCase):
         )
         self.assertEqual(_bare_unix_module_imports(ast.parse(exact_root_source)), ["curses"])
         self.assertEqual(_bare_unix_module_imports(ast.parse(unrelated_import_source)), [])
+        self.assertEqual(
+            _bare_unix_module_imports(ast.parse(from_import_exact_source)), ["fcntl"],
+            "`from fcntl import flock` must be flagged; the retired regex never covered "
+            "from-import syntax at all, so this closes a pre-existing gap",
+        )
+        self.assertEqual(
+            _bare_unix_module_imports(ast.parse(from_import_dotted_source)), ["curses.ascii"],
+            "`from curses.ascii import isprint` must be flagged by its top-level component",
+        )
+        self.assertEqual(_bare_unix_module_imports(ast.parse(from_import_unrelated_source)), [])
 
 
 if __name__ == "__main__":
