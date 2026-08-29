@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
+import ast
 import importlib.util
 import multiprocessing
 import os
-import re
 import shutil
 import sys
 import tempfile
@@ -46,6 +46,86 @@ def die_after_old_move(candidate: str, destination: str):
     transaction.replace_directory_transactional(
         Path(candidate), Path(destination), after_old_move=lambda: os._exit(73)
     )
+
+
+def _count_fsync_directory_call_sites(source: str) -> int:
+    """Count real calls to _fsync_directory, both bare (`_fsync_directory(x)`)
+    and attribute-qualified (`module._fsync_directory(x)`, `self._fsync_directory(x)`,
+    any receiver expression) - the qualified shape is a real Call node whose
+    func is an ast.Attribute, not an ast.Name, so it needs its own branch.
+    The `def _fsync_directory(` definition itself is never an ast.Call, so it
+    is excluded automatically without needing the retired regex's lookbehind.
+    """
+    tree = ast.parse(source)
+    count = 0
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        if isinstance(func, ast.Name) and func.id == "_fsync_directory":
+            count += 1
+        elif isinstance(func, ast.Attribute) and func.attr == "_fsync_directory":
+            count += 1
+    return count
+
+
+def _count_os_open_call_sites(source: str) -> int:
+    """Count real os.open( call sites in `source`, resolving both import-alias
+    evasion shapes: `import os as X` (rebinds the module name) and
+    `from os import open as Y` (binds the function name directly). Scanned
+    file-wide via ast.walk, not scope-restricted, so a locally scoped alias
+    import inside a function body is still caught.
+    """
+    tree = ast.parse(source)
+    os_module_names = {"os"}
+    os_open_direct_names = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == "os":
+                    os_module_names.add(alias.asname or alias.name)
+        elif isinstance(node, ast.ImportFrom) and node.module == "os":
+            for alias in node.names:
+                if alias.name == "open":
+                    os_open_direct_names.add(alias.asname or alias.name)
+
+    count = 0
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        if (
+            isinstance(func, ast.Attribute)
+            and func.attr == "open"
+            and isinstance(func.value, ast.Name)
+            and func.value.id in os_module_names
+        ):
+            count += 1
+        elif isinstance(func, ast.Name) and func.id in os_open_direct_names:
+            count += 1
+    return count
+
+
+BANNED_UNIX_MODULES = {
+    "fcntl", "termios", "grp", "pwd", "resource",
+    "posix", "pty", "syslog", "curses", "tty", "crypt",
+}
+
+
+def _bare_unix_module_imports(tree: ast.Module) -> list:
+    """Module-scope `import X` statements whose TOP-LEVEL package is a
+    unix-only stdlib module. Compares the top-level component
+    (`alias.name.split(".", 1)[0]`), not the full dotted name, so a
+    submodule import like `import curses.ascii` is still caught even
+    though its exact spelling never equals the banned root "curses".
+    """
+    return [
+        alias.name
+        for node in tree.body
+        if isinstance(node, ast.Import)
+        for alias in node.names
+        if alias.name.split(".", 1)[0] in BANNED_UNIX_MODULES
+    ]
 
 
 class TransactionTests(unittest.TestCase):
@@ -203,28 +283,85 @@ class WindowsPlatformShapeTests(unittest.TestCase):
     def test_named_transaction_posix_only_call_site_census_is_pinned(self):
         print("ARMED: a new _fsync_directory caller or bare posix-only import must update this census")
         source = TRANSACTION_SOURCE.read_text()
-        call_sites = re.findall(r"(?<!def )_fsync_directory\(", source)
+        tree = ast.parse(source, filename=str(TRANSACTION_SOURCE))
+
+        fsync_directory_calls = _count_fsync_directory_call_sites(source)
+        os_open_calls = _count_os_open_call_sites(source)
+        bare_unix_imports = _bare_unix_module_imports(tree)
+
+        # AST Call/Import nodes only ever describe executable code, never comments
+        # or string literals, so this census cannot be false-tripped by a comment
+        # that merely mentions these tokens, and cannot be evaded by whitespace
+        # variants like `os.open (path)` the way a text-regex census could.
         self.assertEqual(
-            len(call_sites), 6,
+            fsync_directory_calls, 6,
             "call-site count changed; review the new site's cross-platform behavior "
             "and update this pin deliberately, do not just bump the number",
         )
-        self.assertNotRegex(
-            source,
-            r"(?m)^import (fcntl|termios|grp|pwd|resource|posix|pty|syslog|curses|tty|crypt)\b",
+        self.assertEqual(
+            bare_unix_imports, [],
             "a bare unix-only stdlib import reappeared at module scope; it must live inside "
             "the sys.platform branch, matching the fcntl/msvcrt split",
         )
         self.assertIn('_IS_WINDOWS = sys.platform == "win32"', source)
-        open_sites = re.findall(r"os\.open\(", source)
         self.assertEqual(
-            len(open_sites), 1,
+            os_open_calls, 1,
             "a new bare os.open( call site appeared; a hand-rolled directory-fsync "
             "(or any other raw os.open) bypasses this census and the _IS_WINDOWS "
             "branch entirely, since os is imported unconditionally on both platforms "
             "and adds no _fsync_directory( token. Route any new directory-durability "
             "need through _fsync_directory itself instead of a fresh os.open call.",
         )
+
+    def test_named_census_helpers_resolve_alias_and_dotted_import_evasions(self):
+        print("ARMED: os.open alias shapes, dotted unix-import shapes, and qualified "
+              "_fsync_directory calls must not evade the census helpers")
+        bare_call_source = "def _fsync_directory(path):\n    pass\n\n\ndef f(path):\n    _fsync_directory(path)\n"
+        qualified_call_source = (
+            "def _fsync_directory(path):\n    pass\n\n\n"
+            "def f(module, path):\n    module._fsync_directory(path)\n"
+        )
+        definition_only_source = "def _fsync_directory(path):\n    pass\n"
+
+        self.assertEqual(_count_fsync_directory_call_sites(bare_call_source), 1)
+        self.assertEqual(
+            _count_fsync_directory_call_sites(qualified_call_source), 1,
+            "`module._fsync_directory(path)` (Attribute-qualified) must still be counted "
+            "as a real call site, the retired regex's own coverage this replaces did",
+        )
+        self.assertEqual(
+            _count_fsync_directory_call_sites(definition_only_source), 0,
+            "the `def _fsync_directory(` definition line itself is never a Call node "
+            "and must not be counted",
+        )
+
+        literal_source = "import os\n\n\ndef f(path):\n    return os.open(path, 0)\n"
+        module_alias_source = "import os as o\n\n\ndef f(path):\n    return o.open(path, 0)\n"
+        from_import_alias_source = "from os import open as raw_open\n\n\ndef f(path):\n    return raw_open(path, 0)\n"
+        unrelated_source = "import os\n\n\ndef f(path):\n    return len(path)\n"
+
+        self.assertEqual(_count_os_open_call_sites(literal_source), 1)
+        self.assertEqual(
+            _count_os_open_call_sites(module_alias_source), 1,
+            "`import os as o` then `o.open(...)` must still be counted as a real os.open call site",
+        )
+        self.assertEqual(
+            _count_os_open_call_sites(from_import_alias_source), 1,
+            "`from os import open as raw_open` then `raw_open(...)` must still be counted",
+        )
+        self.assertEqual(_count_os_open_call_sites(unrelated_source), 0)
+
+        dotted_submodule_source = "import curses.ascii\n"
+        exact_root_source = "import curses\n"
+        unrelated_import_source = "import json\n"
+
+        self.assertEqual(
+            _bare_unix_module_imports(ast.parse(dotted_submodule_source)), ["curses.ascii"],
+            "`import curses.ascii` must still be flagged as a banned-root unix import, "
+            "not evade the check just because the dotted spelling isn't an exact match",
+        )
+        self.assertEqual(_bare_unix_module_imports(ast.parse(exact_root_source)), ["curses"])
+        self.assertEqual(_bare_unix_module_imports(ast.parse(unrelated_import_source)), [])
 
 
 if __name__ == "__main__":
