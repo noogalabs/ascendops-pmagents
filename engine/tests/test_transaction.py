@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
+import ast
 import importlib.util
 import multiprocessing
 import os
-import re
 import shutil
 import sys
 import tempfile
@@ -203,22 +203,53 @@ class WindowsPlatformShapeTests(unittest.TestCase):
     def test_named_transaction_posix_only_call_site_census_is_pinned(self):
         print("ARMED: a new _fsync_directory caller or bare posix-only import must update this census")
         source = TRANSACTION_SOURCE.read_text()
-        call_sites = re.findall(r"(?<!def )_fsync_directory\(", source)
+        tree = ast.parse(source, filename=str(TRANSACTION_SOURCE))
+        banned_unix_modules = {
+            "fcntl", "termios", "grp", "pwd", "resource",
+            "posix", "pty", "syslog", "curses", "tty", "crypt",
+        }
+
+        fsync_directory_calls = 0
+        os_open_calls = 0
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            func = node.func
+            if isinstance(func, ast.Name) and func.id == "_fsync_directory":
+                fsync_directory_calls += 1
+            elif (
+                isinstance(func, ast.Attribute)
+                and func.attr == "open"
+                and isinstance(func.value, ast.Name)
+                and func.value.id == "os"
+            ):
+                os_open_calls += 1
+
+        bare_unix_imports = [
+            alias.name
+            for node in tree.body
+            if isinstance(node, ast.Import)
+            for alias in node.names
+            if alias.name in banned_unix_modules
+        ]
+
+        # AST Call/Import nodes only ever describe executable code, never comments
+        # or string literals, so this census cannot be false-tripped by a comment
+        # that merely mentions these tokens, and cannot be evaded by whitespace
+        # variants like `os.open (path)` the way a text-regex census could.
         self.assertEqual(
-            len(call_sites), 6,
+            fsync_directory_calls, 6,
             "call-site count changed; review the new site's cross-platform behavior "
             "and update this pin deliberately, do not just bump the number",
         )
-        self.assertNotRegex(
-            source,
-            r"(?m)^import (fcntl|termios|grp|pwd|resource|posix|pty|syslog|curses|tty|crypt)\b",
+        self.assertEqual(
+            bare_unix_imports, [],
             "a bare unix-only stdlib import reappeared at module scope; it must live inside "
             "the sys.platform branch, matching the fcntl/msvcrt split",
         )
         self.assertIn('_IS_WINDOWS = sys.platform == "win32"', source)
-        open_sites = re.findall(r"os\.open\(", source)
         self.assertEqual(
-            len(open_sites), 1,
+            os_open_calls, 1,
             "a new bare os.open( call site appeared; a hand-rolled directory-fsync "
             "(or any other raw os.open) bypasses this census and the _IS_WINDOWS "
             "branch entirely, since os is imported unconditionally on both platforms "
