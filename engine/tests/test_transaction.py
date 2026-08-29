@@ -48,6 +48,27 @@ def die_after_old_move(candidate: str, destination: str):
     )
 
 
+def _count_fsync_directory_call_sites(source: str) -> int:
+    """Count real calls to _fsync_directory, both bare (`_fsync_directory(x)`)
+    and attribute-qualified (`module._fsync_directory(x)`, `self._fsync_directory(x)`,
+    any receiver expression) - the qualified shape is a real Call node whose
+    func is an ast.Attribute, not an ast.Name, so it needs its own branch.
+    The `def _fsync_directory(` definition itself is never an ast.Call, so it
+    is excluded automatically without needing the retired regex's lookbehind.
+    """
+    tree = ast.parse(source)
+    count = 0
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        if isinstance(func, ast.Name) and func.id == "_fsync_directory":
+            count += 1
+        elif isinstance(func, ast.Attribute) and func.attr == "_fsync_directory":
+            count += 1
+    return count
+
+
 def _count_os_open_call_sites(source: str) -> int:
     """Count real os.open( call sites in `source`, resolving both import-alias
     evasion shapes: `import os as X` (rebinds the module name) and
@@ -264,10 +285,7 @@ class WindowsPlatformShapeTests(unittest.TestCase):
         source = TRANSACTION_SOURCE.read_text()
         tree = ast.parse(source, filename=str(TRANSACTION_SOURCE))
 
-        fsync_directory_calls = 0
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "_fsync_directory":
-                fsync_directory_calls += 1
+        fsync_directory_calls = _count_fsync_directory_call_sites(source)
         os_open_calls = _count_os_open_call_sites(source)
         bare_unix_imports = _bare_unix_module_imports(tree)
 
@@ -296,7 +314,27 @@ class WindowsPlatformShapeTests(unittest.TestCase):
         )
 
     def test_named_census_helpers_resolve_alias_and_dotted_import_evasions(self):
-        print("ARMED: os.open alias shapes and dotted unix-import shapes must not evade the census helpers")
+        print("ARMED: os.open alias shapes, dotted unix-import shapes, and qualified "
+              "_fsync_directory calls must not evade the census helpers")
+        bare_call_source = "def _fsync_directory(path):\n    pass\n\n\ndef f(path):\n    _fsync_directory(path)\n"
+        qualified_call_source = (
+            "def _fsync_directory(path):\n    pass\n\n\n"
+            "def f(module, path):\n    module._fsync_directory(path)\n"
+        )
+        definition_only_source = "def _fsync_directory(path):\n    pass\n"
+
+        self.assertEqual(_count_fsync_directory_call_sites(bare_call_source), 1)
+        self.assertEqual(
+            _count_fsync_directory_call_sites(qualified_call_source), 1,
+            "`module._fsync_directory(path)` (Attribute-qualified) must still be counted "
+            "as a real call site, the retired regex's own coverage this replaces did",
+        )
+        self.assertEqual(
+            _count_fsync_directory_call_sites(definition_only_source), 0,
+            "the `def _fsync_directory(` definition line itself is never a Call node "
+            "and must not be counted",
+        )
+
         literal_source = "import os\n\n\ndef f(path):\n    return os.open(path, 0)\n"
         module_alias_source = "import os as o\n\n\ndef f(path):\n    return o.open(path, 0)\n"
         from_import_alias_source = "from os import open as raw_open\n\n\ndef f(path):\n    return raw_open(path, 0)\n"
