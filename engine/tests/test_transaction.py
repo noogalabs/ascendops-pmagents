@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import ast
+import ctypes
 import importlib.util
 import multiprocessing
 import os
@@ -19,19 +20,23 @@ assert SPEC.loader
 SPEC.loader.exec_module(transaction)
 
 
-def load_windows_shaped_module(fake_msvcrt):
+def load_windows_shaped_module(fake_msvcrt, fake_windll=None):
     """Load a fresh transaction module as if running natively on Windows.
 
     Patches ``sys.platform`` to ``win32`` and hides the real ``fcntl``
     module (raising ``ImportError`` for it, exactly as a real Windows host
     would) for the duration of the exec, so the module's own platform
     branch is what determines which lock/fsync path gets wired up, not an
-    accident of running on a POSIX CI runner.
+    accident of running on a POSIX CI runner. ``ctypes.windll`` only exists
+    on a real Windows build of ctypes, so it is patched in too (with
+    ``create=True``, since the real attribute is absent on this CI host)
+    for the module's ``_MoveFileExW`` binding to resolve.
     """
     spec = importlib.util.spec_from_file_location("glue_transaction_win32", TRANSACTION_SOURCE)
     module = importlib.util.module_from_spec(spec)
     with patch.object(sys, "platform", "win32"), \
-         patch.dict(sys.modules, {"fcntl": None, "msvcrt": fake_msvcrt}):
+         patch.dict(sys.modules, {"fcntl": None, "msvcrt": fake_msvcrt}), \
+         patch.object(ctypes, "windll", fake_windll if fake_windll is not None else MagicMock(), create=True):
         spec.loader.exec_module(module)
     return module
 
@@ -103,6 +108,37 @@ def _count_os_open_call_sites(source: str) -> int:
         if not (isinstance(func, ast.Attribute) and func.attr == "open"):
             if isinstance(func, ast.Name) and func.id in os_open_direct_names:
                 count += 1
+            continue
+        receiver = func.value
+        if isinstance(receiver, ast.Name) and receiver.id in os_module_names:
+            count += 1
+        elif isinstance(receiver, ast.Attribute) and receiver.attr in os_module_names:
+            count += 1
+    return count
+
+
+def _count_os_replace_call_sites(source: str) -> int:
+    """Count real os.replace( call sites, same alias/nested-receiver
+    resolution as _count_os_open_call_sites. Every rename in this module
+    must go through the single _durable_replace chokepoint (its own
+    internal POSIX-branch call is the one legitimate site) rather than a
+    bare os.replace scattered across the file, which is exactly the
+    fragmentation _durable_replace exists to close.
+    """
+    tree = ast.parse(source)
+    os_module_names = {"os"}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == "os":
+                    os_module_names.add(alias.asname or alias.name)
+
+    count = 0
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        if not (isinstance(func, ast.Attribute) and func.attr == "replace"):
             continue
         receiver = func.value
         if isinstance(receiver, ast.Name) and receiver.id in os_module_names:
@@ -215,6 +251,14 @@ class TransactionTests(unittest.TestCase):
         self.assertIn("cleanup remains pending", result.cleanup_warning)
         self.assertEqual((destination / "value").read_text(), "new")
 
+    def test_named_durable_replace_atomically_replaces_on_posix(self):
+        print("ARMED: _durable_replace must actually rename src onto dst's path on this platform")
+        candidate = self.tree("candidate", "new")
+        destination = self.tmp / "agent"
+        transaction._durable_replace(candidate, destination)
+        self.assertEqual((destination / "value").read_text(), "new")
+        self.assertFalse(candidate.exists())
+
     def test_protected_class_census_includes_daily_log_surfaces(self):
         root = self.tmp / "agent"
         (root / "memory").mkdir(parents=True)
@@ -235,6 +279,29 @@ class WindowsPlatformShapeTests(unittest.TestCase):
         module = load_windows_shaped_module(MagicMock())
         self.assertTrue(hasattr(module, "DestinationLock"))
         self.assertTrue(hasattr(module, "_fsync_directory"))
+        self.assertTrue(hasattr(module, "_durable_replace"))
+
+    def test_named_windows_durable_replace_uses_movefileexw_write_through(self):
+        print("ARMED: windows rename must call MoveFileExW with REPLACE_EXISTING|WRITE_THROUGH, never a bare rename")
+        fake_windll = MagicMock()
+        fake_windll.kernel32.MoveFileExW.return_value = 1
+        module = load_windows_shaped_module(MagicMock(), fake_windll=fake_windll)
+        src, dst = Path("C:/src"), Path("C:/dst")
+        module._durable_replace(src, dst)
+        fake_windll.kernel32.MoveFileExW.assert_called_once_with(
+            str(src), str(dst), module._MOVEFILE_REPLACE_EXISTING | module._MOVEFILE_WRITE_THROUGH
+        )
+
+    def test_named_windows_durable_replace_raises_on_movefileexw_failure(self):
+        print("ARMED: a MoveFileExW failure must raise, never be swallowed as a silent no-op rename")
+        fake_windll = MagicMock()
+        fake_windll.kernel32.MoveFileExW.return_value = 0
+        module = load_windows_shaped_module(MagicMock(), fake_windll=fake_windll)
+        # ctypes.get_last_error is itself a real-Windows-only function, patched
+        # the same way ctypes.windll is for the duration of this call.
+        with patch.object(ctypes, "get_last_error", lambda: 5, create=True):
+            with self.assertRaises(OSError):
+                module._durable_replace(Path("C:/src"), Path("C:/dst"))
 
     def test_named_windows_branch_engages_lk_nblck_and_lock_failure_raises(self):
         print("ARMED: windows lock path must call LK_NBLCK and must raise on contention, never swallow")
@@ -302,6 +369,7 @@ class WindowsPlatformShapeTests(unittest.TestCase):
 
         fsync_directory_calls = _count_fsync_directory_call_sites(source)
         os_open_calls = _count_os_open_call_sites(source)
+        os_replace_calls = _count_os_replace_call_sites(source)
         bare_unix_imports = _bare_unix_module_imports(tree)
 
         # AST Call/Import nodes only ever describe executable code, never comments
@@ -326,6 +394,13 @@ class WindowsPlatformShapeTests(unittest.TestCase):
             "branch entirely, since os is imported unconditionally on both platforms "
             "and adds no _fsync_directory( token. Route any new directory-durability "
             "need through _fsync_directory itself instead of a fresh os.open call.",
+        )
+        self.assertEqual(
+            os_replace_calls, 1,
+            "a new bare os.replace( call site appeared outside _durable_replace's own "
+            "POSIX branch; every rename must go through _durable_replace so Windows gets "
+            "the same crash-durability guarantee POSIX gets, not a mix of durable and "
+            "non-durable renames",
         )
 
     def test_named_census_helpers_resolve_alias_and_dotted_import_evasions(self):
