@@ -13,7 +13,23 @@ from typing import Callable, NamedTuple
 _IS_WINDOWS = sys.platform == "win32"
 
 if _IS_WINDOWS:
+    import ctypes
+    from ctypes import wintypes
+
     import msvcrt
+
+    _MOVEFILE_REPLACE_EXISTING = 0x1
+    _MOVEFILE_WRITE_THROUGH = 0x8
+
+    # ctypes.windll (used by the first cut of this fix) does NOT enable
+    # last-error capture, so ctypes.get_last_error() after a failed call
+    # would always read a stale/zero ctypes-private slot, not the real
+    # Win32 GetLastError() value - a WinDLL loaded with use_last_error=True
+    # is what actually arms that thread-local capture per call.
+    _kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    _MoveFileExW = _kernel32.MoveFileExW
+    _MoveFileExW.argtypes = [wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.DWORD]
+    _MoveFileExW.restype = wintypes.BOOL
 else:
     import fcntl
 
@@ -41,23 +57,19 @@ def _sidecar(destination: Path, suffix: str) -> Path:
 
 
 def _fsync_directory(path: Path) -> None:
-    """Durably record a directory-entry change (e.g. after ``os.replace``).
+    """Durably record a directory-entry change (e.g. after ``_durable_replace``).
 
     Windows has no CRT-level directory-handle fsync (``os.open`` on a
-    directory raises ``OSError`` there), so this is an explicit, DECLARED
-    no-op on that platform, not a silent one. What is weaker: on POSIX, a
-    rename that completed just before a crash or power loss is guaranteed
-    recorded because the parent directory's entry is fsynced immediately
-    after; that specific guarantee does not hold on Windows. What stays
-    equally strong on both platforms: every journal write in this module
-    fsyncs its own regular file handle first (see ``_write_journal`` and
-    ``DestinationLock.__enter__``), which this no-op does not touch. A real
-    Windows-durable rename (``MoveFileExW`` with ``MOVEFILE_WRITE_THROUGH``
-    via ctypes) is a named successor, not implemented here: the
-    durable-rename call sites in this file are scattered across five places
-    rather than funneled through one chokepoint, so a targeted ctypes fix
-    was deferred
-    rather than rushed.
+    directory raises ``OSError`` there), so this remains an explicit,
+    DECLARED no-op on that platform, not a silent one. That is no longer a
+    weaker guarantee, though: on POSIX, durability for a completed rename
+    comes from fsyncing the parent directory's entry right after (this
+    function); on Windows it comes from ``_durable_replace`` itself, which
+    every rename in this module now goes through instead of a bare
+    ``os.replace`` - see its docstring. What stays equally strong on both
+    platforms regardless: every journal write in this module fsyncs its own
+    regular file handle first (see ``_write_journal`` and
+    ``DestinationLock.__enter__``), which this no-op does not touch.
     """
     if _IS_WINDOWS:
         return
@@ -66,6 +78,30 @@ def _fsync_directory(path: Path) -> None:
         os.fsync(descriptor)
     finally:
         os.close(descriptor)
+
+
+def _durable_replace(src: Path, dst: Path) -> None:
+    """Atomically replace ``dst`` with ``src``, durable against a crash on
+    both platforms, through the one chokepoint every rename in this module
+    goes through.
+
+    POSIX: ``os.replace`` is already atomic; the caller's follow-up
+    ``_fsync_directory`` on the parent is what makes the completed rename
+    durable across a crash or power loss.
+
+    Windows has no directory-fsync equivalent, so durability has to come
+    from the rename call itself: ``MoveFileExW`` with
+    ``MOVEFILE_WRITE_THROUGH`` does not return until the replace is flushed
+    to stable storage, closing the same crash window ``_fsync_directory``
+    closes on POSIX. ``MOVEFILE_REPLACE_EXISTING`` matches ``os.replace``'s
+    semantics of silently replacing an existing destination.
+    """
+    if _IS_WINDOWS:
+        flags = _MOVEFILE_REPLACE_EXISTING | _MOVEFILE_WRITE_THROUGH
+        if not _MoveFileExW(str(src), str(dst), flags):
+            raise OSError(ctypes.get_last_error(), f"MoveFileExW failed replacing {dst} with {src}")
+    else:
+        os.replace(src, dst)
 
 
 def _lock_exclusive_nonblocking(handle) -> None:
@@ -181,7 +217,7 @@ def _write_journal(path: Path, payload: dict[str, str]) -> None:
         handle.write("\n")
         handle.flush()
         os.fsync(handle.fileno())
-    os.replace(temporary, path)
+    _durable_replace(temporary, path)
     _fsync_directory(path.parent)
 
 
@@ -230,7 +266,7 @@ def recover_directory_transaction(destination: Path) -> TransactionResult:
         return TransactionResult(committed=True, recovered=True, cleanup_warning=warning)
 
     if backup.exists():
-        os.replace(backup, destination)
+        _durable_replace(backup, destination)
         _fsync_directory(destination.parent)
         _remove_journal(journal)
         return TransactionResult(committed=False, recovered=True)
@@ -274,18 +310,18 @@ def replace_directory_transactional(
         }
         _write_journal(journal, payload)
         if destination.exists():
-            os.replace(destination, backup)
+            _durable_replace(destination, backup)
             _fsync_directory(destination.parent)
         payload["phase"] = "old_moved"
         _write_journal(journal, payload)
         if after_old_move is not None:
             after_old_move()
         try:
-            os.replace(candidate, destination)
+            _durable_replace(candidate, destination)
             _fsync_directory(destination.parent)
         except BaseException:
             if backup.exists() and not destination.exists():
-                os.replace(backup, destination)
+                _durable_replace(backup, destination)
                 _fsync_directory(destination.parent)
                 _remove_journal(journal)
             raise
