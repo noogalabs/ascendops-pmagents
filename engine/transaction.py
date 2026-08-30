@@ -21,7 +21,13 @@ if _IS_WINDOWS:
     _MOVEFILE_REPLACE_EXISTING = 0x1
     _MOVEFILE_WRITE_THROUGH = 0x8
 
-    _MoveFileExW = ctypes.windll.kernel32.MoveFileExW
+    # ctypes.windll (used by the first cut of this fix) does NOT enable
+    # last-error capture, so ctypes.get_last_error() after a failed call
+    # would always read a stale/zero ctypes-private slot, not the real
+    # Win32 GetLastError() value - a WinDLL loaded with use_last_error=True
+    # is what actually arms that thread-local capture per call.
+    _kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    _MoveFileExW = _kernel32.MoveFileExW
     _MoveFileExW.argtypes = [wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.DWORD]
     _MoveFileExW.restype = wintypes.BOOL
 else:

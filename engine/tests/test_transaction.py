@@ -20,24 +20,31 @@ assert SPEC.loader
 SPEC.loader.exec_module(transaction)
 
 
-def load_windows_shaped_module(fake_msvcrt, fake_windll=None):
+def load_windows_shaped_module(fake_msvcrt, fake_kernel32=None):
     """Load a fresh transaction module as if running natively on Windows.
 
     Patches ``sys.platform`` to ``win32`` and hides the real ``fcntl``
     module (raising ``ImportError`` for it, exactly as a real Windows host
     would) for the duration of the exec, so the module's own platform
     branch is what determines which lock/fsync path gets wired up, not an
-    accident of running on a POSIX CI runner. ``ctypes.windll`` only exists
-    on a real Windows build of ctypes, so it is patched in too (with
-    ``create=True``, since the real attribute is absent on this CI host)
-    for the module's ``_MoveFileExW`` binding to resolve.
+    accident of running on a POSIX CI runner. ``ctypes.WinDLL`` only exists
+    on a real Windows build of ctypes, so its constructor is patched in too
+    (with ``create=True``, since the real attribute is absent on this CI
+    host) to return ``fake_kernel32`` for the module's
+    ``ctypes.WinDLL("kernel32", use_last_error=True)`` call to resolve. The
+    constructor mock itself is stashed on the returned module (as
+    ``_test_windll_ctor``) so a caller can assert it was invoked with
+    ``use_last_error=True`` - the actual fix this shape exists to prove.
     """
     spec = importlib.util.spec_from_file_location("glue_transaction_win32", TRANSACTION_SOURCE)
     module = importlib.util.module_from_spec(spec)
+    kernel32 = fake_kernel32 if fake_kernel32 is not None else MagicMock()
+    fake_windll_ctor = MagicMock(return_value=kernel32)
     with patch.object(sys, "platform", "win32"), \
          patch.dict(sys.modules, {"fcntl": None, "msvcrt": fake_msvcrt}), \
-         patch.object(ctypes, "windll", fake_windll if fake_windll is not None else MagicMock(), create=True):
+         patch.object(ctypes, "WinDLL", fake_windll_ctor, create=True):
         spec.loader.exec_module(module)
+    module._test_windll_ctor = fake_windll_ctor
     return module
 
 
@@ -118,20 +125,28 @@ def _count_os_open_call_sites(source: str) -> int:
 
 
 def _count_os_replace_call_sites(source: str) -> int:
-    """Count real os.replace( call sites, same alias/nested-receiver
-    resolution as _count_os_open_call_sites. Every rename in this module
-    must go through the single _durable_replace chokepoint (its own
-    internal POSIX-branch call is the one legitimate site) rather than a
-    bare os.replace scattered across the file, which is exactly the
-    fragmentation _durable_replace exists to close.
+    """Count real os.replace( call sites: alias/nested-receiver resolution
+    (matching _count_os_open_call_sites) plus a direct-import-alias branch
+    (`from os import replace as X`) that a first pass of this helper
+    omitted - proven live by aussie: that shape stayed invisible even
+    though it is a real bare rename bypassing the _durable_replace
+    chokepoint. Every rename in this module must go through that single
+    chokepoint (its own internal POSIX-branch call is the one legitimate
+    site) rather than a bare os.replace scattered across the file, which
+    is exactly the fragmentation _durable_replace exists to close.
     """
     tree = ast.parse(source)
     os_module_names = {"os"}
+    os_replace_direct_names = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
                 if alias.name == "os":
                     os_module_names.add(alias.asname or alias.name)
+        elif isinstance(node, ast.ImportFrom) and node.module == "os":
+            for alias in node.names:
+                if alias.name == "replace":
+                    os_replace_direct_names.add(alias.asname or alias.name)
 
     count = 0
     for node in ast.walk(tree):
@@ -139,6 +154,8 @@ def _count_os_replace_call_sites(source: str) -> int:
             continue
         func = node.func
         if not (isinstance(func, ast.Attribute) and func.attr == "replace"):
+            if isinstance(func, ast.Name) and func.id in os_replace_direct_names:
+                count += 1
             continue
         receiver = func.value
         if isinstance(receiver, ast.Name) and receiver.id in os_module_names:
@@ -283,22 +300,28 @@ class WindowsPlatformShapeTests(unittest.TestCase):
 
     def test_named_windows_durable_replace_uses_movefileexw_write_through(self):
         print("ARMED: windows rename must call MoveFileExW with REPLACE_EXISTING|WRITE_THROUGH, never a bare rename")
-        fake_windll = MagicMock()
-        fake_windll.kernel32.MoveFileExW.return_value = 1
-        module = load_windows_shaped_module(MagicMock(), fake_windll=fake_windll)
+        fake_kernel32 = MagicMock()
+        fake_kernel32.MoveFileExW.return_value = 1
+        module = load_windows_shaped_module(MagicMock(), fake_kernel32=fake_kernel32)
         src, dst = Path("C:/src"), Path("C:/dst")
         module._durable_replace(src, dst)
-        fake_windll.kernel32.MoveFileExW.assert_called_once_with(
+        fake_kernel32.MoveFileExW.assert_called_once_with(
             str(src), str(dst), module._MOVEFILE_REPLACE_EXISTING | module._MOVEFILE_WRITE_THROUGH
         )
 
+    def test_named_windows_durable_replace_arms_real_last_error_capture(self):
+        print("ARMED: MoveFileExW must be bound via a WinDLL loaded with use_last_error=True, "
+              "or a failure's OSError reads a stale/zero ctypes-private slot instead of the real Win32 error")
+        module = load_windows_shaped_module(MagicMock())
+        module._test_windll_ctor.assert_called_once_with("kernel32", use_last_error=True)
+
     def test_named_windows_durable_replace_raises_on_movefileexw_failure(self):
         print("ARMED: a MoveFileExW failure must raise, never be swallowed as a silent no-op rename")
-        fake_windll = MagicMock()
-        fake_windll.kernel32.MoveFileExW.return_value = 0
-        module = load_windows_shaped_module(MagicMock(), fake_windll=fake_windll)
+        fake_kernel32 = MagicMock()
+        fake_kernel32.MoveFileExW.return_value = 0
+        module = load_windows_shaped_module(MagicMock(), fake_kernel32=fake_kernel32)
         # ctypes.get_last_error is itself a real-Windows-only function, patched
-        # the same way ctypes.windll is for the duration of this call.
+        # the same way ctypes.WinDLL is for the duration of this call.
         with patch.object(ctypes, "get_last_error", lambda: 5, create=True):
             with self.assertRaises(OSError):
                 module._durable_replace(Path("C:/src"), Path("C:/dst"))
@@ -471,6 +494,18 @@ class WindowsPlatformShapeTests(unittest.TestCase):
             "check must compare against the same os_module_names alias set the direct-"
             "receiver check uses, not a hardcoded literal 'os'",
         )
+
+        replace_from_import_alias_source = (
+            "from os import replace as raw_replace\n\n\ndef f(src, dst):\n    raw_replace(src, dst)\n"
+        )
+        replace_literal_source = "import os\n\n\ndef f(src, dst):\n    os.replace(src, dst)\n"
+        self.assertEqual(
+            _count_os_replace_call_sites(replace_from_import_alias_source), 1,
+            "`from os import replace as raw_replace` then `raw_replace(...)` must still be "
+            "counted; this shape stayed invisible in a first pass of the helper - a real "
+            "bare rename that bypasses the _durable_replace chokepoint undetected",
+        )
+        self.assertEqual(_count_os_replace_call_sites(replace_literal_source), 1)
 
         dotted_submodule_source = "import curses.ascii\n"
         exact_root_source = "import curses\n"
