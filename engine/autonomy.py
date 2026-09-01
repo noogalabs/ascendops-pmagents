@@ -40,13 +40,25 @@ INTERNAL_CATEGORIES = {
 }
 
 
+class SettingsError(ValueError):
+    """A settings failure that names the questionnaire field it belongs to,
+    so guided setup re-prompts the RIGHT field instead of always blaming
+    the autonomy-mode answer."""
+
+    def __init__(self, field: str, message: str):
+        super().__init__(message)
+        self.field = field
+
+
 def parse_settings(raw_cover: dict[str, str]) -> dict[str, object]:
     mode = raw_cover.get("autonomy_mode", "").strip().lower()
     if mode not in MODES:
-        raise ValueError("autonomy_mode must be exactly one of: copilot, supervised, full")
+        raise SettingsError("cover.Autonomy mode",
+                            "autonomy_mode must be exactly one of: copilot, supervised, full")
     window = raw_cover.get("unlock_window", DEFAULT_UNLOCK_WINDOW).strip().lower()
     if not re.fullmatch(r"last_[1-9]\d*", window):
-        raise ValueError("unlock_window must use last_N with N greater than zero")
+        raise SettingsError("cover.Unlock window",
+                            "unlock_window must use last_N with N greater than zero")
     raw_accuracy = raw_cover.get("qualifying_accuracy", "null").strip().lower()
     if raw_accuracy in {"null", "none", "not set"}:
         accuracy = None
@@ -54,15 +66,23 @@ def parse_settings(raw_cover: dict[str, str]) -> dict[str, object]:
         try:
             accuracy = float(raw_accuracy.removesuffix("%"))
         except ValueError as exc:
-            raise ValueError("qualifying_accuracy must be null or a number from 0 through 100") from exc
+            raise SettingsError("cover.Qualifying accuracy",
+                                "qualifying_accuracy must be null or a number from 0 through 100") from exc
         if not 0 <= accuracy <= 100:
-            raise ValueError("qualifying_accuracy must be null or a number from 0 through 100")
+            raise SettingsError("cover.Qualifying accuracy",
+                                "qualifying_accuracy must be null or a number from 0 through 100")
         if accuracy.is_integer():
             accuracy = int(accuracy)
     return {"mode": mode, "unlock_window": window, "qualifying_accuracy": accuracy}
 
 
 def evaluate_unlock(state: dict, category: str) -> bool:
+    """Unlock a copilot category only when the accuracy bar is met AND a
+    property-manager approval act is RECORDED on the row. The rendered
+    doctrine promises explicit human approval of every unlock; an unlock
+    from counters alone would be that promise lying (code follows doctrine,
+    dane ruling 1788290274614). The approval act is a dict written by the
+    approval workflow: {"approved_by": <name>, "approved_at": <ISO time>}."""
     row = state["categories"][category]
     if state.get("autonomy_mode") != "copilot" or row.get("mode") != "copilot":
         return False
@@ -73,6 +93,10 @@ def evaluate_unlock(state: dict, category: str) -> bool:
     if row.get("total_decisions", 0) < required or row.get("accuracy_pct") is None:
         return False
     if row["accuracy_pct"] < accuracy:
+        return False
+    approval = row.get("pm_approval")
+    if (not isinstance(approval, dict) or not approval.get("approved_by")
+            or not approval.get("approved_at")):
         return False
     row["status"] = "unlocked"
     return True
@@ -104,11 +128,21 @@ def _doctrine(settings: dict[str, object], has_thresholds: bool, authority_marke
             "Fair-Housing-adjacent screening or housing decisions always require human review, and every "
             "external or resident-facing send always requires human approval."
         )
+    if mode == "supervised":
+        act_directly = ""
+    else:
+        act_directly = (
+            "\n\nWhen a category is unlocked (earned or day-one autonomy): act directly, "
+            "send a post-action note (\"[action taken]. Reply UNDO if needed.\"), and log "
+            "`decision_presented` with `\"autonomous\": true`. An unlock itself only takes "
+            "effect once the property manager's approval act is recorded on the category "
+            "(`pm_approval` with approver and timestamp)."
+        )
     threshold_note = " Runtime state is recorded in `copilot-thresholds.json`." if has_thresholds else ""
     authority_note = ""
     if authority_markers:
         authority_note = " Approval authority remains " + " and ".join(authority_markers) + "."
-    return f"{BEGIN}\n\n### Configured mode: {mode}\n\n{posture}{threshold_note}{authority_note}\n\n{END}"
+    return f"{BEGIN}\n\n### Configured mode: {mode}\n\n{posture}{threshold_note}{authority_note}{act_directly}\n\n{END}"
 
 
 def _render_thresholds(path: Path, settings: dict[str, object], configured_at: str) -> None:
@@ -163,11 +197,12 @@ def render(root: Path, settings: dict[str, object], configured_at: str) -> None:
                 flags=re.S,
             )
         text = BLOCK.sub("\n", original).rstrip()
-        if settings["mode"] == "supervised":
-            # No category can ever be unlocked in supervised mode, so the
-            # act-directly guidance row would describe an unreachable state.
-            # Copilot and full KEEP it: unlocked categories exist in both.
-            text = re.sub(r"^\| Category is unlocked \(earned autonomy\).*\n?", "", text, flags=re.M)
+        # The static act-directly row is ALWAYS stripped: its guidance lives in
+        # the mode-rendered block (copilot/full) so every re-render reconstructs
+        # it from constants. Rendering must stay a pure function of
+        # (mode, template content) - stripping per-mode from a previously
+        # rendered file destroyed the row for later mode switches.
+        text = re.sub(r"^\| Category is unlocked \(earned autonomy\).*\n?", "", text, flags=re.M)
         block = _doctrine(settings, thresholds.is_file(), authority_markers)
         heading = re.search(r"^## Copilot Thresholds[^\n]*$", text, flags=re.M)
         if thresholds.is_file() and heading:

@@ -63,8 +63,13 @@ class AutonomyCasualties(unittest.TestCase):
         _, state = self._render("copilot", "last_3", "90")
         row = state["categories"]["lock_change"]
         self.assertEqual(row["window"], "last_3")
-        row.update(total_decisions=3, accuracy_pct=100)
+        row.update(total_decisions=3, accuracy_pct=100,
+                   pm_approval={"approved_by": "property manager",
+                                "approved_at": "2026-09-01T12:00:00Z"})
         self.assertTrue(autonomy.evaluate_unlock(state, "lock_change"))
+        # and 2 decisions under a last_3 window must not unlock even approved
+        row.update(status="locked", total_decisions=2)
+        self.assertFalse(autonomy.evaluate_unlock(state, "lock_change"))
 
     def test_invalid_mode_rejected_through_production_setup_without_materialization(self):
         print("ARMED: production questionnaire rejects invalid autonomy mode before materialization")
@@ -114,3 +119,76 @@ class CategoryClassificationCompleteness(unittest.TestCase):
                 unclassified[str(f.relative_to(ROOT))] = sorted(missing)
         self.assertEqual(unclassified, {},
                          f"unclassified categories (add to EXTERNAL_SEND_CATEGORIES or INTERNAL_CATEGORIES): {unclassified}")
+
+
+class ApprovalActCasualties(unittest.TestCase):
+    """Code follows doctrine: the doctrine promises explicit PM approval of
+    every unlock, so counters alone must never unlock (gate-that-lies class)."""
+
+    def _copilot_row(self):
+        state = {"autonomy_mode": "copilot", "categories": {"lock_change": {
+            "mode": "copilot", "status": "locked", "window": "last_10",
+            "qualifying_accuracy": 90, "total_decisions": 10, "accuracy_pct": 100,
+        }}}
+        return state
+
+    def test_accuracy_alone_never_unlocks_without_recorded_approval(self):
+        print("ARMED: counters/accuracy alone must not unlock without a recorded PM approval act")
+        state = self._copilot_row()
+        self.assertFalse(autonomy.evaluate_unlock(state, "lock_change"))
+        self.assertEqual(state["categories"]["lock_change"]["status"], "locked")
+
+    def test_recorded_approval_with_met_bar_unlocks(self):
+        state = self._copilot_row()
+        state["categories"]["lock_change"]["pm_approval"] = {
+            "approved_by": "property manager", "approved_at": "2026-09-01T12:00:00Z"}
+        self.assertTrue(autonomy.evaluate_unlock(state, "lock_change"))
+
+    def test_approval_without_met_bar_does_not_unlock(self):
+        state = self._copilot_row()
+        state["categories"]["lock_change"]["accuracy_pct"] = 50
+        state["categories"]["lock_change"]["pm_approval"] = {
+            "approved_by": "property manager", "approved_at": "2026-09-01T12:00:00Z"}
+        self.assertFalse(autonomy.evaluate_unlock(state, "lock_change"))
+
+
+class RendererPurity(unittest.TestCase):
+    """render() must be a pure function of (mode, template content): a
+    supervised render followed by a copilot re-render reconstructs the
+    act-directly guidance instead of having destroyed it."""
+
+    def setUp(self):
+        self.temp = Path(tempfile.mkdtemp(prefix="autonomy-purity-"))
+
+    def tearDown(self):
+        shutil.rmtree(self.temp)
+
+    def test_supervised_then_copilot_rerender_reconstructs_guidance(self):
+        print("ARMED: mode round-trip must reconstruct act-directly guidance (pure renderer)")
+        root = self.temp / "seat"
+        shutil.copytree(ROOT / "templates" / "maintenance-coordinator", root)
+        sup = autonomy.parse_settings({"autonomy_mode": "supervised"})
+        autonomy.render(root, sup, "2026-09-01T12:00:00Z")
+        self.assertNotIn("Reply UNDO", (root / "GUARDRAILS.md").read_text())
+        cop = autonomy.parse_settings({"autonomy_mode": "copilot"})
+        autonomy.render(root, cop, "2026-09-01T12:05:00Z")
+        text = (root / "GUARDRAILS.md").read_text()
+        self.assertIn("Reply UNDO", text)
+        self.assertIn("pm_approval", text)
+        # and a second identical render is byte-stable (idempotent)
+        autonomy.render(root, cop, "2026-09-01T12:05:00Z")
+        self.assertEqual(text, (root / "GUARDRAILS.md").read_text())
+
+
+class FieldAttribution(unittest.TestCase):
+    def test_each_invalid_field_names_itself(self):
+        print("ARMED: settings failures must attribute to the failing FIELD, not always autonomy_mode")
+        cases = [
+            ({"autonomy_mode": "typo"}, "cover.Autonomy mode"),
+            ({"autonomy_mode": "copilot", "unlock_window": "twenty"}, "cover.Unlock window"),
+            ({"autonomy_mode": "copilot", "qualifying_accuracy": "150"}, "cover.Qualifying accuracy"),
+        ]
+        for cover, expected_field in cases:
+            with self.assertRaises(autonomy.SettingsError) as ctx:
+                autonomy.parse_settings(cover)
+            self.assertEqual(ctx.exception.field, expected_field, cover)

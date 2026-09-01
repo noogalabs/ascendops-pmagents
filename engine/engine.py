@@ -197,8 +197,8 @@ def validate(path: Path, seat: str):
     )
     try:
         autonomy.parse_settings(result.cover)
-    except ValueError as exc:
-        raise IntakeRejected([("cover.Autonomy mode", str(exc))]) from exc
+    except autonomy.SettingsError as exc:
+        raise IntakeRejected([(exc.field, str(exc))]) from exc
     return result
 
 
@@ -397,8 +397,8 @@ def configure(source: Path, answers: Path, output: Path, seat: str,
                                    f"declared structured artifact {structured_filename} is absent")])
         try:
             autonomy_settings = autonomy.parse_settings(parsed_intake.cover)
-        except ValueError as exc:
-            raise IntakeRejected([("cover.Autonomy mode", str(exc))]) from exc
+        except autonomy.SettingsError as exc:
+            raise IntakeRejected([(exc.field, str(exc))]) from exc
         autonomy.render(
             staged,
             autonomy_settings,

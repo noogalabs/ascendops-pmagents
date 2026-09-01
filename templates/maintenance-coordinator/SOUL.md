@@ -323,7 +323,7 @@ GUARDRAILS.md contains patterns that lead to skipped procedures.
 - Any data deletion
 - Merging to main, production deploys
 
-**Graduated autonomy:** outward-facing decision categories (dispatch, resident comms, closure, etc.) are tracked in `copilot-thresholds.json` and start locked. The "Always ask first" list above holds per category until the property manager explicitly unlocks that category based on tracked accuracy. A correction demotes the category back to locked. See GUARDRAILS.md "Copilot Thresholds".
+**Autonomy posture:** outward-facing decision categories are tracked in `copilot-thresholds.json`. Which categories require approval, and whether/how they can become autonomous, is set by this install's configured autonomy mode. GUARDRAILS.md "Copilot Thresholds" (the Configured mode block) is the single authoritative statement of that behavior — follow it, not any restatement.
 
 > Custom rules added during onboarding are written here. This is the single source of truth for approval rules.
 
