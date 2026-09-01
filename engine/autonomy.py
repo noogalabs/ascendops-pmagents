@@ -156,12 +156,16 @@ def _doctrine(settings: dict[str, object], has_thresholds: bool, authority_marke
             "categories are never acted on directly, regardless of any status value in the "
             "thresholds file."
         )
-    threshold_note = (
-        " Runtime state is recorded in `copilot-thresholds.json`; after each logged "
-        "decision outcome, run the engine record-decision entry (engine.py "
-        "record-decision <seat-root> <category> --correct|--incorrect) so the "
-        "accuracy record and automatic unlocks stay real."
-        if has_thresholds else "")
+    if has_thresholds:
+        threshold_note = (
+            " Runtime state is recorded in `copilot-thresholds.json`; after each logged "
+            "decision outcome, run: `./record-decision.sh <category> --correct|--incorrect` "
+            "(the seat-root wrapper; works from any directory by absolute path) so the "
+            "accuracy record and automatic unlocks stay real. If the PMAgents repo moves, "
+            "re-run setup to refresh the engine path it resolves."
+        )
+    else:
+        threshold_note = ""
     authority_note = ""
     if authority_markers:
         authority_note = " Approval authority remains " + " and ".join(authority_markers) + "."
@@ -176,33 +180,74 @@ def _render_thresholds(path: Path, settings: dict[str, object], configured_at: s
         "fair_housing_screening": {"status": "locked", "safety_gate": True},
         "external_resident_send": {"status": "locked", "safety_gate": True},
     }
+    previous_mode = state.get("autonomy_mode")
+    mode_changed = previous_mode is not None and previous_mode != mode
     for category, row in state.get("categories", {}).items():
         is_safety_gate = category in EXTERNAL_SEND_CATEGORIES
         row["mode"] = mode
         if is_safety_gate:
             row["safety_gate"] = True
+        # MERGE, NOT REPLACE (owner follow-up made load-bearing): a rerun must
+        # never silently revoke earned autonomy. Runtime rows (counters,
+        # recent_outcomes, unlocked_at/demoted_at history) are ALWAYS
+        # preserved. Same-mode rerun preserves status too; a MODE CHANGE
+        # preserves the accuracy record but recomputes statuses under the new
+        # mode's rules (supervised locks all; full unlocks eligible internal
+        # day-one; copilot starts locked and earned unlocks resume via the
+        # next record-decision evaluation over the preserved window).
         if mode == "copilot":
-            row["status"] = "locked"
             row["window"] = settings["unlock_window"]
             row["qualifying_accuracy"] = settings["qualifying_accuracy"]
-            row["unlocked_at"] = None
+            if mode_changed or row.get("status") not in ("locked", "unlocked"):
+                row["status"] = "locked"
+            if is_safety_gate:
+                row["status"] = "locked"
         elif mode == "supervised":
             row["status"] = "locked"
             row["window"] = None
             row["qualifying_accuracy"] = None
-            row["unlocked_at"] = None
         else:
             row["status"] = "locked" if is_safety_gate else "unlocked"
             row["window"] = None
             row["qualifying_accuracy"] = None
-            row["unlocked_at"] = None if is_safety_gate else configured_at
+            if not is_safety_gate and not row.get("unlocked_at"):
+                row["unlocked_at"] = configured_at
+        row.setdefault("unlocked_at", None)
     transaction.atomic_write_text(path, json.dumps(state, indent=2) + "\n")
+
+
+RECORD_DECISION_WRAPPER = """#!/bin/sh
+# Thin exec shim: the engine owns all record-decision logic (counters,
+# unlock evaluation, persistence, doctrine re-render). The engine path lives
+# in a sidecar BESIDE this seat (machine-local, outside the digested tree);
+# if the PMAgents repo moves, re-run setup to refresh it. This file embeds
+# nothing machine-specific and is byte-identical on every install.
+set -eu
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+ENGINE=$(cat "$SCRIPT_DIR/../.$(basename -- "$SCRIPT_DIR").engine-path")
+exec python3 "$ENGINE" record-decision "$SCRIPT_DIR" "$@"
+"""
+
+
+def _write_runtime_entry(root: Path) -> None:
+    """Write the byte-constant exec wrapper into the seat and the resolved
+    engine path into the seat's sidecar (the same _sidecar placement the
+    DestinationLock uses — machine-variant content lives outside the
+    digested tree)."""
+    import os as _os
+    wrapper = root / "record-decision.sh"
+    transaction.atomic_write_text(wrapper, RECORD_DECISION_WRAPPER)
+    _os.chmod(wrapper, 0o755)
+    engine_path = Path(__file__).resolve().with_name("engine.py")
+    sidecar = root.parent / f".{root.name}.engine-path"
+    transaction.atomic_write_text(sidecar, str(engine_path) + "\n")
 
 
 def render(root: Path, settings: dict[str, object], configured_at: str) -> None:
     thresholds = root / "copilot-thresholds.json"
     if thresholds.is_file():
         _render_thresholds(thresholds, settings, configured_at)
+        _write_runtime_entry(root)
     render_doctrine(root, settings)
 
 

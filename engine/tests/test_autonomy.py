@@ -481,6 +481,126 @@ class RecordDecisionConcurrency(unittest.TestCase):
         with transaction.DestinationLock(self.root):
             pass
 
+class RerunPreservesEarnedState(unittest.TestCase):
+    """MERGE-NOT-REPLACE: re-running the configurator must never silently
+    revoke earned autonomy (owner follow-up made load-bearing: the member
+    choice round tells members to re-run setup)."""
+
+    def setUp(self):
+        self.temp = Path(tempfile.mkdtemp(prefix="rerun-"))
+        self.root = self.temp / "seat"
+        shutil.copytree(ROOT / "templates" / "maintenance-coordinator", self.root)
+        self.settings = autonomy.parse_settings({
+            "autonomy_mode": "copilot", "unlock_window": "last_3",
+            "qualifying_accuracy": "90"})
+        autonomy.render(self.root, self.settings, "2026-09-01T12:00:00Z")
+
+    def tearDown(self):
+        shutil.rmtree(self.temp)
+
+    def _earn_unlock(self):
+        import subprocess, sys as _sys
+        for n in range(3):
+            r = subprocess.run(
+                [_sys.executable, str(ROOT / "engine" / "engine.py"), "record-decision",
+                 str(self.root), "lock_change", "--correct"],
+                capture_output=True, text=True)
+            assert r.returncode == 0, r.stderr
+
+    def _state(self):
+        return json.loads((self.root / "copilot-thresholds.json").read_text())
+
+    def test_same_answers_rerun_preserves_earned_unlock_and_history(self):
+        print("ARMED: an unchanged-answers rerun preserves the earned unlock and its history")
+        self._earn_unlock()
+        before = self._state()["categories"]["lock_change"]
+        self.assertEqual(before["status"], "unlocked")
+        autonomy.render(self.root, self.settings, "2026-09-02T12:00:00Z")
+        after = self._state()["categories"]["lock_change"]
+        self.assertEqual(after["status"], "unlocked", "rerun revoked an earned unlock")
+        self.assertEqual(after["total_decisions"], before["total_decisions"])
+        self.assertEqual(after["recent_outcomes"], before["recent_outcomes"])
+        self.assertEqual(after["unlocked_at"], before["unlocked_at"])
+
+    def test_mode_change_preserves_history_and_recomputes_status(self):
+        print("ARMED: a mode-change rerun preserves the accuracy record and recomputes statuses")
+        self._earn_unlock()
+        sup = autonomy.parse_settings({"autonomy_mode": "supervised"})
+        autonomy.render(self.root, sup, "2026-09-02T12:00:00Z")
+        row = self._state()["categories"]["lock_change"]
+        self.assertEqual(row["status"], "locked")
+        self.assertEqual(len(row["recent_outcomes"]), 3, "mode change wiped the accuracy record")
+        self.assertEqual(row["total_decisions"], 3)
+        # and back to copilot: history intact, status starts locked, resumes via next decision
+        autonomy.render(self.root, self.settings, "2026-09-03T12:00:00Z")
+        row = self._state()["categories"]["lock_change"]
+        self.assertEqual(row["status"], "locked")
+        self.assertEqual(len(row["recent_outcomes"]), 3)
+
+    def test_rerender_remains_byte_idempotent(self):
+        print("ARMED: same-settings re-render stays byte-idempotent with runtime state present")
+        self._earn_unlock()
+        autonomy.render(self.root, self.settings, "2026-09-02T12:00:00Z")
+        first = (self.root / "copilot-thresholds.json").read_bytes()
+        g_first = (self.root / "GUARDRAILS.md").read_bytes()
+        autonomy.render(self.root, self.settings, "2026-09-02T12:00:00Z")
+        self.assertEqual((self.root / "copilot-thresholds.json").read_bytes(), first)
+        self.assertEqual((self.root / "GUARDRAILS.md").read_bytes(), g_first)
+
+class DoctrineLineRunnable(unittest.TestCase):
+    """The doctrine instruction must be runnable AS WRITTEN: the casualty
+    extracts the rendered command from GUARDRAILS and executes it verbatim
+    from the seat root; the wrapper also works by absolute path from any cwd
+    (dirname-$0 resolution). Both must actually record."""
+
+    def setUp(self):
+        self.temp = Path(tempfile.mkdtemp(prefix="doctrine-run-"))
+        self.root = self.temp / "seat"
+        shutil.copytree(ROOT / "templates" / "maintenance-coordinator", self.root)
+        autonomy.render(self.root, autonomy.parse_settings({
+            "autonomy_mode": "copilot", "unlock_window": "last_10",
+            "qualifying_accuracy": "90"}), "2026-09-01T12:00:00Z")
+
+    def tearDown(self):
+        shutil.rmtree(self.temp)
+
+    def _count(self):
+        state = json.loads((self.root / "copilot-thresholds.json").read_text())
+        return state["categories"]["lock_change"]["total_decisions"]
+
+    def test_doctrine_line_executes_verbatim_from_seat_root(self):
+        print("ARMED: the rendered doctrine command runs verbatim from the seat root and records")
+        import re as _re, shlex, subprocess
+        doctrine = (self.root / "GUARDRAILS.md").read_text()
+        m = _re.search(r"`(\./record-decision\.sh <category> --correct\|--incorrect)`", doctrine)
+        self.assertIsNotNone(m, "doctrine no longer carries the runnable line")
+        cmd = m.group(1).replace("<category>", "lock_change").split("|")[0].strip()
+        result = subprocess.run(shlex.split(cmd), cwd=self.root,
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self._count(), 1)
+
+    def test_wrapper_by_absolute_path_from_other_cwd(self):
+        print("ARMED: the wrapper records when invoked by absolute path from a different cwd")
+        import subprocess
+        elsewhere = self.temp / "elsewhere"
+        elsewhere.mkdir()
+        result = subprocess.run(
+            [str(self.root / "record-decision.sh"), "lock_change", "--correct"],
+            cwd=elsewhere, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self._count(), 1)
+
+    def test_wrapper_bytes_are_destination_independent(self):
+        print("ARMED: the wrapper embeds nothing — byte-identical across destinations")
+        other = self.temp / "other-seat"
+        shutil.copytree(ROOT / "templates" / "maintenance-coordinator", other)
+        autonomy.render(other, autonomy.parse_settings({
+            "autonomy_mode": "copilot", "unlock_window": "last_10",
+            "qualifying_accuracy": "90"}), "2026-09-01T12:00:00Z")
+        self.assertEqual((self.root / "record-decision.sh").read_bytes(),
+                         (other / "record-decision.sh").read_bytes())
+
 
 if __name__ == "__main__":
     unittest.main()

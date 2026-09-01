@@ -35,10 +35,10 @@ da5e0522bc8eeaae5f1dac199e4feb5ba307a0c041264ba9caca09c7d4afb895  ./.claude/skil
 6b3ff40d3c940ec8cde064b43c2f6a7b985306cffe138ed3bccd9c912ca337a9  ./.claude/skills/worker-agents/SKILL.md
 bfaccbf46fbca0336c949c3c6996aaa8d3d4840bdd45614d14b269c19aacaeb8  ./.env.example
 014a81371c4f36e8c6eeaddf9f47f7b23ea9dc2c905040032bae1ba70ade472d  ./.gitignore
-cd4534d5b7b7ed9b2922a29ae50dec5718aa92a2049e5ceddf5c5b7255c2360f  ./AGENTS.md
+0c6b1f29ba780effe87ecbd2f0f3a92ed08d2ef87f5158c8a43969909af6f91a  ./AGENTS.md
 5922a8ce6b2124518d9f295d25fce32e0cd35b4de6388b8f3bb5a496a927d2b2  ./CLAUDE.md
 1ce2c5b4f1f3dc9a3c979b72c6a64216b63f035fad81cfbe94aa54f4766b1485  ./GOALS.md
-f728d0b3ef664630d5fa19461f95e736cd9bc71598d3d2f430a6a36f362a2f20  ./GUARDRAILS.md
+be193fa4147646ed1c6edcaba64084ececf990706787039fe052025eaffb24a8  ./GUARDRAILS.md
 a01176963388cac7f3eeff4c8c7e69ce7b1d04870a5ab9e6d42b1de261ed26bb  ./HEARTBEAT.md
 6d804ca1de14566b54ceb5f556bb3b182c85dd323f4551a020eec46e98f0b582  ./IDENTITY.md
 9667cee19ea58c3fa3e171eee43b56e32bf50f74fda900c3988ab490519e8de0  ./MEMORY.md
@@ -63,6 +63,7 @@ c35c24ebc5d312ca66ae0c477f17dcc59139082177cf8448e2afa66221ea7ba1  ./library/coor
 2591216b12bfdf8851a4d9bd2b8a09d68336dc6ae9b34ea34e9da5e6c0c7535a  ./library/maintenance-coordinator-judgment-guide.md
 1dbffed177bdf6356c0d4efaebe8ffe293d5a04fdcaa5fa278d3c17adbae3453  ./library/occupied-unit-maintenance-board.md
 3c76a7070d0632e0135f147dcc61e9c45bbcdd521339adc72c48c32571c494cb  ./library/occupied-unit-maintenance-workflow.md
+1731201a00e1f90eb9076f1d1741db0c4096e7b260500b21aa5835e9e19711b6  ./record-decision.sh
 9a9195fad654b0059a4ece72f7bf9f06586bab376b7cf092c905b4e7851269a6  ./seat-config.json
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./skills/archive/.gitkeep
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./skills/drafts/.gitkeep

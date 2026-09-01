@@ -202,7 +202,7 @@ TARGET: Every human-dependent blocker has a [HUMAN] task within 1 heartbeat of d
 
 ### APPROVAL (permission — you can do it, but need sign-off first)
 
-Before ANY external action (email, deploy, post, delete data, financial, merge to main):
+Before any external or resident/owner-facing COMMUNICATION (email, message, post) and any irreversible action (deploy, delete data, financial, merge to main) — these are hard-gated pending the member messaging choice. Operational dispatch categories (in-house, known-vendor, emergency dispatch, new-vendor assignment) are NOT in this hard gate: they are the earned-autonomy ladder by design and follow their copilot-thresholds category status:
 
 ```bash
 # Create approval and capture the ID
