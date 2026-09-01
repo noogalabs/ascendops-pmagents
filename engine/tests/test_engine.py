@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import hashlib
+import io
 import importlib.util
 import json
 import re
@@ -48,6 +49,26 @@ class GlueEngineTests(unittest.TestCase):
             HERE / "tests" / "fixtures" / "e2" / "maintenance-mapping-v1.json"
         )
         engine.ENGINE_VERSION = "1.0.0"
+
+    def test_named_engine_warns_but_runs_for_test_fixture_source(self):
+        print("ARMED: removing the engine/tests source warning hides fixture misuse")
+        output = self.tmp / "warned-output"
+        stderr = io.StringIO()
+        original = engine.ENGINE_TESTS_ROOT
+        engine.ENGINE_TESTS_ROOT = self.tmp
+        try:
+            engine.configure(
+                self.source,
+                self.answers,
+                output,
+                "maintenance-coordinator",
+                seat_registry={},
+                warning_stream=stderr,
+            )
+        finally:
+            engine.ENGINE_TESTS_ROOT = original
+        self.assertTrue(output.is_dir(), "warning must not block configuration")
+        self.assertIn("WARNING: template source is inside engine/tests", stderr.getvalue())
 
     def tearDown(self):
         engine.SUPPORTED["maintenance-coordinator"]["mapping"] = self.production_mapping
@@ -199,7 +220,7 @@ class GlueEngineTests(unittest.TestCase):
         print("ARMED: every mapping registry seat rejects an AKIA answer with zero output")
         test_edition = self.tmp / "test-mapping-edition"
         test_library = test_edition / "library-src"
-        shutil.copytree(HERE / "tests" / "fixtures" / "raw-maintenance-template", test_library)
+        shutil.copytree(HERE.parent / "templates" / "maintenance-coordinator", test_library)
         fixed_rows = {
             "agent_name": "maintenance",
             "org": "sample-org",
@@ -531,7 +552,7 @@ class GlueEngineTests(unittest.TestCase):
                 self.assertTrue((output / "seat-config.json").is_file())
         maintenance = HERE.parent / "editions" / "maintenance"
         source = self.tmp / "cli-maintenance-source"
-        shutil.copytree(HERE / "tests" / "fixtures" / "raw-maintenance-template", source)
+        shutil.copytree(HERE.parent / "templates" / "maintenance-coordinator", source)
         substitutions = {
             "agent_name": "ridge-maint",
             "org": "ridgeline",

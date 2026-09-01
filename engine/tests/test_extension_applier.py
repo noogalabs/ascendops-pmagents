@@ -19,7 +19,7 @@ ADD_AGENT_ROWS = {
 
 
 def prepare_raw(source):
-    shutil.copytree(HERE / "tests" / "fixtures" / "raw-maintenance-template", source, symlinks=True)
+    shutil.copytree(HERE.parent / "templates" / "maintenance-coordinator", source, symlinks=True)
     for path in source.rglob("*"):
         if not path.is_file() or path.is_symlink(): continue
         try: text = path.read_text()

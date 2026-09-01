@@ -8,6 +8,7 @@ import json
 import re
 import shutil
 import sys
+import tempfile
 from pathlib import Path
 from typing import Callable, NamedTuple, TextIO
 
@@ -23,6 +24,13 @@ SEAT_LABELS = {
 }
 SEATS = tuple({"id": seat, "label": SEAT_LABELS.get(seat, seat.replace("-", " ").title())}
               for seat in engine.SUPPORTED)
+SHIPPED_MAINTENANCE_TEMPLATE = ROOT / "templates" / "maintenance-coordinator"
+SCAFFOLD_TOKENS = (
+    "agent_name",
+    "org",
+    "current_timestamp",
+    "upstream_update_minute",
+)
 SKIP_WORDS = {"skip", "unsure", "?"}
 REJECTION_RULES = (
     ("mapping.config_keys", "the configuration question named by this row", "the answer cannot be written with the declared type or path", "Example: enter a timezone such as America/Denver"),
@@ -119,6 +127,59 @@ def atomic_text(path: Path, text: str) -> None:
     temporary = path.with_name(f".{path.name}.setup-tmp")
     temporary.write_text(text, encoding="utf-8")
     temporary.replace(path)
+
+
+def upstream_update_minute(agent_name: str) -> int:
+    """Match cortextOS add-agent's unsigned FNV-1a update-minute assignment."""
+    value = 2166136261
+    for byte in agent_name.encode("utf-8"):
+        value ^= byte
+        value = (value * 16777619) & 0xFFFFFFFF
+    return value % 60
+
+
+def scaffold_identity(output: Path) -> tuple[str, str]:
+    """Derive add-agent identity inputs from the documented member destination."""
+    agent_name = output.name
+    org = output.parent.parent.name if output.parent.name == "agents" else output.parent.name
+    if not agent_name or not org:
+        raise ValueError("configured agent path must identify both organization and agent")
+    return agent_name, org
+
+
+def materialize_template(
+    source: Path,
+    destination: Path,
+    output: Path,
+    *,
+    now: Callable[[], datetime.datetime],
+) -> Path:
+    """Copy and resolve scaffold-time tokens before the fail-closed engine runs."""
+    agent_name, org = scaffold_identity(output)
+    timestamp = (
+        now().astimezone(datetime.timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+    replacements = {
+        "agent_name": agent_name,
+        "org": org,
+        "current_timestamp": timestamp,
+        "upstream_update_minute": str(upstream_update_minute(agent_name)),
+    }
+    shutil.copytree(source, destination, symlinks=True)
+    for path in destination.rglob("*"):
+        if not path.is_file() or path.is_symlink():
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+        for token in SCAFFOLD_TOKENS:
+            text = text.replace("{{" + token + "}}", replacements[token])
+        path.write_text(text, encoding="utf-8")
+    return destination
 
 
 def rejection_rule(row: str, fields: dict[str, PromptField] | None = None):
@@ -300,12 +361,18 @@ def run_setup(
     out: TextIO = sys.stdout,
     err: TextIO = sys.stderr,
     clock: Callable[[], datetime.date] = datetime.date.today,
+    now: Callable[[], datetime.datetime] = lambda: datetime.datetime.now(datetime.timezone.utc),
     configure_fn=engine.configure,
 ) -> int:
     output = None
+    materialized_root = None
     try:
         seat = choose_seat(ask, out)
-        source = Path(ask("Template agent directory: ").strip()).expanduser().resolve()
+        default_source = (SHIPPED_MAINTENANCE_TEMPLATE
+                          if seat == "maintenance-coordinator"
+                          else engine.SUPPORTED[seat]["library"])
+        selected_source = ask(f"Template agent directory [{default_source}]: ").strip()
+        source = Path(selected_source).expanduser().resolve() if selected_source else default_source
         output = Path(ask("Configured agent directory: ").strip()).expanduser().resolve()
         mode = ask("Answers: [1] guide me  [2] use a completed file [1]: ").strip() or "1"
         if mode == "1":
@@ -322,7 +389,15 @@ def run_setup(
         else:
             raise ValueError("answers choice must be 1 or 2")
 
-        actual_source = output if output.exists() else source
+        if output.exists():
+            actual_source = output
+        elif seat == "maintenance-coordinator":
+            materialized_root = Path(tempfile.mkdtemp(prefix="pmagents-materialized-"))
+            actual_source = materialize_template(
+                source, materialized_root / "source", output, now=now,
+            )
+        else:
+            actual_source = source
         seat_registry = discover_seat_registry(output, seat, out=out)
         while True:
             try:
@@ -336,7 +411,8 @@ def run_setup(
                 render_rejection(exc, err, editable)
                 if not fix_named_answer(answers, exc.failures, ask, editable):
                     return 2
-                actual_source = output if output.exists() else source
+                if output.exists():
+                    actual_source = output
         print(f"Configured agent: {output}", file=out)
         render_cross_seat_completion(output, seat, out)
         print("Next: review the generated agent with your implementation contact before activation.", file=out)
@@ -351,6 +427,9 @@ def run_setup(
     except Exception as exc:
         print(f"ERROR {exc}", file=err)
         return 1
+    finally:
+        if materialized_root is not None:
+            shutil.rmtree(materialized_root, ignore_errors=True)
 
 
 def main() -> int:

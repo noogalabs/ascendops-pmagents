@@ -93,7 +93,7 @@ def assert_matches_frozen_rerun(test: unittest.TestCase, output: Path):
 
 
 def prepare_raw_template(source: Path):
-    shutil.copytree(HERE / "tests" / "fixtures" / "raw-maintenance-template", source, symlinks=True)
+    shutil.copytree(HERE.parent / "templates" / "maintenance-coordinator", source, symlinks=True)
     for path in source.rglob("*"):
         if not path.is_file() or path.is_symlink():
             continue
