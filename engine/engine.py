@@ -127,10 +127,15 @@ def cover_fields_for_mapping(mapping):
                 fields[label] = key
     if failures:
         raise IntakeRejected(failures)
+    # Engine-consumed cover fields, merged after any edition-declared list.
+    # NOTE: this is a THIRD population beside intake.COVER_FIELDS and the
+    # per-edition mapping lists — a base addition must land here too or it
+    # silently fails to parse on mapping-declared seats (guard task booked).
     for label, key in (
         ("Autonomy mode", "autonomy_mode"),
         ("Unlock window", "unlock_window"),
         ("Qualifying accuracy", "qualifying_accuracy"),
+        ("Resident messaging autonomy", "external_send_autonomy"),
     ):
         fields.setdefault(label, key)
     return fields
@@ -546,7 +551,8 @@ def main():
             print("ERROR no copilot-thresholds.json at seat root", file=sys.stderr)
             return 2
         except transaction.ConcurrentTransactionError as exc:
-            print(f"ERROR {exc}", file=sys.stderr)
+            print(f"ERROR {exc} — retry after the configurator finishes; "
+                  "a refused record that is not retried is a lost outcome", file=sys.stderr)
             return 3
         except KeyError as exc:
             print(f"ERROR {exc.args[0]}", file=sys.stderr)

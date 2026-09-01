@@ -15,6 +15,7 @@ COVER_FIELDS = {
     "Autonomy mode": "autonomy_mode",
     "Unlock window": "unlock_window",
     "Qualifying accuracy": "qualifying_accuracy",
+    "Resident messaging autonomy": "external_send_autonomy",
 }
 QUESTION_ID_PATTERN = r"[A-Z]\d+"
 QUESTION_ID = re.compile(rf"^{QUESTION_ID_PATTERN}$")

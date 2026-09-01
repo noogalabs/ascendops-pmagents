@@ -286,17 +286,18 @@ class RenderCodeConsistency(unittest.TestCase):
 
 
 class BridgeExternalExclusion(unittest.TestCase):
-    """BRIDGE (PR34 seam): until the member-choice setting ships, external
-    send categories are hard-excluded from automatic unlock and from full's
-    day-one autonomy — a merged head must be safe standalone. Both polarities:
-    an external category at a met bar must NOT unlock; an internal category
-    at the same bar MUST."""
+    """OPTED-OUT external categories (the fail-closed default: safety_gate
+    rendered True) never auto-unlock; an internal category at the same bar
+    must. The former bridge hard-exclusion is superseded by this
+    choice-dependent row guard — the fixture carries the rendered
+    opted-out marker explicitly."""
 
     def _state(self, category):
-        return {"autonomy_mode": "copilot", "categories": {category: {
-            "mode": "copilot", "status": "locked", "window": "last_10",
-            "qualifying_accuracy": 90, "total_decisions": 10, "accuracy_pct": 100,
-        }}}
+        row = {"mode": "copilot", "status": "locked", "window": "last_10",
+               "qualifying_accuracy": 90, "total_decisions": 10, "accuracy_pct": 100}
+        if category in autonomy.EXTERNAL_SEND_CATEGORIES:
+            row["safety_gate"] = True  # opted-out default, as rendered
+        return {"autonomy_mode": "copilot", "categories": {category: row}}
 
     def test_external_category_met_bar_does_not_unlock(self):
         print("ARMED: external-send category at met accuracy bar must NOT auto-unlock (bridge)")
@@ -880,6 +881,205 @@ class ForceLockGuardArmed(unittest.TestCase):
     def test_hand_unlocked_external_relocks_on_unchanged_rerun(self):
         print("ARMED: a hand-set unlocked resident_comms re-locks on a same-settings copilot rerun")
         self.assertEqual(self._hand_unlocked_rerun("resident_comms"), "locked")
+
+class MemberChoiceCasualties(unittest.TestCase):
+    """external_send_autonomy: the member's choice, fail-closed on silence."""
+
+    def test_fail_closed_parse_silence_is_not_a_choice(self):
+        print("ARMED: missing, blank, or unrecognized answer keeps external sends human-gated")
+        for raw in ({}, {"external_send_autonomy": ""}, {"external_send_autonomy": "maybe"},
+                    {"external_send_autonomy": "definitely"}):
+            self.assertFalse(autonomy.parse_settings({"autonomy_mode": "copilot", **raw})
+                             ["external_send_autonomy"], raw)
+        for raw in ("yes", "y", "true", "YES"):
+            self.assertTrue(autonomy.parse_settings(
+                {"autonomy_mode": "copilot", "external_send_autonomy": raw})
+                ["external_send_autonomy"], raw)
+
+    def _render(self, mode, choice):
+        temp = Path(tempfile.mkdtemp(prefix="choice-"))
+        self.addCleanup(shutil.rmtree, temp)
+        root = temp / "seat"
+        shutil.copytree(ROOT / "templates" / "maintenance-coordinator", root)
+        autonomy.render(root, autonomy.parse_settings({
+            "autonomy_mode": mode, "unlock_window": "last_10",
+            "qualifying_accuracy": "90", "external_send_autonomy": choice}),
+            "2026-09-01T12:00:00Z")
+        return ((root / "GUARDRAILS.md").read_text(),
+                json.loads((root / "copilot-thresholds.json").read_text()))
+
+    def test_opted_in_full_unlocks_external_day_one(self):
+        print("ARMED: opted-in full mode unlocks external categories day one, screening stays locked")
+        _, state = self._render("full", "yes")
+        self.assertEqual(state["categories"]["resident_comms"]["status"], "unlocked")
+        self.assertFalse(state["categories"]["resident_comms"]["safety_gate"])
+        self.assertEqual(state["safety_gates"]["fair_housing_screening"]["status"], "locked")
+
+    def test_opted_out_full_keeps_external_locked(self):
+        print("ARMED: opted-out full mode keeps external categories human-gated")
+        _, state = self._render("full", "no")
+        self.assertEqual(state["categories"]["resident_comms"]["status"], "locked")
+        self.assertTrue(state["categories"]["resident_comms"]["safety_gate"])
+
+    def test_opted_in_copilot_external_earns_by_accuracy(self):
+        print("ARMED: opted-in copilot lets an external category earn unlock by accuracy")
+        _, state = self._render("copilot", "yes")
+        row = state["categories"]["resident_comms"]
+        row.update(total_decisions=10, accuracy_pct=100)
+        self.assertTrue(autonomy.evaluate_unlock(state, "resident_comms"))
+
+    def test_opted_out_copilot_external_never_auto_unlocks(self):
+        print("ARMED: opted-out copilot never auto-unlocks an external category")
+        _, state = self._render("copilot", "no")
+        row = state["categories"]["resident_comms"]
+        row.update(total_decisions=10, accuracy_pct=100)
+        self.assertFalse(autonomy.evaluate_unlock(state, "resident_comms"))
+
+    def test_fair_housing_screening_locked_in_every_cell(self):
+        print("ARMED: fair-housing screening gate locked in all six mode-choice cells")
+        for mode in ("copilot", "supervised", "full"):
+            for choice in ("yes", "no"):
+                _, state = self._render(mode, choice)
+                gate = state["safety_gates"]["fair_housing_screening"]
+                self.assertEqual((gate["status"], gate["safety_gate"]), ("locked", True), (mode, choice))
+
+
+class RenderCodeConsistencyChoice(unittest.TestCase):
+    """Six-cell mode x choice matrix: doctrine claims about resident messaging
+    must match threshold state and evaluator behavior in every cell."""
+
+    def _render(self, mode, choice):
+        temp = Path(tempfile.mkdtemp(prefix="matrix-"))
+        self.addCleanup(shutil.rmtree, temp)
+        root = temp / "seat"
+        shutil.copytree(ROOT / "templates" / "maintenance-coordinator", root)
+        autonomy.render(root, autonomy.parse_settings({
+            "autonomy_mode": mode, "unlock_window": "last_10",
+            "qualifying_accuracy": "90", "external_send_autonomy": choice}),
+            "2026-09-01T12:00:00Z")
+        return ((root / "GUARDRAILS.md").read_text(),
+                json.loads((root / "copilot-thresholds.json").read_text()))
+
+    def test_six_cells_prose_matches_state_and_evaluator(self):
+        print("ARMED: all six mode-choice cells — doctrine matches state and evaluator on resident messaging")
+        for mode in ("copilot", "supervised", "full"):
+            for choice, opted in (("yes", True), ("no", False)):
+                cell = (mode, choice)
+                doctrine, state = self._render(mode, choice)
+                self.assertEqual(state["external_send_autonomy"], opted, cell)
+                self.assertIn("fair-housing safeguards remain active", doctrine, cell)
+                if opted:
+                    self.assertIn("member chose direct messaging", doctrine, cell)
+                    self.assertNotIn("chose to approve resident messages first", doctrine, cell)
+                else:
+                    self.assertIn("chose to approve resident messages first", doctrine, cell)
+                    self.assertNotIn("member chose direct messaging", doctrine, cell)
+                ext = state["categories"]["resident_comms"]
+                self.assertEqual(ext["safety_gate"], not opted, cell)
+                if mode == "full":
+                    self.assertEqual(ext["status"], "unlocked" if opted else "locked", cell)
+                else:
+                    self.assertEqual(ext["status"], "locked", cell)
+                # evaluator agrees with the prose in every cell
+                ext.update(total_decisions=10, accuracy_pct=100)
+                expect_unlock = (mode == "copilot" and opted)
+                self.assertEqual(autonomy.evaluate_unlock(state, "resident_comms"), expect_unlock, cell)
+
+
+class TestFileStructure(unittest.TestCase):
+    def test_main_guard_is_last_statement_in_every_test_file(self):
+        print("ARMED: the __main__ guard must be the final statement of every test file (append-below-main class)")
+        import ast
+        for pattern in ("engine/tests/test_*.py", "tests/test_*.py"):
+            for f in sorted(ROOT.glob(pattern)):
+                tree = ast.parse(f.read_text())
+                mains = [i for i, node in enumerate(tree.body)
+                         if isinstance(node, ast.If) and isinstance(node.test, ast.Compare)
+                         and getattr(node.test.left, "id", "") == "__name__"]
+                if not mains:
+                    continue
+                self.assertEqual(len(mains), 1, f"{f}: multiple __main__ guards")
+                self.assertEqual(mains[0], len(tree.body) - 1,
+                                 f"{f}: __main__ guard is not the last statement")
+
+class TransitionRerenderKeepsChoice(unittest.TestCase):
+    """An earned-unlock transition re-renders doctrine from persisted state;
+    the member's messaging choice must survive that re-render (it flipped to
+    opted-out on the first unlock when settings_from_state omitted it).
+    Driven through the production entry (the seat wrapper), both mirrors."""
+
+    def _seat(self, choice):
+        temp = Path(tempfile.mkdtemp(prefix="transition-choice-"))
+        self.addCleanup(shutil.rmtree, temp)
+        root = temp / "seat"
+        shutil.copytree(ROOT / "templates" / "maintenance-coordinator", root)
+        autonomy.render(root, autonomy.parse_settings({
+            "autonomy_mode": "copilot", "unlock_window": "last_3",
+            "qualifying_accuracy": "90", "external_send_autonomy": choice}),
+            "2026-09-01T12:00:00Z")
+        autonomy.write_engine_sidecar(root)
+        return root
+
+    def _earn(self, root):
+        import subprocess
+        for _ in range(3):
+            r = subprocess.run([str(root / "record-decision.sh"), "lock_change", "--correct"],
+                               cwd=root, capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr)
+        state = json.loads((root / "copilot-thresholds.json").read_text())
+        self.assertEqual(state["categories"]["lock_change"]["status"], "unlocked")
+        return (root / "GUARDRAILS.md").read_text()
+
+    def test_opted_in_choice_survives_earned_unlock_rerender(self):
+        print("ARMED: opted-in doctrine survives the first earned-unlock re-render")
+        doctrine = self._earn(self._seat("yes"))
+        self.assertIn("member chose direct messaging", doctrine)
+        self.assertNotIn("chose to approve resident messages first", doctrine)
+        self.assertNotIn("External or resident-facing categories are likewise never", doctrine)
+
+    def test_opted_out_choice_survives_earned_unlock_rerender(self):
+        print("ARMED: opted-out doctrine survives the first earned-unlock re-render")
+        doctrine = self._earn(self._seat("no"))
+        self.assertIn("chose to approve resident messages first", doctrine)
+        self.assertNotIn("member chose direct messaging", doctrine)
+
+class EvaluatorKeysOnPersistedChoice(unittest.TestCase):
+    """The evaluator must refuse on the ONE persisted fact (top-level
+    external_send_autonomy), never on the per-row safety_gate flag, which
+    is rendered metadata — a hand-edited row flag must not let an external
+    category earn autonomy the member never chose between reruns."""
+
+    def _seat_with_row_flag_cleared(self, choice):
+        temp = Path(tempfile.mkdtemp(prefix="persisted-choice-"))
+        self.addCleanup(shutil.rmtree, temp)
+        root = temp / "seat"
+        shutil.copytree(ROOT / "templates" / "maintenance-coordinator", root)
+        autonomy.render(root, autonomy.parse_settings({
+            "autonomy_mode": "copilot", "unlock_window": "last_2",
+            "qualifying_accuracy": "90", "external_send_autonomy": choice}),
+            "2026-09-01T12:00:00Z")
+        autonomy.write_engine_sidecar(root)
+        thresholds = root / "copilot-thresholds.json"
+        state = json.loads(thresholds.read_text())
+        state["categories"]["resident_comms"]["safety_gate"] = False  # hand-edited cache
+        thresholds.write_text(json.dumps(state, indent=2) + "\n")
+        return root
+
+    def _drive_two_corrects(self, root):
+        import subprocess
+        for _ in range(2):
+            r = subprocess.run([str(root / "record-decision.sh"), "resident_comms", "--correct"],
+                               cwd=root, capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr)
+        return json.loads((root / "copilot-thresholds.json").read_text())["categories"]["resident_comms"]["status"]
+
+    def test_hand_cleared_row_flag_cannot_earn_when_member_opted_out(self):
+        print("ARMED: row flag hand-cleared, top-level opted out — two corrects via CLI stay locked")
+        self.assertEqual(self._drive_two_corrects(self._seat_with_row_flag_cleared("no")), "locked")
+
+    def test_persisted_opt_in_earns_regardless_of_row_flag(self):
+        print("ARMED: top-level opted in — the same drive earns (the fact, not the flag, decides)")
+        self.assertEqual(self._drive_two_corrects(self._seat_with_row_flag_cleared("yes")), "unlocked")
 
 
 if __name__ == "__main__":

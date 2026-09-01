@@ -83,7 +83,14 @@ def parse_settings(raw_cover: dict[str, str]) -> dict[str, object]:
                                 "qualifying_accuracy must be null or a number from 0 through 100")
         if accuracy.is_integer():
             accuracy = int(accuracy)
-    return {"mode": mode, "unlock_window": window, "qualifying_accuracy": accuracy}
+    # Owner-ruled 2026-09-01: resident/external messaging is the MEMBER'S
+    # choice. FAIL-CLOSED: only an explicit affirmative opts in — a missing,
+    # blank, or unrecognized answer keeps messages routing through the
+    # property manager. The choice is theirs; silence is not a choice.
+    raw_external = raw_cover.get("external_send_autonomy", "").strip().lower()
+    external_send = raw_external in {"yes", "y", "true"}
+    return {"mode": mode, "unlock_window": window, "qualifying_accuracy": accuracy,
+            "external_send_autonomy": external_send}
 
 
 def evaluate_unlock(state: dict, category: str) -> bool:
@@ -98,13 +105,14 @@ def evaluate_unlock(state: dict, category: str) -> bool:
         # Irreversible actions (a closed meld cannot be reopened) never earn
         # automatic unlock, in any mode.
         return False
-    if category in EXTERNAL_SEND_CATEGORIES:
-        # BRIDGE EXCLUSION (PR34 seam): with the approval act removed, an
-        # accuracy-only unlock would grant external-send autonomy nobody
-        # chose. External categories are hard-excluded from automatic unlock
-        # until the member-choice setting (external_send_autonomy, PR34's
-        # six-cell matrix) replaces this exclusion with choice-dependence.
-        # Every merged head must be safe STANDALONE.
+    if category in EXTERNAL_SEND_CATEGORIES and not state.get("external_send_autonomy"):
+        # CHOICE-DEPENDENT, keyed on the ONE persisted fact render writes
+        # (top-level external_send_autonomy, absent = opted out). The per-row
+        # safety_gate flag is rendered METADATA only — a derived cache of
+        # membership x opt-in — never the gate: a hand-edited row flag must
+        # not let an external category earn autonomy the member never chose
+        # in the window between reruns, which is exactly when record_decision
+        # runs. Opted-in external rows earn like any other category.
         return False
     accuracy = row.get("qualifying_accuracy")
     if accuracy is None:
@@ -150,11 +158,18 @@ def _doctrine(settings: dict[str, object], has_thresholds: bool, authority_marke
             "Every category is permanently approval-gated. No accuracy record unlocks anything; "
             "the unlock evaluator is inert in supervised mode."
         )
+    elif settings.get("external_send_autonomy"):
+        posture = (
+            "Eligible categories INCLUDING resident/external messaging begin autonomous on day "
+            "one (the member chose direct resident messaging). Safety gates remain locked: "
+            "Fair-Housing-adjacent screening or housing decisions always require human review."
+        )
     else:
         posture = (
             "Eligible non-safety categories begin autonomous on day one. Safety gates remain locked: "
             "Fair-Housing-adjacent screening or housing decisions always require human review, and every "
-            "external or resident-facing send always requires human approval."
+            "external or resident-facing send always requires human approval (the member chose "
+            "to approve resident messages first)."
         )
     if mode == "supervised":
         act_directly = ""
@@ -162,9 +177,27 @@ def _doctrine(settings: dict[str, object], has_thresholds: bool, authority_marke
         act_directly = (
             "\n\nWhen a category is unlocked (earned or day-one autonomy): act directly, "
             "send a post-action note (\"[action taken]. Reply UNDO if needed.\"), and log "
-            "`decision_presented` with `\"autonomous\": true`. External or resident-facing "
-            "categories, and irreversible categories (meld closure), are never acted on "
-            "directly, regardless of any status value in the thresholds file."
+            "`decision_presented` with `\"autonomous\": true`. Irreversible categories (meld "
+            "closure) are never acted on directly, regardless of any status value in the "
+            "thresholds file."
+        )
+        if not settings.get("external_send_autonomy"):
+            act_directly += (
+                " External or resident-facing categories are likewise never acted on directly, "
+                "regardless of any status value in the thresholds file (the member chose to "
+                "approve resident messages first)."
+            )
+    if settings.get("external_send_autonomy"):
+        choice_note = (
+            "\n\nResident/external messaging: the member chose direct messaging — messaging "
+            "categories follow the same mode rules as every other category. Built-in "
+            "fair-housing safeguards remain active."
+        )
+    else:
+        choice_note = (
+            "\n\nResident/external messaging: routes through the property manager — the "
+            "member chose to approve resident messages first. Built-in fair-housing "
+            "safeguards remain active."
         )
     if has_thresholds and mode == "supervised":
         threshold_note = (
@@ -187,7 +220,7 @@ def _doctrine(settings: dict[str, object], has_thresholds: bool, authority_marke
     authority_note = ""
     if authority_markers:
         authority_note = " Approval authority remains " + " and ".join(authority_markers) + "."
-    return f"{BEGIN}\n\n### Configured mode: {mode}\n\n{posture}{threshold_note}{authority_note}{act_directly}\n\n{END}"
+    return f"{BEGIN}\n\n### Configured mode: {mode}\n\n{posture}{threshold_note}{authority_note}{act_directly}{choice_note}\n\n{END}"
 
 
 def _render_thresholds(path: Path, settings: dict[str, object], configured_at: str) -> None:
@@ -199,21 +232,30 @@ def _render_thresholds(path: Path, settings: dict[str, object], configured_at: s
     # NOTE: since the threshold-change re-evaluation landed, this flag is
     # defence-in-depth on that path (a non-copilot prior mode stores window
     # None, which always differs from a copilot window and triggers the
-    # re-evaluation) — it is NOT dead code: supervised/full branches and the
-    # explicit lock-on-mode-change still key on it directly.
+    # re-evaluation) — it is NOT dead code: the explicit lock-on-mode-change
+    # in the copilot branch still keys on it directly (its only reader).
     previous_mode = state.get("autonomy_mode")
     mode_changed = previous_mode is not None and previous_mode != mode
     state["autonomy_mode"] = mode
+    external_opt_in = bool(settings.get("external_send_autonomy"))
+    state["external_send_autonomy"] = external_opt_in
     state["safety_gates"] = {
+        # Fair-housing screening is NOT messaging: locked in every mode and
+        # every choice — the member choice covers resident/external SENDS only.
         "fair_housing_screening": {"status": "locked", "safety_gate": True},
-        "external_resident_send": {"status": "locked", "safety_gate": True},
+        "external_resident_send": (
+            {"status": "member_choice", "safety_gate": False}
+            if external_opt_in else
+            {"status": "locked", "safety_gate": True}),
     }
     for category, row in state.get("categories", {}).items():
-        is_safety_gate = category in EXTERNAL_SEND_CATEGORIES
+        is_external = category in EXTERNAL_SEND_CATEGORIES
+        # human-gated external = external AND the member has not opted in
+        is_safety_gate = is_external and not external_opt_in
         is_irreversible = category in IRREVERSIBLE_CATEGORIES
         row["mode"] = mode
-        if is_safety_gate:
-            row["safety_gate"] = True
+        if is_external:
+            row["safety_gate"] = is_safety_gate
         if is_irreversible:
             row["irreversible_gate"] = True
         # MERGE, NOT REPLACE (owner follow-up made load-bearing): a rerun must
@@ -379,7 +421,12 @@ def settings_from_state(state: dict) -> dict[str, object]:
         if row.get("qualifying_accuracy") is not None:
             accuracy = row["qualifying_accuracy"]
         break
-    return {"mode": mode, "unlock_window": window, "qualifying_accuracy": accuracy}
+    # The member's messaging choice is persisted at the top level by
+    # _render_thresholds; a transition re-render that omitted it flipped an
+    # opted-in seat's doctrine to opted-out on its first earned unlock.
+    # Absent = False (fail-closed), matching parse_settings.
+    return {"mode": mode, "unlock_window": window, "qualifying_accuracy": accuracy,
+            "external_send_autonomy": bool(state.get("external_send_autonomy", False))}
 
 
 def record_decision(root: Path, category: str, correct: bool,
@@ -434,7 +481,12 @@ def _record_decision_locked(root: Path, thresholds: Path, category: str,
     # same call that recorded the correction, silently ignoring "a correction
     # re-locks the category, immediately" — re-earning waits for at least the
     # next correct decision.
+    # The synthetic evaluation state must carry the persisted messaging
+    # choice: the evaluator keys on that top-level fact, and omitting it here
+    # would refuse every external unlock on the production path even for an
+    # opted-in member (caught by the opted-in mirror casualty).
     eval_state = {"autonomy_mode": state.get("autonomy_mode"),
+                  "external_send_autonomy": bool(state.get("external_send_autonomy", False)),
                   "categories": {category: {**row, "total_decisions": len(outcomes)}}}
     unlocked_now = bool(correct) and evaluate_unlock(eval_state, category) and not was_unlocked
     if unlocked_now:

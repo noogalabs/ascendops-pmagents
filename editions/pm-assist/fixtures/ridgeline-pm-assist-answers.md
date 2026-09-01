@@ -18,6 +18,7 @@ Timezone: America/Denver
 Autonomy mode: [documented] copilot
 Unlock window: [documented] last_10
 Qualifying accuracy: [documented] null
+Resident messaging autonomy: [documented] no
 
 Pointer-seeded values, NOT cover-sheet fields: the external-communications window
 ({{day_mode_start}} / {{day_mode_end}}) is seeded from the org `context.json` and owned by
