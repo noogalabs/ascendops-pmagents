@@ -277,9 +277,6 @@ class RenderCodeConsistency(unittest.TestCase):
         self.assertEqual(row["status"], "locked")
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class BridgeExternalExclusion(unittest.TestCase):
     """BRIDGE (PR34 seam): until the member-choice setting ships, external
@@ -316,3 +313,85 @@ class BridgeExternalExclusion(unittest.TestCase):
             self.assertEqual(state["categories"]["lock_change"]["status"], "unlocked")
         finally:
             shutil.rmtree(temp)
+
+class RecordDecisionProductionEntry(unittest.TestCase):
+    """The automatic-unlock promise is only real because a PRODUCTION entry
+    runs it: this casualty drives the engine CLI (not the function) from
+    record through unlock and asserts the persisted state and the re-rendered
+    doctrine — zero non-test callers was the unarmed-by-construction finding."""
+
+    def setUp(self):
+        self.temp = Path(tempfile.mkdtemp(prefix="record-decision-"))
+
+    def tearDown(self):
+        shutil.rmtree(self.temp)
+
+    def _run_cli(self, *args):
+        import subprocess, sys as _sys
+        return subprocess.run(
+            [_sys.executable, str(ROOT / "engine" / "engine.py"), "record-decision", *args],
+            capture_output=True, text=True)
+
+    def test_cli_records_to_unlock_persists_and_rerenders(self):
+        print("ARMED: CLI record-decision drives counters to an automatic unlock with persisted state + re-rendered doctrine")
+        root = self.temp / "seat"
+        shutil.copytree(ROOT / "templates" / "maintenance-coordinator", root)
+        settings = autonomy.parse_settings({
+            "autonomy_mode": "copilot", "unlock_window": "last_3",
+            "qualifying_accuracy": "90"})
+        autonomy.render(root, settings, "2026-09-01T12:00:00Z")
+        for n in range(3):
+            result = self._run_cli(str(root), "lock_change", "--correct")
+            self.assertEqual(result.returncode, 0, result.stderr)
+        summary = json.loads(result.stdout)
+        self.assertTrue(summary["unlocked_now"], summary)
+        state = json.loads((root / "copilot-thresholds.json").read_text())
+        row = state["categories"]["lock_change"]
+        self.assertEqual(row["status"], "unlocked")
+        self.assertEqual(row["accuracy_pct"], 100.0)
+        self.assertIsNotNone(row["unlocked_at"])
+        # doctrine was re-rendered on the transition (block present exactly once)
+        doctrine = (root / "GUARDRAILS.md").read_text()
+        self.assertEqual(doctrine.count("### Configured mode: copilot"), 1)
+
+    def test_cli_correction_relocks(self):
+        print("ARMED: an incorrect outcome re-locks an unlocked category through the CLI")
+        root = self.temp / "seat"
+        shutil.copytree(ROOT / "templates" / "maintenance-coordinator", root)
+        autonomy.render(root, autonomy.parse_settings({
+            "autonomy_mode": "copilot", "unlock_window": "last_3",
+            "qualifying_accuracy": "90"}), "2026-09-01T12:00:00Z")
+        for n in range(3):
+            self._run_cli(str(root), "lock_change", "--correct")
+        result = self._run_cli(str(root), "lock_change", "--incorrect")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        state = json.loads((root / "copilot-thresholds.json").read_text())
+        self.assertEqual(state["categories"]["lock_change"]["status"], "locked")
+
+    def test_cli_external_category_never_unlocks(self):
+        print("ARMED: the bridge holds at the production entry — external categories never unlock via CLI")
+        root = self.temp / "seat"
+        shutil.copytree(ROOT / "templates" / "maintenance-coordinator", root)
+        autonomy.render(root, autonomy.parse_settings({
+            "autonomy_mode": "copilot", "unlock_window": "last_3",
+            "qualifying_accuracy": "90"}), "2026-09-01T12:00:00Z")
+        for n in range(3):
+            result = self._run_cli(str(root), "resident_comms", "--correct")
+            self.assertEqual(result.returncode, 0, result.stderr)
+        state = json.loads((root / "copilot-thresholds.json").read_text())
+        self.assertEqual(state["categories"]["resident_comms"]["status"], "locked")
+
+    def test_no_thresholds_seat_gets_honest_prose(self):
+        print("ARMED: a seat without a thresholds file renders honest no-tracking prose")
+        root = self.temp / "seat"
+        shutil.copytree(ROOT / "templates" / "maintenance-coordinator", root)
+        (root / "copilot-thresholds.json").unlink()
+        autonomy.render(root, autonomy.parse_settings({
+            "autonomy_mode": "copilot"}), "2026-09-01T12:00:00Z")
+        doctrine = (root / "GUARDRAILS.md").read_text()
+        self.assertIn("Accuracy tracking is not provisioned", doctrine)
+        self.assertNotIn("unlocks AUTOMATICALLY", doctrine)
+
+
+if __name__ == "__main__":
+    unittest.main()

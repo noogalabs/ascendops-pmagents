@@ -110,7 +110,13 @@ def evaluate_unlock(state: dict, category: str) -> bool:
 
 def _doctrine(settings: dict[str, object], has_thresholds: bool, authority_markers: list[str] | None = None) -> str:
     mode = settings["mode"]
-    if mode == "copilot":
+    if mode == "copilot" and not has_thresholds:
+        posture = (
+            "Every outward-facing decision routes to the property manager for approval. "
+            "Accuracy tracking is not provisioned for this seat (no thresholds file), so "
+            "no automatic unlock is available until it is."
+        )
+    elif mode == "copilot":
         accuracy = settings["qualifying_accuracy"]
         if accuracy is None:
             earned = (
@@ -146,9 +152,16 @@ def _doctrine(settings: dict[str, object], has_thresholds: bool, authority_marke
         act_directly = (
             "\n\nWhen a category is unlocked (earned or day-one autonomy): act directly, "
             "send a post-action note (\"[action taken]. Reply UNDO if needed.\"), and log "
-            "`decision_presented` with `\"autonomous\": true`."
+            "`decision_presented` with `\"autonomous\": true`. External or resident-facing "
+            "categories are never acted on directly, regardless of any status value in the "
+            "thresholds file."
         )
-    threshold_note = " Runtime state is recorded in `copilot-thresholds.json`." if has_thresholds else ""
+    threshold_note = (
+        " Runtime state is recorded in `copilot-thresholds.json`; after each logged "
+        "decision outcome, run the engine record-decision entry (engine.py "
+        "record-decision <seat-root> <category> --correct|--incorrect) so the "
+        "accuracy record and automatic unlocks stay real."
+        if has_thresholds else "")
     authority_note = ""
     if authority_markers:
         authority_note = " Approval authority remains " + " and ".join(authority_markers) + "."
@@ -190,6 +203,14 @@ def render(root: Path, settings: dict[str, object], configured_at: str) -> None:
     thresholds = root / "copilot-thresholds.json"
     if thresholds.is_file():
         _render_thresholds(thresholds, settings, configured_at)
+    render_doctrine(root, settings)
+
+
+def render_doctrine(root: Path, settings: dict[str, object]) -> None:
+    """GUARDRAILS-only render. Used by record_decision on an unlock
+    transition: the full render() would reset threshold statuses (it renders
+    state from settings), clobbering the runtime unlock it is reporting."""
+    thresholds = root / "copilot-thresholds.json"
     guardrails = root / "GUARDRAILS.md"
     if guardrails.is_file():
         original = guardrails.read_text(encoding="utf-8")
@@ -228,3 +249,65 @@ def render(root: Path, settings: dict[str, object], configured_at: str) -> None:
         transaction.atomic_write_text(
             guardrails, text.rstrip() + "\n"
         )
+
+def settings_from_state(state: dict) -> dict[str, object]:
+    """Reconstruct render settings from a persisted thresholds state so a
+    runtime unlock transition can re-render doctrine without the original
+    answers file. Window/accuracy come from any copilot row (they are
+    rendered uniformly); mode from the top level."""
+    mode = state.get("autonomy_mode", DEFAULT_MODE)
+    window = DEFAULT_UNLOCK_WINDOW
+    accuracy = DEFAULT_QUALIFYING_ACCURACY
+    for row in state.get("categories", {}).values():
+        if row.get("window"):
+            window = row["window"]
+        if row.get("qualifying_accuracy") is not None:
+            accuracy = row["qualifying_accuracy"]
+        break
+    return {"mode": mode, "unlock_window": window, "qualifying_accuracy": accuracy}
+
+
+def record_decision(root: Path, category: str, correct: bool,
+                    decided_at: str | None = None) -> dict:
+    """PRODUCTION ENTRY for the earned-autonomy ladder: record one presented
+    decision's outcome, update the category's windowed accuracy record,
+    evaluate the automatic unlock, persist atomically, and re-render the
+    doctrine on an unlock transition. The rendered promise (automatic
+    unlock-by-accuracy) is only real because this entry runs — seats invoke
+    it after every logged decision (see GUARDRAILS doctrine).
+
+    Returns a summary dict: {category, correct, total_decisions,
+    accuracy_pct, status, unlocked_now}."""
+    thresholds = root / "copilot-thresholds.json"
+    state = json.loads(thresholds.read_text(encoding="utf-8"))
+    if category not in state.get("categories", {}):
+        raise KeyError(f"unknown category: {category}")
+    row = state["categories"][category]
+    required = int(str(row.get("window") or "last_20").removeprefix("last_"))
+    outcomes = list(row.get("recent_outcomes") or [])
+    outcomes.append(bool(correct))
+    outcomes = outcomes[-required:]
+    row["recent_outcomes"] = outcomes
+    row["total_decisions"] = int(row.get("total_decisions", 0)) + 1
+    row["correct"] = int(row.get("correct", 0)) + (1 if correct else 0)
+    row["accuracy_pct"] = round(100 * sum(outcomes) / len(outcomes), 1)
+    if not correct and row.get("status") == "unlocked":
+        # a correction re-locks, immediately
+        row["status"] = "locked"
+        row["demoted_at"] = decided_at
+    was_unlocked = row.get("status") == "unlocked"
+    # evaluate against the WINDOWED record: total gate uses window occupancy
+    eval_state = {"autonomy_mode": state.get("autonomy_mode"),
+                  "categories": {category: {**row, "total_decisions": len(outcomes)}}}
+    unlocked_now = evaluate_unlock(eval_state, category) and not was_unlocked
+    if unlocked_now:
+        row["status"] = "unlocked"
+        row["unlocked_at"] = decided_at
+    transaction.atomic_write_text(thresholds, json.dumps(state, indent=2) + "\n")
+    if unlocked_now:
+        render_doctrine(root, settings_from_state(state))
+    return {"category": category, "correct": bool(correct),
+            "total_decisions": row["total_decisions"],
+            "accuracy_pct": row["accuracy_pct"], "status": row["status"],
+            "unlocked_now": unlocked_now}
+
