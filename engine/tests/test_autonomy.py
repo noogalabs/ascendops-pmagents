@@ -275,6 +275,8 @@ class RenderCodeConsistency(unittest.TestCase):
         print("ARMED: supervised doctrine promises no unlock and evaluate_unlock agrees")
         doctrine, state = self._render("supervised")
         self.assertIn("No accuracy record unlocks anything", doctrine)
+        self.assertIn("kept for a later mode change", doctrine)
+        self.assertNotIn("automatic unlocks stay real", doctrine)
         row = state["categories"]["lock_change"]
         row.update(total_decisions=10, accuracy_pct=100,
                    qualifying_accuracy=90, window="last_10")
@@ -845,6 +847,39 @@ class ThresholdChangeReEvaluation(unittest.TestCase):
             "autonomy_mode": "copilot", "unlock_window": "last_3",
             "qualifying_accuracy": "null"}), "2026-09-02T12:00:00Z")
         self.assertEqual(self._row()["status"], "locked")
+
+class ForceLockGuardArmed(unittest.TestCase):
+    """The doctrine promises gated categories are never honored "regardless
+    of any status value in the thresholds file" — a promise about UNTRUSTED
+    file content. Piper proved the copilot-branch force-lock line had no
+    casualty (dropping it stayed green) and is the ONLY re-lock on the
+    same-settings rerun path. These arm it by name for both gated families."""
+
+    def _hand_unlocked_rerun(self, category):
+        temp = Path(tempfile.mkdtemp(prefix="force-lock-"))
+        self.addCleanup(shutil.rmtree, temp)
+        root = temp / "seat"
+        shutil.copytree(ROOT / "templates" / "maintenance-coordinator", root)
+        settings = autonomy.parse_settings({
+            "autonomy_mode": "copilot", "unlock_window": "last_10",
+            "qualifying_accuracy": "90"})
+        autonomy.render(root, settings, "2026-09-01T12:00:00Z")
+        thresholds = root / "copilot-thresholds.json"
+        state = json.loads(thresholds.read_text())
+        state["categories"][category]["status"] = "unlocked"
+        thresholds.write_text(json.dumps(state, indent=2) + "\n")
+        # same settings: mode_changed does not fire, threshold-change does not
+        # fire — the force-lock line is the only guard on this path
+        autonomy.render(root, settings, "2026-09-02T12:00:00Z")
+        return json.loads(thresholds.read_text())["categories"][category]["status"]
+
+    def test_hand_unlocked_irreversible_relocks_on_unchanged_rerun(self):
+        print("ARMED: a hand-set unlocked meld_closure re-locks on a same-settings copilot rerun")
+        self.assertEqual(self._hand_unlocked_rerun("meld_closure"), "locked")
+
+    def test_hand_unlocked_external_relocks_on_unchanged_rerun(self):
+        print("ARMED: a hand-set unlocked resident_comms re-locks on a same-settings copilot rerun")
+        self.assertEqual(self._hand_unlocked_rerun("resident_comms"), "locked")
 
 
 if __name__ == "__main__":

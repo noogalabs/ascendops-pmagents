@@ -166,7 +166,15 @@ def _doctrine(settings: dict[str, object], has_thresholds: bool, authority_marke
             "categories, and irreversible categories (meld closure), are never acted on "
             "directly, regardless of any status value in the thresholds file."
         )
-    if has_thresholds:
+    if has_thresholds and mode == "supervised":
+        threshold_note = (
+            " Runtime state is recorded in `copilot-thresholds.json`; after each logged "
+            "decision outcome, run: `./record-decision.sh <category> --correct|--incorrect` "
+            "(the seat-root wrapper; works from any directory by absolute path). In "
+            "supervised mode the record is kept for a later mode change — nothing unlocks. "
+            "If the PMAgents repo moves, re-run setup to refresh the engine path it resolves."
+        )
+    elif has_thresholds:
         threshold_note = (
             " Runtime state is recorded in `copilot-thresholds.json`; after each logged "
             "decision outcome, run: `./record-decision.sh <category> --correct|--incorrect` "
@@ -188,6 +196,11 @@ def _render_thresholds(path: Path, settings: dict[str, object], configured_at: s
     # previous_mode MUST be read BEFORE the new mode is assigned: the original
     # ordering self-clobbered the read, mode_changed was always False, and a
     # full->copilot rerun preserved day-one unlocks nothing had earned.
+    # NOTE: since the threshold-change re-evaluation landed, this flag is
+    # defence-in-depth on that path (a non-copilot prior mode stores window
+    # None, which always differs from a copilot window and triggers the
+    # re-evaluation) — it is NOT dead code: supervised/full branches and the
+    # explicit lock-on-mode-change still key on it directly.
     previous_mode = state.get("autonomy_mode")
     mode_changed = previous_mode is not None and previous_mode != mode
     state["autonomy_mode"] = mode
