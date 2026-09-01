@@ -19,6 +19,13 @@ Autonomy mode: ________________________________________
 Unlock window: ________________________________________
 Qualifying accuracy: ________________________________________
 
+> Autonomy mode notes: `copilot` (default) ships the earned-autonomy ladder;
+> `supervised` keeps every category approval-gated permanently; `full` grants
+> day-one autonomy with fair-housing and external/resident-facing sends still
+> human-gated. PLAIN WARNING for existing installs: re-running setup RESETS
+> ladder progress — every earned unlock returns to locked and must be re-earned
+> under the configured window.
+
 Day mode start: ________________________________________
 Day mode end: ________________________________________
 Inspection SLA hours: ________________________________________
