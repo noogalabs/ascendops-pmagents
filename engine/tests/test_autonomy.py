@@ -1043,6 +1043,44 @@ class TransitionRerenderKeepsChoice(unittest.TestCase):
         self.assertIn("chose to approve resident messages first", doctrine)
         self.assertNotIn("member chose direct messaging", doctrine)
 
+class EvaluatorKeysOnPersistedChoice(unittest.TestCase):
+    """The evaluator must refuse on the ONE persisted fact (top-level
+    external_send_autonomy), never on the per-row safety_gate flag, which
+    is rendered metadata — a hand-edited row flag must not let an external
+    category earn autonomy the member never chose between reruns."""
+
+    def _seat_with_row_flag_cleared(self, choice):
+        temp = Path(tempfile.mkdtemp(prefix="persisted-choice-"))
+        self.addCleanup(shutil.rmtree, temp)
+        root = temp / "seat"
+        shutil.copytree(ROOT / "templates" / "maintenance-coordinator", root)
+        autonomy.render(root, autonomy.parse_settings({
+            "autonomy_mode": "copilot", "unlock_window": "last_2",
+            "qualifying_accuracy": "90", "external_send_autonomy": choice}),
+            "2026-09-01T12:00:00Z")
+        autonomy.write_engine_sidecar(root)
+        thresholds = root / "copilot-thresholds.json"
+        state = json.loads(thresholds.read_text())
+        state["categories"]["resident_comms"]["safety_gate"] = False  # hand-edited cache
+        thresholds.write_text(json.dumps(state, indent=2) + "\n")
+        return root
+
+    def _drive_two_corrects(self, root):
+        import subprocess
+        for _ in range(2):
+            r = subprocess.run([str(root / "record-decision.sh"), "resident_comms", "--correct"],
+                               cwd=root, capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr)
+        return json.loads((root / "copilot-thresholds.json").read_text())["categories"]["resident_comms"]["status"]
+
+    def test_hand_cleared_row_flag_cannot_earn_when_member_opted_out(self):
+        print("ARMED: row flag hand-cleared, top-level opted out — two corrects via CLI stay locked")
+        self.assertEqual(self._drive_two_corrects(self._seat_with_row_flag_cleared("no")), "locked")
+
+    def test_persisted_opt_in_earns_regardless_of_row_flag(self):
+        print("ARMED: top-level opted in — the same drive earns (the fact, not the flag, decides)")
+        self.assertEqual(self._drive_two_corrects(self._seat_with_row_flag_cleared("yes")), "unlocked")
+
 
 if __name__ == "__main__":
     unittest.main()

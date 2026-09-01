@@ -105,12 +105,14 @@ def evaluate_unlock(state: dict, category: str) -> bool:
         # Irreversible actions (a closed meld cannot be reopened) never earn
         # automatic unlock, in any mode.
         return False
-    if row.get("safety_gate"):
-        # CHOICE-DEPENDENT (supersedes the bridge hard-exclusion): a row
-        # carries safety_gate when the member has NOT opted in to direct
-        # resident messaging — human-gated rows never auto-unlock, whatever
-        # their accuracy record says. Opted-in external rows carry no gate
-        # and earn like any other category.
+    if category in EXTERNAL_SEND_CATEGORIES and not state.get("external_send_autonomy"):
+        # CHOICE-DEPENDENT, keyed on the ONE persisted fact render writes
+        # (top-level external_send_autonomy, absent = opted out). The per-row
+        # safety_gate flag is rendered METADATA only — a derived cache of
+        # membership x opt-in — never the gate: a hand-edited row flag must
+        # not let an external category earn autonomy the member never chose
+        # in the window between reruns, which is exactly when record_decision
+        # runs. Opted-in external rows earn like any other category.
         return False
     accuracy = row.get("qualifying_accuracy")
     if accuracy is None:
@@ -479,7 +481,12 @@ def _record_decision_locked(root: Path, thresholds: Path, category: str,
     # same call that recorded the correction, silently ignoring "a correction
     # re-locks the category, immediately" — re-earning waits for at least the
     # next correct decision.
+    # The synthetic evaluation state must carry the persisted messaging
+    # choice: the evaluator keys on that top-level fact, and omitting it here
+    # would refuse every external unlock on the production path even for an
+    # opted-in member (caught by the opted-in mirror casualty).
     eval_state = {"autonomy_mode": state.get("autonomy_mode"),
+                  "external_send_autonomy": bool(state.get("external_send_autonomy", False)),
                   "categories": {category: {**row, "total_decisions": len(outcomes)}}}
     unlocked_now = bool(correct) and evaluate_unlock(eval_state, category) and not was_unlocked
     if unlocked_now:
