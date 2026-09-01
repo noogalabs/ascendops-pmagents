@@ -25,7 +25,7 @@ engine/tests/test_placeholders.py	61	9669af7a3519ffbf374461a2d3c457d86310f0dcd0b
 engine/tests/test_placeholders.py	104	429c5f7664d6e879f5e3a217e5862e288d1c94805d2ae16bd957a10ce9994e90	betty	internal compatibility/protocol identifier
 engine/transaction.py	1	bc187757ae2139157ff25cb3bde8d19a76547f867f1f0d3b2c1ce1e7e58e4bd0	betty	internal compatibility/protocol identifier
 engine/autonomy.py	22	ca4c17ed862cd1dca22187628c0f7b36b091de3c02a31ff612d8303a57d6e2f2	betty	internal compatibility/protocol identifier
-engine/autonomy.py	403	a0ac6c01c5f3153bd9572010d0979a898a0b2a10dd68fb3491f74922e5d130d5	betty	internal compatibility/protocol identifier
+engine/autonomy.py	417	a0ac6c01c5f3153bd9572010d0979a898a0b2a10dd68fb3491f74922e5d130d5	betty	internal compatibility/protocol identifier
 editions/leasing/answers-format.md	246	d72f781d1aad8a0ba019a0a82b74ed647266f531bceaf76af292ca864edaf858	platform	setup-answer example list of PM systems (config/placeholder site, owner ruling 2026-09-01)
 editions/leasing/fixtures/ridgeline-leasing-answers.md	298	d72f781d1aad8a0ba019a0a82b74ed647266f531bceaf76af292ca864edaf858	platform	setup-answer example list of PM systems (config/placeholder site, owner ruling 2026-09-01)
 editions/leasing/library-src/ONBOARDING.md	91	5823741bc35b0dab46ff0689a4c0a8be4410ea9aed320e885e9b8389e10291ed	platform	setup-answer example list of PM systems (config/placeholder site, owner ruling 2026-09-01)
@@ -54,3 +54,7 @@ editions/maintenance/library-src/maintenance-auto-send-message-library.md	1058	7
 README.md	48	116e539b0ed30c6760d4b2b4224b8515873b30ab945f7890b24f8d900a227d4f	model	runtime install/run instruction naming the harness on the member front page (dane fold 2026-09-01: README scanned as duty surface, runtime mentions by exact site)
 README.md	50	7bbd8d4f80cf21d7287ff2a9b04e3059ecb97a8ed8559b337e2c79d687b34363	model	runtime install/run instruction naming the harness on the member front page (dane fold 2026-09-01: README scanned as duty surface, runtime mentions by exact site)
 README.md	75	7c87340b2446ba9f89eb757573f635d7d3a51a3aa6a5b7f07ce3f24d08a7264e	model	runtime install/run instruction naming the harness on the member front page (dane fold 2026-09-01: README scanned as duty surface, runtime mentions by exact site)
+templates/maintenance-coordinator/AGENTS.md	3	bc5cec278734a905c5c292b6d2094557eb5b31ae5da0c0d79a291e4fcbbab48a	model	AGENTS.md header naming the harness runtime the pack runs on (runtime line on a duty surface; piper F2 narrowing 2026-09-01)
+templates/maintenance-coordinator/AGENTS.md	299	1c37fd5f84658a60cfdc9d6fad0e927f28a13fa6fdfa9770ecbf0129b16362d4	model	AGENTS.md runtime-tool line (multimodal/extraction tool wiring), not role duty prose (piper F2 narrowing 2026-09-01)
+editions/pm-assist/library-src/AGENTS.md	3	82ada723240f44ccbc915ae343215d9a095f97de923080c5cfc96e493e775693	model	AGENTS.md header naming the harness runtime the pack runs on (runtime line on a duty surface; piper F2 narrowing 2026-09-01)
+editions/pm-assist/library-src/AGENTS.md	294	1c37fd5f84658a60cfdc9d6fad0e927f28a13fa6fdfa9770ecbf0129b16362d4	model	AGENTS.md runtime-tool line (multimodal/extraction tool wiring), not role duty prose (piper F2 narrowing 2026-09-01)

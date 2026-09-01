@@ -32,7 +32,9 @@ MODEL_ID_RE = re.compile(r"(?i)(?<![./])\bclaude-[a-z0-9-]+\b|\bgpt-[0-9][a-z0-9
 # Runtime-mechanics surfaces: the harness IS a named model runtime and names
 # itself here; these are exempt as a CLASS (named in the census output), not
 # as duty text. Duty surfaces are everything else.
-RUNTIME_SURFACE_NAMES = {"HEARTBEAT.md", "AGENTS.md", "TOOLS.md", "CLAUDE.md", "SYSTEM.md",
+# AGENTS.md is a member-shipped DUTY surface (session protocol + role steps):
+# scanned, with exact-site rows for its genuine runtime lines (piper F2).
+RUNTIME_SURFACE_NAMES = {"HEARTBEAT.md", "TOOLS.md", "CLAUDE.md", "SYSTEM.md",
                          "config.json", "settings.json", ".env.example"}
 # README.md is member-facing front-page prose: scanned as a duty surface; its
 # genuine runtime mentions are allowlisted by exact site (dane fold 2026-09-01).
@@ -143,12 +145,14 @@ def scan(root: Path) -> list[str]:
     # ...and a `CLAUDE.md` filename reference names the runtime's config file.
     model_re = re.compile(r"(?<![A-Za-z0-9_./-])(?:"
                           + "|".join("(?i:" + re.escape(x) + ")" for x in MODEL_TERMS_CI) + "|"
-                          + "|".join(re.escape(x) for x in MODEL_TERMS_CS) + r")(?![A-Za-z0-9_-]|\.md\b)")
-    runtime_exempt_files = 0
+                          + "|".join(re.escape(x) for x in MODEL_TERMS_CS) + r")(?![A-Za-z0-9_]|\.md\b)")
+    runtime_exempt_files = 0  # declared denominator: printed beside CLEAN
     for relative in tracked(root):
         if relative in SELF:
             continue
         in_frontmatter = False
+        if is_runtime_surface(relative):
+            runtime_exempt_files += 1
         for number, line in enumerate(readable_lines(root, relative), 1):
             # YAML frontmatter block = line 1 "---" through the next "---".
             if number == 1 and line.strip() == "---":
@@ -198,7 +202,15 @@ def scan(root: Path) -> list[str]:
                         seen_allowlist.add(matches[0])
     stale = allowlist - seen_allowlist
     failures.extend(f"{row[0]}:{row[1]}: stale internal-codename allowlist row" for row in sorted(stale))
+    global LAST_RUNTIME_EXEMPT_FILES
+    LAST_RUNTIME_EXEMPT_FILES = runtime_exempt_files
     return failures
+
+
+LAST_RUNTIME_EXEMPT_FILES = 0
+RUNTIME_CLASS_LABEL = ("harness config " + "/".join(sorted(RUNTIME_SURFACE_NAMES))
+                       + "; engine/edition code *.py; runtime skills "
+                       + ", ".join(d.strip("/").rsplit("/", 1)[-1] for d in RUNTIME_SKILL_DIRS))
 
 
 def main() -> int:
@@ -209,7 +221,8 @@ def main() -> int:
     if failures:
         print("\n".join(failures))
         return 1
-    print("PMAgents member hygiene: CLEAN (zero baseline)")
+    print("PMAgents member hygiene: CLEAN (zero baseline); "
+          f"model-term scan exempt as runtime class: {LAST_RUNTIME_EXEMPT_FILES} files ({RUNTIME_CLASS_LABEL})")
     return 0
 
 

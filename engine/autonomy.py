@@ -56,16 +56,30 @@ LEGACY_CATEGORY_KEYS = {
 }
 
 
+class LegacyCategoryConflict(KeyError):
+    """Both the legacy and the current key carry a row: two accuracy histories
+    for one category. REFUSED BY NAME rather than merged or dropped — a merge
+    would invent an accuracy record, a drop would lose one. The operator
+    resolves by removing the row that is not the seat's real history."""
+
+    def __init__(self, legacy: str, current: str):
+        super().__init__(
+            f"legacy category '{legacy}' and current category '{current}' both present in "
+            f"copilot-thresholds.json; remove the stale row (nothing was written)")
+
+
 def migrate_legacy_categories(state: dict) -> list[str]:
     """Rename legacy category keys in place, preserving every row field.
-    Returns the list of migrated legacy keys (empty when nothing legacy)."""
+    Returns the list of migrated legacy keys (empty when nothing legacy).
+    Raises LegacyCategoryConflict when both keys exist (piper F3: the old
+    shape dropped the legacy row and still reported it migrated)."""
     migrated = []
     categories = state.get("categories", {})
     for legacy, current in LEGACY_CATEGORY_KEYS.items():
         if legacy in categories:
-            row = categories.pop(legacy)
-            if current not in categories:
-                categories[current] = row
+            if current in categories:
+                raise LegacyCategoryConflict(legacy, current)
+            categories[current] = categories.pop(legacy)
             migrated.append(legacy)
     return migrated
 

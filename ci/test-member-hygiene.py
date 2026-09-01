@@ -147,6 +147,27 @@ class MemberHygieneTests(unittest.TestCase):
         self._stage(root, "README.md", "# Pack\nRuns on Cla" + "ude.\n")
         result=self.run_gate(root); self.assertNotEqual(result.returncode,0); self.assertIn("README.md:2: model name",result.stdout)
 
+    def test_named_hyphenated_model_forms_die_and_bare_controls_die(self):
+        # piper F1: a hyphen after the token must not hide it (platform_re never allowed it)
+        root=self.fixture(); self.addCleanup(shutil.rmtree, root)
+        for i, form in enumerate(("Anthro" + "pic-built", "Open" + "AI-compatible", "Gem" + "ini-powered", "Co" + "dex-driven", "Op" + "us-class", "bare Anthro" + "pic", "bare Op" + "us")):
+            self._stage(root, "SOUL.md", f"An {form} step.\n")
+            result=self.run_gate(root); self.assertNotEqual(result.returncode,0,form); self.assertIn("SOUL.md:1: model name",result.stdout,form)
+
+    def test_named_agents_md_is_a_scanned_duty_surface(self):
+        # piper F2: AGENTS.md ships to members as session protocol + role steps
+        root=self.fixture(); self.addCleanup(shutil.rmtree, root)
+        self._stage(root, "AGENTS.md", "# Session start\nAsk Cla" + "ude first.\n")
+        result=self.run_gate(root); self.assertNotEqual(result.returncode,0); self.assertIn("AGENTS.md:2: model name",result.stdout)
+
+    def test_named_clean_line_declares_the_runtime_exempt_denominator(self):
+        # piper F2: the exempt class must be visible beside CLEAN, with its count
+        root=self.fixture(); self.addCleanup(shutil.rmtree, root)
+        self._stage(root, "CLAUDE.md", "# Cla" + "ude Remote Agent\n"); self._stage(root, "engine/scan.py", "X = 1\n")
+        result=self.run_gate(root); self.assertEqual(result.returncode,0,result.stdout)
+        # fixture: internal.py (.py code class) + engine/scan.py + CLAUDE.md = 3 exempt files
+        self.assertIn("exempt as runtime class: 3 files", result.stdout)
+
     def test_named_english_word_case_does_not_false_positive(self):
         root=self.fixture(); self.addCleanup(shutil.rmtree, root)
         self._stage(root, "SOUL.md", "Tell the resident a short fable about patience.\n")

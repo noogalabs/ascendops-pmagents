@@ -1025,6 +1025,35 @@ class LegacyCategoryKeyMigration(unittest.TestCase):
         self.assertEqual(row["status"], "locked")
         self.assertTrue(row["irreversible_gate"])
 
+    def _add_conflicting_legacy_row(self):
+        state = json.loads(self.thresholds.read_text())
+        state["categories"]["meld_closure"] = dict(state["categories"]["work_order_closure"],
+                                                   recent_outcomes=[True], total_decisions=1, correct=1)
+        transaction.atomic_write_text(self.thresholds, json.dumps(state, indent=2) + "\n")
+
+    def test_both_keys_present_is_refused_by_name_and_render_writes_nothing(self):
+        print("ARMED: legacy + current rows together must refuse by name, never drop or merge a history")
+        self._add_conflicting_legacy_row()
+        before = self.thresholds.read_bytes()
+        with self.assertRaises(autonomy.LegacyCategoryConflict) as caught:
+            autonomy.render(self.root, self.settings, "2026-09-01T12:05:00Z")
+        self.assertIn("meld_closure", str(caught.exception))
+        self.assertIn("work_order_closure", str(caught.exception))
+        self.assertEqual(self.thresholds.read_bytes(), before)
+
+    def test_both_keys_present_record_decision_cli_exits_2_naming_both(self):
+        print("ARMED: record-decision on a conflicting seat exits 2 naming both keys, file untouched")
+        import subprocess, sys as _sys
+        self._add_conflicting_legacy_row()
+        before = self.thresholds.read_bytes()
+        r = subprocess.run(
+            [_sys.executable, str(ROOT / "engine" / "engine.py"), "record-decision",
+             str(self.root), "work_order_closure", "--correct"],
+            capture_output=True, text=True)
+        self.assertEqual(r.returncode, 2, r.stderr + r.stdout)
+        self.assertIn("meld_closure", r.stderr); self.assertIn("work_order_closure", r.stderr)
+        self.assertEqual(self.thresholds.read_bytes(), before)
+
     def test_record_decision_accepts_legacy_category_name_via_cli(self):
         print("ARMED: record-decision with the legacy category name lands under the new key")
         import subprocess, sys as _sys
