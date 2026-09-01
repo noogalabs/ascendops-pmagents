@@ -38,7 +38,7 @@ bfaccbf46fbca0336c949c3c6996aaa8d3d4840bdd45614d14b269c19aacaeb8  ./.env.example
 cd4534d5b7b7ed9b2922a29ae50dec5718aa92a2049e5ceddf5c5b7255c2360f  ./AGENTS.md
 5922a8ce6b2124518d9f295d25fce32e0cd35b4de6388b8f3bb5a496a927d2b2  ./CLAUDE.md
 1ce2c5b4f1f3dc9a3c979b72c6a64216b63f035fad81cfbe94aa54f4766b1485  ./GOALS.md
-04b810d315b9023e0bd05a591159062bbd125ca9fa758bcd6f40c8f70d6d5281  ./GUARDRAILS.md
+1b7de335a9ffd3c81fa229c2ef75e68f0766114b2f27baa374e6941c18b508d6  ./GUARDRAILS.md
 a01176963388cac7f3eeff4c8c7e69ce7b1d04870a5ab9e6d42b1de261ed26bb  ./HEARTBEAT.md
 6d804ca1de14566b54ceb5f556bb3b182c85dd323f4551a020eec46e98f0b582  ./IDENTITY.md
 9667cee19ea58c3fa3e171eee43b56e32bf50f74fda900c3988ab490519e8de0  ./MEMORY.md
@@ -49,7 +49,7 @@ f90146fcc48a2c4aca3cdbb77c06bbf951a4a8eb3ada0c9b7314380e812d44d0  ./TOOLS.md
 8a99dfd6280d0c1caed18533c493630c2896e1581f8b37ad3fc4a4939dd64f2a  ./USER.md
 4e874f9d79f49b0371a5d7fa71c985026915293bdcb11f5ed3c24127ee0be0e1  ./config.json
 f7c8e17d68160e1594fad7e12346b8a2ad76bd5959a327d88119a4d799f79b3d  ./contradiction-report.md
-3050ff51469e4b7f4d45f7221ff25aa4a72663187190ee194d9624d9b1302a68  ./copilot-thresholds.json
+a5e87232b8a73a375a3724e7a7e1ca80868762697304dd33f80f6f1bd3aa016c  ./copilot-thresholds.json
 c505f1f314ef3d907cb81d278ef318c091c034562c235f97b59a0bff88d2032e  ./copy-exclusions.json
 c590a6ef54a77d6f7b757ad04ef1b4ddfcbd9e8106ea56bac5b3492de9c01c34  ./experiments/config.json
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./experiments/history/.gitkeep
@@ -63,6 +63,6 @@ c35c24ebc5d312ca66ae0c477f17dcc59139082177cf8448e2afa66221ea7ba1  ./library/coor
 2591216b12bfdf8851a4d9bd2b8a09d68336dc6ae9b34ea34e9da5e6c0c7535a  ./library/maintenance-coordinator-judgment-guide.md
 1dbffed177bdf6356c0d4efaebe8ffe293d5a04fdcaa5fa278d3c17adbae3453  ./library/occupied-unit-maintenance-board.md
 3c76a7070d0632e0135f147dcc61e9c45bbcdd521339adc72c48c32571c494cb  ./library/occupied-unit-maintenance-workflow.md
-a907e32bd46b71b4f973eef37e86f924bfe013b45bbd3d9314c58d3555a79ba9  ./seat-config.json
+9a9195fad654b0059a4ece72f7bf9f06586bab376b7cf092c905b4e7851269a6  ./seat-config.json
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./skills/archive/.gitkeep
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./skills/drafts/.gitkeep

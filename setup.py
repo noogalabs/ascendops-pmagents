@@ -55,12 +55,27 @@ class PromptField(NamedTuple):
     label: str
 
 
+AUTONOMY_FIELDS = (
+    PromptField("cover.Autonomy mode", "Autonomy mode"),
+    PromptField("cover.Unlock window", "Unlock window"),
+    PromptField("cover.Qualifying accuracy", "Qualifying accuracy"),
+)
+AUTONOMY_DEFAULTS = {
+    "cover.Autonomy mode": "copilot",
+    "cover.Unlock window": "last_10",
+    "cover.Qualifying accuracy": "null",
+}
+
+
 def questionnaire_fields(template: str, cover_fields=None) -> list[PromptField]:
     active_cover_fields = engine.intake.COVER_FIELDS if cover_fields is None else cover_fields
     fields = [
         PromptField(f"cover.{label}", label)
         for label in active_cover_fields
     ]
+    for field in AUTONOMY_FIELDS:
+        if field not in fields:
+            fields.append(field)
     for match in engine.intake.QUESTION_HEADING.finditer(template):
         fields.append(PromptField(match.group(1), f"{match.group(1)}. {match.group(2)}"))
     return fields
@@ -97,6 +112,11 @@ def set_answer(text: str, field: PromptField, value: str) -> str:
     if field.key.startswith("cover."):
         rendered = value.rstrip().replace("\n", "\n  ")
         pattern = rf"^{re.escape(field.label)}:{engine.intake.INTAKE_VALUE_SPAN}"
+        if not re.search(pattern, text, flags=re.M):
+            anchor = re.search(r"^Timezone:.*$", text, flags=re.M)
+            if anchor:
+                return text[:anchor.end()] + f"\n{field.label}: {rendered}" + text[anchor.end():]
+            return f"{field.label}: {rendered}\n" + text
         return re.sub(pattern, f"{field.label}: {rendered}", text, count=1, flags=re.M)
     pattern = (
         rf"(^({re.escape(field.key)})\..*?^Answer:){engine.intake.INTAKE_VALUE_SPAN}"
@@ -257,10 +277,13 @@ def guided_answers(path: Path, ask: Callable[[str], str], out: TextIO, seat: str
     for field in fields:
         if field.key in complete:
             continue
-        response = documented_answer(collect_answer(
+        response = collect_answer(
             ask,
             f"{field.label}\nAnswer (blank line finishes; 'unsure' confirms later): ",
-        ))
+        )
+        if not response and field.key in AUTONOMY_DEFAULTS:
+            response = AUTONOMY_DEFAULTS[field.key]
+        response = documented_answer(response)
         text = set_answer(text, field, response)
         atomic_text(path, text)
     return path

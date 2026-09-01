@@ -15,6 +15,9 @@ Company name: Ridgeline Residential Management
 Org short-name: ridgeline
 Forward email: maintenance@ridgeline.example
 Timezone: America/Denver
+Autonomy mode: [documented] copilot
+Unlock window: [documented] last_10
+Qualifying accuracy: [documented] null
 
 Answer format: Put each response on its `Answer:` line. For a multi-line response,
 indent every continuation line by two spaces; indented lines belong to the preceding

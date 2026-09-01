@@ -15,6 +15,9 @@ Company name: ________________________________________
 Org short-name: ________________________________________
 Forward email: ________________________________________
 Timezone: ________________________________________
+Autonomy mode: ________________________________________
+Unlock window: ________________________________________
+Qualifying accuracy: ________________________________________
 
 Answer format: Put each response on its `Answer:` line. For a multi-line response,
 indent every continuation line by two spaces; indented lines belong to the preceding

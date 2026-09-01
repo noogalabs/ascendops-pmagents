@@ -12,6 +12,9 @@ COVER_FIELDS = {
     "Org short-name": "org_short_name",
     "Forward email": "forward_email",
     "Timezone": "timezone",
+    "Autonomy mode": "autonomy_mode",
+    "Unlock window": "unlock_window",
+    "Qualifying accuracy": "qualifying_accuracy",
 }
 QUESTION_ID_PATTERN = r"[A-Z]\d+"
 QUESTION_ID = re.compile(rf"^{QUESTION_ID_PATTERN}$")

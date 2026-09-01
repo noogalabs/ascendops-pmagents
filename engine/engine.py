@@ -21,6 +21,7 @@ import cross_seat
 import credential_scan
 import intake
 import transaction
+import autonomy
 
 ENGINE_VERSION = "1.1.0"
 ROOT = Path(__file__).resolve().parents[1]
@@ -126,6 +127,12 @@ def cover_fields_for_mapping(mapping):
                 fields[label] = key
     if failures:
         raise IntakeRejected(failures)
+    for label, key in (
+        ("Autonomy mode", "autonomy_mode"),
+        ("Unlock window", "unlock_window"),
+        ("Qualifying accuracy", "qualifying_accuracy"),
+    ):
+        fields.setdefault(label, key)
     return fields
 
 
@@ -181,13 +188,18 @@ def run_sealed_core(core, source: Path, answers: Path, output: Path, library: Pa
 def validate(path: Path, seat: str):
     if seat not in SUPPORTED:
         raise IntakeRejected([("seat", f"no mapping table/library is installed for {seat!r}")])
-    return intake.preflight(
+    result = intake.preflight(
         path,
         SUPPORTED[seat]["question_ids"],
         cover_fields=cover_fields_for_seat(seat),
         semantic_profile=("maintenance" if seat == "maintenance-coordinator"
                           else "accounting" if seat == "accounting" else "structural"),
     )
+    try:
+        autonomy.parse_settings(result.cover)
+    except ValueError as exc:
+        raise IntakeRejected([("cover.Autonomy mode", str(exc))]) from exc
+    return result
 
 
 def run_mapping_core(core, source: Path, answers: Path, output: Path, library: Path, clock, seat: str, parsed_intake):
@@ -383,6 +395,15 @@ def configure(source: Path, answers: Path, output: Path, seat: str,
         if not structured_path.is_file():
             raise IntakeRejected([("structured_answers_file",
                                    f"declared structured artifact {structured_filename} is absent")])
+        try:
+            autonomy_settings = autonomy.parse_settings(parsed_intake.cover)
+        except ValueError as exc:
+            raise IntakeRejected([("cover.Autonomy mode", str(exc))]) from exc
+        autonomy.render(
+            staged,
+            autonomy_settings,
+            configuration_date + "T00:00:00Z",
+        )
         try:
             copy_protected(source, staged)
         except (OSError, shutil.Error) as exc:
