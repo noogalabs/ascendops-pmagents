@@ -1002,6 +1002,47 @@ class TestFileStructure(unittest.TestCase):
                 self.assertEqual(mains[0], len(tree.body) - 1,
                                  f"{f}: __main__ guard is not the last statement")
 
+class TransitionRerenderKeepsChoice(unittest.TestCase):
+    """An earned-unlock transition re-renders doctrine from persisted state;
+    the member's messaging choice must survive that re-render (it flipped to
+    opted-out on the first unlock when settings_from_state omitted it).
+    Driven through the production entry (the seat wrapper), both mirrors."""
+
+    def _seat(self, choice):
+        temp = Path(tempfile.mkdtemp(prefix="transition-choice-"))
+        self.addCleanup(shutil.rmtree, temp)
+        root = temp / "seat"
+        shutil.copytree(ROOT / "templates" / "maintenance-coordinator", root)
+        autonomy.render(root, autonomy.parse_settings({
+            "autonomy_mode": "copilot", "unlock_window": "last_3",
+            "qualifying_accuracy": "90", "external_send_autonomy": choice}),
+            "2026-09-01T12:00:00Z")
+        autonomy.write_engine_sidecar(root)
+        return root
+
+    def _earn(self, root):
+        import subprocess
+        for _ in range(3):
+            r = subprocess.run([str(root / "record-decision.sh"), "lock_change", "--correct"],
+                               cwd=root, capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr)
+        state = json.loads((root / "copilot-thresholds.json").read_text())
+        self.assertEqual(state["categories"]["lock_change"]["status"], "unlocked")
+        return (root / "GUARDRAILS.md").read_text()
+
+    def test_opted_in_choice_survives_earned_unlock_rerender(self):
+        print("ARMED: opted-in doctrine survives the first earned-unlock re-render")
+        doctrine = self._earn(self._seat("yes"))
+        self.assertIn("member chose direct messaging", doctrine)
+        self.assertNotIn("chose to approve resident messages first", doctrine)
+        self.assertNotIn("External or resident-facing categories are likewise never", doctrine)
+
+    def test_opted_out_choice_survives_earned_unlock_rerender(self):
+        print("ARMED: opted-out doctrine survives the first earned-unlock re-render")
+        doctrine = self._earn(self._seat("no"))
+        self.assertIn("chose to approve resident messages first", doctrine)
+        self.assertNotIn("member chose direct messaging", doctrine)
+
 
 if __name__ == "__main__":
     unittest.main()

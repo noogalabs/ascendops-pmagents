@@ -419,7 +419,12 @@ def settings_from_state(state: dict) -> dict[str, object]:
         if row.get("qualifying_accuracy") is not None:
             accuracy = row["qualifying_accuracy"]
         break
-    return {"mode": mode, "unlock_window": window, "qualifying_accuracy": accuracy}
+    # The member's messaging choice is persisted at the top level by
+    # _render_thresholds; a transition re-render that omitted it flipped an
+    # opted-in seat's doctrine to opted-out on its first earned unlock.
+    # Absent = False (fail-closed), matching parse_settings.
+    return {"mode": mode, "unlock_window": window, "qualifying_accuracy": accuracy,
+            "external_send_autonomy": bool(state.get("external_send_autonomy", False))}
 
 
 def record_decision(root: Path, category: str, correct: bool,
