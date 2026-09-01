@@ -252,7 +252,7 @@ Any standing rules I should know up front? E.g.:
 Or just say "defaults are fine".
 ```
 
-Add anything custom to `SOUL.md` under `## Custom Rules` (a new section if needed). These are the single source of truth for approval rules going forward.
+Add anything custom to `SOUL.md` under `## Custom Rules` (a new section if needed). These are the single source of truth for approval rules going forward — and they operate UNDER the external-action gate and the never-graduates set, never over them: no custom rule can make an external or resident-facing action bypass the configured gate, which is non-overridable.
 
 Also explain the autonomy posture: outward-facing decision categories are tracked in `copilot-thresholds.json`, and this install's configured autonomy mode determines which route through the property manager and whether categories can become autonomous. Read the current rules to them from GUARDRAILS.md "Copilot Thresholds" (the Configured mode block) — that block is the single authoritative statement.
 

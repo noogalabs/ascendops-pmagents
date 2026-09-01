@@ -540,6 +540,9 @@ def main():
         except FileNotFoundError:
             print("ERROR no copilot-thresholds.json at seat root", file=sys.stderr)
             return 2
+        except transaction.ConcurrentTransactionError as exc:
+            print(f"ERROR {exc}", file=sys.stderr)
+            return 3
         except KeyError as exc:
             print(f"ERROR {exc.args[0]}", file=sys.stderr)
             return 2

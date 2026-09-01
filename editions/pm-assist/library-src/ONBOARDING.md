@@ -193,7 +193,7 @@ Any standing rules I should know up front? For example:
 Or just say "defaults are fine".
 ```
 
-Add anything custom to `SOUL.md` under `## Custom Rules`. These are the single source of truth for approval rules going forward — but nothing added there may weaken the never-graduates set in GUARDRAILS.md.
+Add anything custom to `SOUL.md` under `## Custom Rules`. These are the single source of truth for approval rules going forward — and they operate UNDER the external-action gate and the never-graduates set in GUARDRAILS.md, never over them: the configured gate is non-overridable by any custom rule.
 
 ---
 

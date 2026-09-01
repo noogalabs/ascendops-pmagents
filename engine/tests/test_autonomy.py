@@ -433,6 +433,54 @@ class AtBarCorrectionCasualty(unittest.TestCase):
         state = json.loads((root / "copilot-thresholds.json").read_text())
         self.assertEqual(state["categories"]["lock_change"]["status"], "locked")
 
+class RecordDecisionConcurrency(unittest.TestCase):
+    """record_decision holds the SAME DestinationLock the configurator uses
+    across the complete read-evaluate-persist-rerender sequence. Deterministic
+    casualties, no race: contention refuses BY NAME; the normal path releases
+    cleanly; a serialized pair both count."""
+
+    def setUp(self):
+        self.temp = Path(tempfile.mkdtemp(prefix="rd-lock-"))
+        root = self.temp / "seat"
+        shutil.copytree(ROOT / "templates" / "maintenance-coordinator", root)
+        autonomy.render(root, autonomy.parse_settings({
+            "autonomy_mode": "copilot", "unlock_window": "last_10",
+            "qualifying_accuracy": "90"}), "2026-09-01T12:00:00Z")
+        self.root = root
+
+    def tearDown(self):
+        shutil.rmtree(self.temp)
+
+    def _cli(self, *args):
+        import subprocess, sys as _sys
+        return subprocess.run(
+            [_sys.executable, str(ROOT / "engine" / "engine.py"), "record-decision", *args],
+            capture_output=True, text=True)
+
+    def test_held_destination_lock_refuses_by_name(self):
+        print("ARMED: with the configurator lock held, the CLI refuses by name, exit 3")
+        with transaction.DestinationLock(self.root):
+            result = self._cli(str(self.root), "lock_change", "--correct")
+        self.assertEqual(result.returncode, 3, result.stderr)
+        self.assertIn("already being configured", result.stderr)
+        state = json.loads((self.root / "copilot-thresholds.json").read_text())
+        self.assertEqual(state["categories"]["lock_change"]["total_decisions"], 0,
+                         "a refused invocation must not have counted")
+
+    def test_normal_path_releases_and_serialized_pair_both_count(self):
+        print("ARMED: normal path releases the lock; two sequential calls both count")
+        r1 = self._cli(str(self.root), "lock_change", "--correct")
+        self.assertEqual(r1.returncode, 0, r1.stderr)
+        r2 = self._cli(str(self.root), "lock_change", "--incorrect")
+        self.assertEqual(r2.returncode, 0, r2.stderr)
+        state = json.loads((self.root / "copilot-thresholds.json").read_text())
+        row = state["categories"]["lock_change"]
+        self.assertEqual(row["total_decisions"], 2)
+        self.assertEqual(len(row["recent_outcomes"]), 2)
+        # and the lock is free again for a configurator
+        with transaction.DestinationLock(self.root):
+            pass
+
 
 if __name__ == "__main__":
     unittest.main()

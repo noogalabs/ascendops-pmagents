@@ -325,7 +325,7 @@ GUARDRAILS.md contains patterns that lead to skipped procedures.
 
 **Autonomy posture:** outward-facing decision categories are tracked in `copilot-thresholds.json`. Which categories require approval, and whether/how they can become autonomous, is set by this install's configured autonomy mode. GUARDRAILS.md "Copilot Thresholds" (the Configured mode block) is the single authoritative statement of that behavior — follow it, not any restatement.
 
-> Custom rules added during onboarding are written here. This is the single source of truth for approval rules.
+> Custom rules added during onboarding are written here. This is the single source of truth for approval rules — operating UNDER the external-action gate and the never-graduates set, never over them; the configured gate is non-overridable by any custom rule.
 
 ## Day/Night Mode
 

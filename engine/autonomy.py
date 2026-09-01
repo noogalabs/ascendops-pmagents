@@ -280,6 +280,18 @@ def record_decision(root: Path, category: str, correct: bool,
     Returns a summary dict: {category, correct, total_decisions,
     accuracy_pct, status, unlocked_now}."""
     thresholds = root / "copilot-thresholds.json"
+    if not thresholds.is_file():
+        raise FileNotFoundError(str(thresholds))
+    # The COMPLETE read-evaluate-persist-rerender sequence holds the SAME
+    # DestinationLock the configurator uses (one lock namespace): an unlocked
+    # read-modify-write let two concurrent invocations read identical counters
+    # and silently drop an outcome, and a configurator rerun could interleave.
+    with transaction.DestinationLock(root):
+        return _record_decision_locked(root, thresholds, category, correct, decided_at)
+
+
+def _record_decision_locked(root: Path, thresholds: Path, category: str,
+                            correct: bool, decided_at: str | None) -> dict:
     state = json.loads(thresholds.read_text(encoding="utf-8"))
     if category not in state.get("categories", {}):
         raise KeyError(f"unknown category: {category}")
