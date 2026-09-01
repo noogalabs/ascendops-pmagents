@@ -228,3 +228,60 @@ class LegacySentinelMigration(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RenderCodeConsistency(unittest.TestCase):
+    """Per-mode consistency between rendered doctrine CLAIMS about unlock
+    requirements and evaluate_unlock BEHAVIOR — a fix leaking across mode
+    prose (or code drifting from prose) dies here by name."""
+
+    def setUp(self):
+        self.temp = Path(tempfile.mkdtemp(prefix="autonomy-consistency-"))
+
+    def tearDown(self):
+        shutil.rmtree(self.temp)
+
+    def _render(self, mode):
+        root = self.temp / mode
+        shutil.copytree(ROOT / "templates" / "maintenance-coordinator", root)
+        settings = autonomy.parse_settings({
+            "autonomy_mode": mode, "unlock_window": "last_10",
+            "qualifying_accuracy": "90"})
+        autonomy.render(root, settings, "2026-09-01T12:00:00Z")
+        return ((root / "GUARDRAILS.md").read_text(),
+                json.loads((root / "copilot-thresholds.json").read_text()))
+
+    def _met_bar_row(self, state, approval):
+        row = state["categories"]["lock_change"]
+        row.update(total_decisions=10, accuracy_pct=100,
+                   qualifying_accuracy=90, window="last_10")
+        if approval:
+            row["pm_approval"] = {"approved_by": "pm",
+                                  "approved_at": "2026-09-01T12:00:00Z"}
+        return row
+
+    def test_copilot_prose_requires_approval_and_code_enforces_it(self):
+        print("ARMED: copilot doctrine and evaluate_unlock must both require the approval act")
+        doctrine, state = self._render("copilot")
+        self.assertIn("pm_approval", doctrine)
+        self._met_bar_row(state, approval=False)
+        self.assertFalse(autonomy.evaluate_unlock(state, "lock_change"))
+        self._met_bar_row(state, approval=True)
+        self.assertTrue(autonomy.evaluate_unlock(state, "lock_change"))
+
+    def test_full_prose_never_claims_approval_gated_unlocks(self):
+        print("ARMED: full-mode doctrine must not claim approval-gated unlocks (day-one autonomy)")
+        doctrine, state = self._render("full")
+        self.assertNotIn("pm_approval", doctrine)
+        self.assertNotIn("approval act is recorded", doctrine)
+        # and the state agrees: eligible categories unlocked with no approval act
+        self.assertEqual(state["categories"]["lock_change"]["status"], "unlocked")
+        self.assertNotIn("pm_approval", state["categories"]["lock_change"])
+
+    def test_supervised_prose_promises_no_unlock_and_code_agrees(self):
+        print("ARMED: supervised doctrine promises no unlock and evaluate_unlock agrees even with approval")
+        doctrine, state = self._render("supervised")
+        self.assertIn("No accuracy record unlocks anything", doctrine)
+        row = self._met_bar_row(state, approval=True)
+        self.assertFalse(autonomy.evaluate_unlock(state, "lock_change"))
+        self.assertEqual(row["status"], "locked")

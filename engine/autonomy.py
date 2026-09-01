@@ -138,10 +138,19 @@ def _doctrine(settings: dict[str, object], has_thresholds: bool, authority_marke
         act_directly = (
             "\n\nWhen a category is unlocked (earned or day-one autonomy): act directly, "
             "send a post-action note (\"[action taken]. Reply UNDO if needed.\"), and log "
-            "`decision_presented` with `\"autonomous\": true`. An unlock itself only takes "
-            "effect once the property manager's approval act is recorded on the category "
-            "(`pm_approval` with approver and timestamp)."
+            "`decision_presented` with `\"autonomous\": true`."
         )
+        if mode == "copilot":
+            # The approval-act requirement is COPILOT-ONLY: it governs earned
+            # unlocks. Full mode's day-one unlocks have no ladder to approve —
+            # rendering this sentence there made the doctrine lie against
+            # _render_thresholds (bot P1; fixing copilot's gate-that-lies had
+            # leaked a doctrine-lie into full).
+            act_directly += (
+                " An unlock itself only takes effect once the property manager's "
+                "approval act is recorded on the category (`pm_approval` with "
+                "approver and timestamp)."
+            )
     threshold_note = " Runtime state is recorded in `copilot-thresholds.json`." if has_thresholds else ""
     authority_note = ""
     if authority_markers:
