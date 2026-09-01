@@ -392,6 +392,47 @@ class RecordDecisionProductionEntry(unittest.TestCase):
         self.assertIn("Accuracy tracking is not provisioned", doctrine)
         self.assertNotIn("unlocks AUTOMATICALLY", doctrine)
 
+class AtBarCorrectionCasualty(unittest.TestCase):
+    """A correction re-locks IMMEDIATELY even when windowed accuracy stays at
+    the bar: 9T+1F in last_10 at a 90 bar is exactly 90.0 — the same call
+    must never re-unlock. The earlier casualty's last_3 fixture dropped
+    accuracy BELOW bar and masked this (convergent-outcome class); the
+    accuracy assertion here pins the fixture at bar so it cannot re-mask."""
+
+    def test_at_bar_correction_relocks_and_does_not_reunlock(self):
+        print("ARMED: at-bar correction re-locks and never re-unlocks in the same call")
+        import subprocess, sys as _sys
+        temp = Path(tempfile.mkdtemp(prefix="at-bar-"))
+        self.addCleanup(shutil.rmtree, temp)
+        root = temp / "seat"
+        shutil.copytree(ROOT / "templates" / "maintenance-coordinator", root)
+        autonomy.render(root, autonomy.parse_settings({
+            "autonomy_mode": "copilot", "unlock_window": "last_10",
+            "qualifying_accuracy": "90"}), "2026-09-01T12:00:00Z")
+        def cli(*args):
+            return subprocess.run(
+                [_sys.executable, str(ROOT / "engine" / "engine.py"), "record-decision", *args],
+                capture_output=True, text=True)
+        for n in range(9):
+            result = cli(str(root), "lock_change", "--correct")
+            self.assertEqual(result.returncode, 0, result.stderr)
+        # 9 corrects in a last_10 window: occupancy 9 < 10, still locked
+        state = json.loads((root / "copilot-thresholds.json").read_text())
+        self.assertEqual(state["categories"]["lock_change"]["status"], "locked")
+        result = cli(str(root), "lock_change", "--correct")
+        summary = json.loads(result.stdout)
+        self.assertTrue(summary["unlocked_now"], summary)
+        # the at-bar correction: windowed outcomes become 9T+1F = exactly 90.0
+        result = cli(str(root), "lock_change", "--incorrect")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        summary = json.loads(result.stdout)
+        self.assertEqual(summary["accuracy_pct"], 90.0,
+                         "fixture drifted off the bar — the mask this casualty exists to prevent")
+        self.assertFalse(summary["unlocked_now"], summary)
+        self.assertEqual(summary["status"], "locked")
+        state = json.loads((root / "copilot-thresholds.json").read_text())
+        self.assertEqual(state["categories"]["lock_change"]["status"], "locked")
+
 
 if __name__ == "__main__":
     unittest.main()

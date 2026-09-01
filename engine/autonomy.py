@@ -253,8 +253,9 @@ def render_doctrine(root: Path, settings: dict[str, object]) -> None:
 def settings_from_state(state: dict) -> dict[str, object]:
     """Reconstruct render settings from a persisted thresholds state so a
     runtime unlock transition can re-render doctrine without the original
-    answers file. Window/accuracy come from any copilot row (they are
-    rendered uniformly); mode from the top level."""
+    answers file. INVARIANT this relies on: _render_thresholds writes window
+    and qualifying_accuracy UNIFORMLY across all rows from one settings dict,
+    so any row's values speak for the install; mode from the top level."""
     mode = state.get("autonomy_mode", DEFAULT_MODE)
     window = DEFAULT_UNLOCK_WINDOW
     accuracy = DEFAULT_QUALIFYING_ACCURACY
@@ -296,10 +297,15 @@ def record_decision(root: Path, category: str, correct: bool,
         row["status"] = "locked"
         row["demoted_at"] = decided_at
     was_unlocked = row.get("status") == "unlocked"
-    # evaluate against the WINDOWED record: total gate uses window occupancy
+    # evaluate against the WINDOWED record: total gate uses window occupancy.
+    # An INCORRECT outcome never produces an unlock: at-bar windowed accuracy
+    # (e.g. 9T+1F = exactly 90.0 at a 90 bar) would otherwise re-unlock in the
+    # same call that recorded the correction, silently ignoring "a correction
+    # re-locks the category, immediately" — re-earning waits for at least the
+    # next correct decision.
     eval_state = {"autonomy_mode": state.get("autonomy_mode"),
                   "categories": {category: {**row, "total_decisions": len(outcomes)}}}
-    unlocked_now = evaluate_unlock(eval_state, category) and not was_unlocked
+    unlocked_now = bool(correct) and evaluate_unlock(eval_state, category) and not was_unlocked
     if unlocked_now:
         row["status"] = "unlocked"
         row["unlocked_at"] = decided_at
