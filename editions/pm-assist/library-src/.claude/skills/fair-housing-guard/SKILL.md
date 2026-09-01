@@ -12,7 +12,7 @@ Classify the message passed in `$ARGUMENTS` (inbound text, or an outbound draft 
 
 **Adapted from the leasing-coordinator seat's `fair-housing-guard`.** The classification tree is the same; **the action is not.** The leasing seat is a customer-facing seat that redirects. This seat is decision support with no housing authority at all — Fair Housing is on the broker-only table (A3), so the action here is **route, do not answer**.
 
-**Why this is a forked Sonnet skill:** protected-class classification is a repeating judgment call with a fixed decision tree, not open-ended reasoning. `context: fork` runs the gate in its own window and forces the check to fire BEFORE any reply exists to be tempted by.
+**Why this is a forked lightweight-model skill:** protected-class classification is a repeating judgment call with a fixed decision tree, not open-ended reasoning. `context: fork` runs the gate in its own window and forces the check to fire BEFORE any reply exists to be tempted by.
 
 ## Steps
 

@@ -43,7 +43,7 @@
       "demoted_at": null,
       "qualifying_accuracy": null
     },
-    "meld_closure": {
+    "work_order_closure": {
       "status": "locked",
       "total_decisions": 0,
       "correct": 0,

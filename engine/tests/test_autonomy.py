@@ -728,11 +728,11 @@ class FullModeCorrectionByName(unittest.TestCase):
         self.assertEqual(row["recent_outcomes"], [False])
 
 class IrreversibleGateByName(unittest.TestCase):
-    """Meld closure is irreversible (doctrine: a closed meld cannot be
+    """Work order closure is irreversible (doctrine: a closed work order cannot be
     reopened) — it never earns autonomy in any mode."""
 
-    def test_meld_closure_met_bar_never_unlocks_via_cli(self):
-        print("ARMED: meld_closure at a met accuracy bar never auto-unlocks")
+    def test_work_order_closure_met_bar_never_unlocks_via_cli(self):
+        print("ARMED: work_order_closure at a met accuracy bar never auto-unlocks")
         import subprocess, sys as _sys
         temp = Path(tempfile.mkdtemp(prefix="irrev-"))
         self.addCleanup(shutil.rmtree, temp)
@@ -745,14 +745,14 @@ class IrreversibleGateByName(unittest.TestCase):
         for n in range(3):
             r = subprocess.run(
                 [_sys.executable, str(ROOT / "engine" / "engine.py"), "record-decision",
-                 str(root), "meld_closure", "--correct"],
+                 str(root), "work_order_closure", "--correct"],
                 capture_output=True, text=True)
             self.assertEqual(r.returncode, 0, r.stderr)
         state = json.loads((root / "copilot-thresholds.json").read_text())
-        self.assertEqual(state["categories"]["meld_closure"]["status"], "locked")
-        self.assertTrue(state["categories"]["meld_closure"]["irreversible_gate"])
+        self.assertEqual(state["categories"]["work_order_closure"]["status"], "locked")
+        self.assertTrue(state["categories"]["work_order_closure"]["irreversible_gate"])
 
-    def test_full_mode_leaves_meld_closure_locked(self):
+    def test_full_mode_leaves_work_order_closure_locked(self):
         print("ARMED: full mode day-one leaves the irreversible category locked")
         temp = Path(tempfile.mkdtemp(prefix="irrev-full-"))
         self.addCleanup(shutil.rmtree, temp)
@@ -761,7 +761,7 @@ class IrreversibleGateByName(unittest.TestCase):
         autonomy.render(root, autonomy.parse_settings({
             "autonomy_mode": "full"}), "2026-09-01T12:00:00Z")
         state = json.loads((root / "copilot-thresholds.json").read_text())
-        self.assertEqual(state["categories"]["meld_closure"]["status"], "locked")
+        self.assertEqual(state["categories"]["work_order_closure"]["status"], "locked")
         self.assertEqual(state["categories"]["lock_change"]["status"], "unlocked")
 
 
@@ -875,8 +875,8 @@ class ForceLockGuardArmed(unittest.TestCase):
         return json.loads(thresholds.read_text())["categories"][category]["status"]
 
     def test_hand_unlocked_irreversible_relocks_on_unchanged_rerun(self):
-        print("ARMED: a hand-set unlocked meld_closure re-locks on a same-settings copilot rerun")
-        self.assertEqual(self._hand_unlocked_rerun("meld_closure"), "locked")
+        print("ARMED: a hand-set unlocked work_order_closure re-locks on a same-settings copilot rerun")
+        self.assertEqual(self._hand_unlocked_rerun("work_order_closure"), "locked")
 
     def test_hand_unlocked_external_relocks_on_unchanged_rerun(self):
         print("ARMED: a hand-set unlocked resident_comms re-locks on a same-settings copilot rerun")
@@ -985,6 +985,61 @@ class RenderCodeConsistencyChoice(unittest.TestCase):
                 expect_unlock = (mode == "copilot" and opted)
                 self.assertEqual(autonomy.evaluate_unlock(state, "resident_comms"), expect_unlock, cell)
 
+
+class LegacyCategoryKeyMigration(unittest.TestCase):
+    """WRITE-NEW, READ-BOTH for the platform-neutral category rename: a seat
+    rendered under the legacy `meld_closure` key migrates to
+    `work_order_closure` with its runtime state intact, and the production
+    record-decision entry still accepts the legacy category name."""
+
+    def setUp(self):
+        self.temp = Path(tempfile.mkdtemp(prefix="autonomy-legacy-key-"))
+        self.addCleanup(shutil.rmtree, self.temp)
+        self.root = self.temp / "seat"
+        shutil.copytree(ROOT / "templates" / "maintenance-coordinator", self.root)
+        self.settings = autonomy.parse_settings({
+            "autonomy_mode": "copilot", "unlock_window": "last_3",
+            "qualifying_accuracy": "90"})
+        autonomy.render(self.root, self.settings, "2026-09-01T12:00:00Z")
+        autonomy.write_engine_sidecar(self.root)
+        self.thresholds = self.root / "copilot-thresholds.json"
+
+    def _downgrade_to_legacy_key(self, outcomes):
+        state = json.loads(self.thresholds.read_text())
+        row = state["categories"].pop("work_order_closure")
+        row["recent_outcomes"] = list(outcomes)
+        row["total_decisions"] = len(outcomes)
+        row["correct"] = sum(outcomes)
+        state["categories"]["meld_closure"] = row
+        transaction.atomic_write_text(self.thresholds, json.dumps(state, indent=2) + "\n")
+
+    def test_legacy_key_rerenders_to_new_key_with_runtime_state_intact(self):
+        print("ARMED: legacy meld_closure row must migrate to work_order_closure keeping outcomes")
+        self._downgrade_to_legacy_key([True, False])
+        autonomy.render(self.root, self.settings, "2026-09-01T12:05:00Z")
+        state = json.loads(self.thresholds.read_text())
+        self.assertNotIn("meld_closure", state["categories"])
+        row = state["categories"]["work_order_closure"]
+        self.assertEqual(row["recent_outcomes"], [True, False])
+        self.assertEqual(row["total_decisions"], 2)
+        self.assertEqual(row["status"], "locked")
+        self.assertTrue(row["irreversible_gate"])
+
+    def test_record_decision_accepts_legacy_category_name_via_cli(self):
+        print("ARMED: record-decision with the legacy category name lands under the new key")
+        import subprocess, sys as _sys
+        self._downgrade_to_legacy_key([True])
+        r = subprocess.run(
+            [_sys.executable, str(ROOT / "engine" / "engine.py"), "record-decision",
+             str(self.root), "meld_closure", "--correct"],
+            capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+        state = json.loads(self.thresholds.read_text())
+        self.assertNotIn("meld_closure", state["categories"])
+        row = state["categories"]["work_order_closure"]
+        self.assertEqual(row["recent_outcomes"], [True, True])
+        self.assertEqual(row["total_decisions"], 2)
+        self.assertEqual(row["status"], "locked")
 
 class TestFileStructure(unittest.TestCase):
     def test_main_guard_is_last_statement_in_every_test_file(self):

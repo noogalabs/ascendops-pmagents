@@ -15,7 +15,7 @@ status: reference
 Stages, columns, SLA clocks, automations, views and the weekly KPI dashboard, [Company Name]
 The board that runs the occupied unit maintenance workflow. Part 1 is the card path and what the board adds at each stage. Part 2 is every column and status with its color. Part 3 is the priority based SLA clocks and how they run. Part 4 is the six automation groups. Part 5 is the three role based views. Part 6 is the weekly leadership KPI dashboard and how to run the Monday review. The closing Tool Notes collect the platform specific notes in one place.
 ---
-Tool-agnostic by design (owner-reviewed, 2026-08-19): the body assumes a generic maintenance platform and a generic accounting system; vendor-specific notes are collected in the closing Tool Notes section. The current installation mapping (PropertyMeld as the operating system, AppFolio as the money record) is a separate short note in the library.
+Tool-agnostic by design (owner-reviewed, 2026-08-19): the body assumes a generic maintenance platform and a generic accounting system; vendor-specific notes are collected in the closing Tool Notes section. The current installation mapping (the maintenance platform as the operating system, the accounting system as the money record) is a separate short note in the library.
 ### Part 1: Stages (Card Path)
 ---
 Standard path: Intake, then Triage, then Owner Hold (conditional), then Dispatched, then In Progress, then Pending Inspection, then Closed.
@@ -530,21 +530,21 @@ Monday morning, 15 minute leadership pull.
 ### Tool Notes
 Platform specific notes collected from every part of the board. The body above stays tool-agnostic; these are the vendor fits identified in the source material.
 #### Stages
-- AppFolio / Buildium: best fit for portal intake, SLA timestamps, owner approval workflows, and invoice-to-statement posting.
+- Your PM software (the work-order platform): best fit for portal intake, SLA timestamps, owner approval workflows, and invoice-to-statement posting.
 - Latchel / Vendor on Call: purpose-built for the After-Hours Emergency fork; handles on-call dispatch and tenant triage calls so your team is not on the phone at 2am.
 - Vendor management (e.g. Thumbtack Pro / internal roster): the pre-approved vendor list by trade should live on the board, not just in someone's head.
 #### Columns, Statuses and SLA Clocks
-- AppFolio / Buildium: native SLA timestamps, invoice matching, and owner portal approval notifications live here. The board columns map directly to their work order fields.
+- Your PM software (the work-order platform): native SLA timestamps, invoice matching, and owner portal approval notifications live here. The board columns map directly to their work order fields.
 - Monday.com / ClickUp: if you want the visual color-coded SLA clock on a kanban board with automation rules, these sit on top of your PM software and pull via integration.
 - Latchel: handles the After-Hours Flag trigger automatically; logs intake timestamp and dispatches on-call vendor without staff involvement.
 - Zapier / Make: connects the SLA breach event in your PM software to a Slack or SMS alert to the coordinator and PM in real time.
 #### Automations
-- AppFolio / Buildium: handles R-series and O-series automations natively via work order workflows and owner portal notifications. Best starting point.
+- Your PM software (the work-order platform): handles R-series and O-series automations natively via work order workflows and owner portal notifications. Best starting point.
 - Zapier / Make: bridges the gap between your PM software and external channels (Slack alerts for E-series, SMS via Twilio for V-series nudges).
 - Latchel: executes V1 to V3 and the after-hours fork (R3, O7) automatically without staff involvement; logs timestamps back to your PM software.
 - Monday.com / ClickUp: best platform for the T-series stage transition logic and the C-series 30-day watch timer if your PM software does not support conditional automation natively.
 #### Weekly KPI Dashboard
-- AppFolio / Buildium: Sections A, D, and E pull directly from native work order and owner portal reports.
+- Your PM software (the work-order platform): Sections A, D, and E pull directly from native work order and owner portal reports.
 - Monday.com / ClickUp: Sections B, C, and F are best tracked here with formula columns and dashboard widgets if your PM software does not surface them natively.
 - Power BI / Google Looker Studio: connect to both sources for a single Monday morning leadership dashboard that auto-refreshes overnight Sunday.
 [Company Name] - internal operations document. Companion documents: Occupied Unit Maintenance Workflow, Remote Maintenance Coordinator Roles and Responsibilities, Remote Maintenance Coordinator KPI Addendum A, In-House Tech vs. Vendor Dispatch Decision Matrix, Turnover Tracking Board (Full System Design), The Make Ready Deep Dive, Monthly Turnover Performance Report Template.

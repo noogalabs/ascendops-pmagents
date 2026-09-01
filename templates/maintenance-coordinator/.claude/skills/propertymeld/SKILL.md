@@ -1,6 +1,6 @@
 ---
 name: propertymeld
-description: "CLI for Property Meld work order management. The `pm` CLI (package: cli-anything-pm) is the primary tool for ALL Property Meld operations, reads AND writes — plain HTTP with a captured session cookie, no browser automation. The Nexus API (client-credential) path is secondary for bulk reads. Manual UI is last resort only."
+description: "Platform-specific work-order commands for installations whose setup answer selects this variant. Use this skill for exact read, write, authentication, and recovery commands; keep duty prose platform-neutral."
 triggers: ["property meld", "work order", "meld", "pm work-orders", "pm assign-tech", "meld triage", "assign vendor", "schedule meld", "complete meld"]
 ---
 
@@ -91,3 +91,94 @@ pm vendors list --json
 - `assign-vendor` / `assign-tech` accept partial name matches against the roster; on no match the CLI returns the available names — surface them, do not guess.
 - `tenants list --search` filters client-side; expect the full list to be fetched.
 - Vendor assignment requests and appointments are different objects with different IDs — when scheduling a vendor, use the vendor id from `pm vendors list`, not the assignment-request id.
+
+## Workflow Command Sequences
+
+The duty skills (work-order-intake-triage, closeout-verification, vendor-coordination) describe WHAT to do platform-neutrally and send you here for the exact commands. These are the Property Meld sequences behind each duty step.
+
+### Intake (work-order-intake-triage)
+
+```bash
+pm work-orders inspect <meld_id> --json   # full read: tenant notes, description, work_location, media, current status
+pm work-orders files <meld_id> --json     # photo / attachment check before any routine assignment
+```
+
+### Closeout verification (closeout-verification)
+
+Run when a tech or vendor marks a meld complete, when a meld reaches `PENDING_COMPLETION`, and ALWAYS before you run `pm work-orders complete` yourself.
+
+```bash
+pm work-orders inspect <meld_id> --json   # one call: detail + photos + notes + work_entries (the hours field lives here, `get` does not return it)
+```
+
+**The snippet trap (real, recurring):** the PM completion email shows "(None)" for `completion_notes` even when the tech filled `maintenance_notes` correctly — the email refers ONLY to `completion_notes`, which is almost always empty regardless of how much documentation exists. Judging from the email alone produces false "no docs" pings. Check both fields via the API, every time.
+
+Send the tech back for anything missing (internal note, hidden from tenant and vendor):
+
+```bash
+pm work-orders send-message --meld-id <id> \
+  --text "Hi <tech>, this one is marked done but I'm missing <notes / photos / hours>. Could you add them when you get a chance? Need them for billing + documentation. Thanks!" \
+  --hide-tenant --hide-vendor --json
+```
+
+Partial completion (complete + clone + assign + cross-reference; never merge):
+
+```bash
+pm work-orders complete --meld-id <id> \
+  --notes "Completed: <what was done>. Remaining: <what is still pending>. New work order created for the remaining scope." --json
+```
+
+`complete` requires `PENDING_COMPLETION` status. If the tech already closed it into a terminal could-not-complete status, check whether `pm work-orders force-pending-completion` is available on your CLI version to recover it; otherwise recover via the PM UI, then continue.
+
+```bash
+pm work-orders clone --meld-id <id> --json
+pm work-orders assign-tech --work-order-id <new_id> --tech "<tech name>" --json
+# or, through the vendor-coordination gates:
+pm work-orders assign-vendor --work-order-id <new_id> --vendor "<vendor name>" --json
+```
+
+Cross-reference the two melds — do NOT merge them:
+
+```bash
+pm work-orders update-notes <original_id> --maintenance "Completed scope closed here. Remaining scope tracked on <new_id>." --json
+pm work-orders update-notes <new_id> --maintenance "Remaining scope split from <original_id> (completed scope closed there)." --json
+```
+
+A `pm work-orders merge` would end one of the two melds as `MANAGER_CANCELED (Merged)` — destroying either the completed record or the newly-assigned remaining work. Never merge a partial-completion split; cross-referencing keeps both the completed record and the assigned remainder live and linked.
+
+### Vendor coordination (vendor-coordination)
+
+Assign in the platform (after approval where required). Partial name match; on no match the CLI returns available names — surface them, do not guess.
+
+```bash
+pm work-orders assign-vendor --work-order-id <id> --vendor "<vendor name>" --json
+```
+
+Ask the vendor for a confirmed window (hidden from tenant):
+
+```bash
+pm work-orders send-message --meld-id <id> \
+  --text "Hi <vendor>, can you take <work summary> at <unit> <proposed window or 'this week'>? Reply with a confirmed window once you've checked your schedule." \
+  --hide-tenant --json
+```
+
+Track acceptance by polling the thread at heartbeat cadence. Confirmation = an explicit date/time; a counter-proposal is NOT a confirmation — route the new window for approval before answering. Contact-log method values: `pm-thread | sms | call | email`.
+
+```bash
+pm work-orders comments <id> --json
+```
+
+Only after the vendor confirms: record the window and notify the resident (hidden from vendor).
+
+```bash
+pm work-orders schedule-vendor --meld-id <id> --vendor-id <vendor_id> --dtstart <ISO8601> --hours <n> --json
+pm work-orders send-message --meld-id <id> \
+  --text "Hi <resident>, <vendor> confirmed they'll arrive <confirmed window>. Please make sure access is available." \
+  --hide-vendor --json
+```
+
+Stale sweep (open work orders untouched for 48 hours):
+
+```bash
+pm work-orders list --status open --stuck-hours 48 --limit 500 --json
+```
