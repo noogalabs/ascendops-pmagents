@@ -13,6 +13,7 @@ The repository starts with the reviewed maintenance edition and the six-seat map
 - `editions/turnover/` — mapping-driven turnover questionnaire, fictional fixture, tests, and make-ready library.
 - `editions/accounting/` — mapping-driven accounting questionnaire, fictional fixture, tests, and reviewed accounting library.
 - `mapping-tables/` — the six authoritative mapping tables; collectively they are the cross-seat seam register.
+- `templates/maintenance-coordinator/` — the clean shipped maintenance agent source used by guided setup.
 - `fixtures/ridgeline/` — fictional integration fixtures.
 - `provenance/` — source and destination hashes plus excluded-evidence custody.
 - `ci/` and `.github/` — hygiene and regression gates.
@@ -76,9 +77,12 @@ sign-in.
 
 ### After cloning, for every platform
 
-The setup interview offers the installed edition, asks where the clean template
-and configured agent should live, and then walks the questionnaire in plain
-language. Enter `unsure` to mark an answer for later confirmation; the generated
+The setup interview offers the installed edition and defaults maintenance setup
+to the shipped `templates/maintenance-coordinator/` source. Give the configured
+agent a destination shaped like `orgs/<org>/agents/<agent>`; setup uses those two
+path identities to materialize the scaffold-time agent, organization, timestamp,
+and staggered-update values before the fail-closed engine runs. Enter `unsure` to
+mark an answer for later confirmation; the generated
 agent skips features that depend on it. If setup stops, run the same command and
 choose the same answers file to resume. Existing configured agents are safely
 reconfigured through the same flow rather than overwritten as new installs.

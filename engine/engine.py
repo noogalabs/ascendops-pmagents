@@ -24,6 +24,7 @@ import transaction
 
 ENGINE_VERSION = "1.1.0"
 ROOT = Path(__file__).resolve().parents[1]
+ENGINE_TESTS_ROOT = ROOT / "engine" / "tests"
 MAINTENANCE_EDITION = ROOT / "editions" / "maintenance"
 PM_ASSIST_EDITION = ROOT / "editions" / "pm-assist"
 LEASING_EDITION = ROOT / "editions" / "leasing"
@@ -76,6 +77,19 @@ SUPPORTED = {
 
 
 IntakeRejected = intake.IntakeRejected
+
+
+def warn_if_test_template(source: Path, *, err=None) -> None:
+    """Warn when a production engine run points at its own test fixtures."""
+    try:
+        source.resolve().relative_to(ENGINE_TESTS_ROOT.resolve())
+    except ValueError:
+        return
+    print(
+        "WARNING: template source is inside engine/tests; use a shipped top-level "
+        "templates/ source for member setup.",
+        file=sys.stderr if err is None else err,
+    )
 
 
 def load_seat_mapping(seat: str):
@@ -259,7 +273,8 @@ def stamp(staged: Path, seat: str, managed_surfaces, preserved_tokens, provenanc
 
 
 def configure(source: Path, answers: Path, output: Path, seat: str,
-              *, clock=datetime.date.today, seat_registry=None):
+              *, clock=datetime.date.today, seat_registry=None, warning_stream=None):
+    warn_if_test_template(source, err=warning_stream)
     parsed_intake = validate(answers, seat)  # complete validation before staging or writes
     mapping = load_seat_mapping(seat)
     try:

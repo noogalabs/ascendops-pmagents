@@ -9,6 +9,8 @@ import io
 import json
 import re
 import shutil
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -144,7 +146,7 @@ class ZeroTouchSetupTests(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="pmagents-zero-touch-"))
         self.source = self.tmp / "source"
-        shutil.copytree(ROOT / "engine" / "tests" / "fixtures" / "raw-maintenance-template", self.source)
+        shutil.copytree(ROOT / "templates" / "maintenance-coordinator", self.source)
         replacements = {
             "agent_name": "ridge-maint",
             "org": "ridgeline",
@@ -313,6 +315,67 @@ class ZeroTouchSetupTests(unittest.TestCase):
         run_setup = next(node for node in tree.body
                          if isinstance(node, ast.FunctionDef) and node.name == "run_setup")
         self.assertIn(calls[0], set(ast.walk(run_setup)))
+
+    def test_named_fresh_member_readme_path_materializes_before_engine_start(self):
+        print("ARMED: removing setup materialization reproduces the fresh-seat token wall")
+        output = self.tmp / "orgs" / "ridgeline" / "agents" / "ridge-maint"
+        fixture = ROOT / "editions" / "maintenance" / "fixtures" / "ridgeline-maintenance-answers.md"
+        result = subprocess.run(
+            [sys.executable, str(ROOT / "setup.py")],
+            cwd=ROOT,
+            input=f"1\n\n{output}\n2\n{fixture}\n",
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(f"Configured agent: {output.resolve()}", result.stdout)
+        self.assertTrue((output / "seat-config.json").is_file())
+        rendered = "\n".join(
+            path.read_text(encoding="utf-8")
+            for path in output.rglob("*")
+            if path.is_file() and not path.is_symlink()
+        )
+        for token in setup.SCAFFOLD_TOKENS:
+            self.assertNotIn("{{" + token + "}}", rendered)
+        config = json.loads((output / "config.json").read_text())
+        self.assertEqual(config["agent_name"], "ridge-maint")
+        self.assertIn("**Organization:** ridgeline", (output / "SYSTEM.md").read_text())
+        update_cron = next(row for row in config["crons"]
+                           if row["name"] == "daily-framework-upstream-auto-update")
+        self.assertEqual(update_cron["cron"].split()[0],
+                         str(setup.upstream_update_minute("ridge-maint")))
+        self.assertEqual(json.loads((output / "copilot-thresholds.json").read_text())["agent"],
+                         "ridge-maint")
+
+    def test_named_retry_rematerializes_a_corrected_member_source(self):
+        print("ARMED: retry must rematerialize the member's corrected source")
+        source = self.tmp / "raw-retry-source"
+        shutil.copytree(ROOT / "templates" / "maintenance-coordinator", source)
+        marker = source / "member-correction.txt"
+        marker.write_text("before", encoding="utf-8")
+        output = self.tmp / "orgs" / "ridgeline" / "agents" / "ridge-retry"
+        fixture = ROOT / "editions" / "maintenance" / "fixtures" / "ridgeline-maintenance-answers.md"
+        responses = iter(["1", str(source), str(output), "2", str(fixture), "retry"])
+        calls = []
+
+        def correcting_configure(actual_source, _answers, destination, _seat, **_kwargs):
+            calls.append((actual_source / "member-correction.txt").read_text(encoding="utf-8"))
+            if len(calls) == 1:
+                marker.write_text("after", encoding="utf-8")
+                raise setup.engine.IntakeRejected([
+                    ("template.member-correction", "correct the selected template source"),
+                ])
+            destination.mkdir(parents=True)
+
+        result = setup.run_setup(
+            ask=lambda _prompt: next(responses),
+            out=io.StringIO(),
+            err=io.StringIO(),
+            configure_fn=correcting_configure,
+        )
+        self.assertEqual(result, 0)
+        self.assertEqual(calls, ["before", "after"])
 
     def test_named_guided_happy_path_equals_direct_configure_bytes(self):
         print("ARMED: wrapper artifact mutation dies against direct configure bytes")
