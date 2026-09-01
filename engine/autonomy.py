@@ -361,8 +361,13 @@ def _record_decision_locked(root: Path, thresholds: Path, category: str,
     row["total_decisions"] = int(row.get("total_decisions", 0)) + 1
     row["correct"] = int(row.get("correct", 0)) + (1 if correct else 0)
     row["accuracy_pct"] = round(100 * sum(outcomes) / len(outcomes), 1)
-    if not correct and row.get("status") == "unlocked":
-        # a correction re-locks, immediately
+    if (not correct and row.get("status") == "unlocked"
+            and state.get("autonomy_mode") == "copilot"):
+        # Correction-based demotion is COPILOT-ONLY (the ladder's rule). In
+        # full mode a correction still RECORDS (history and accuracy stay
+        # useful for a later mode change) but never changes status: an
+        # unconditional relock let one incorrect outcome permanently degrade a
+        # day-one category, since evaluate_unlock never fires outside copilot.
         row["status"] = "locked"
         row["demoted_at"] = decided_at
     was_unlocked = row.get("status") == "unlocked"

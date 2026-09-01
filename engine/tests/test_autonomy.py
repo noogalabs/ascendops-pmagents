@@ -264,6 +264,8 @@ class RenderCodeConsistency(unittest.TestCase):
         for claim in self.NO_SIGNOFF_CLAIMS:
             self.assertNotIn(claim, doctrine, claim)
         self.assertIn("day one", doctrine)
+        # correction-relock is the copilot ladder's rule: full prose must not claim it
+        self.assertNotIn("re-locks", doctrine)
         self.assertEqual(state["categories"]["lock_change"]["status"], "unlocked")
 
     def test_supervised_prose_promises_no_unlock_and_code_agrees(self):
@@ -690,6 +692,34 @@ class ProductionEntryThroughStaging(unittest.TestCase):
         self.assertEqual(run.returncode, 0, run.stderr)
         state = json.loads((output / "copilot-thresholds.json").read_text())
         self.assertEqual(state["categories"]["lock_change"]["total_decisions"], 1)
+
+class FullModeCorrectionByName(unittest.TestCase):
+    """Correction-based demotion is COPILOT-ONLY: in full mode an incorrect
+    outcome RECORDS (history advances) but never changes status — the
+    unconditional relock silently degraded full mode to permanent
+    approval-gating one correction at a time."""
+
+    def test_full_mode_incorrect_records_but_never_demotes(self):
+        print("ARMED: full-mode incorrect outcome records history but the day-one unlock stands")
+        import subprocess, sys as _sys
+        temp = Path(tempfile.mkdtemp(prefix="full-corr-"))
+        self.addCleanup(shutil.rmtree, temp)
+        root = temp / "seat"
+        shutil.copytree(ROOT / "templates" / "maintenance-coordinator", root)
+        autonomy.render(root, autonomy.parse_settings({
+            "autonomy_mode": "full"}), "2026-09-01T12:00:00Z")
+        autonomy.write_engine_sidecar(root)
+        result = subprocess.run(
+            [_sys.executable, str(ROOT / "engine" / "engine.py"), "record-decision",
+             str(root), "lock_change", "--incorrect"],
+            capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        state = json.loads((root / "copilot-thresholds.json").read_text())
+        row = state["categories"]["lock_change"]
+        self.assertEqual(row["status"], "unlocked",
+                         "full-mode day-one unlock demoted by a correction")
+        self.assertEqual(row["total_decisions"], 1)
+        self.assertEqual(row["recent_outcomes"], [False])
 
 
 if __name__ == "__main__":
