@@ -42,12 +42,46 @@ INTERNAL_CATEGORIES = {
     "new_vendor_assignment",
 }
 # Irreversible actions never auto-unlock in any mode: doctrine says a closed
-# meld cannot be reopened, so autonomy over closure is hard-gated exactly like
-# the external bridge. Whether members may CHOOSE closure autonomy later is an
-# owner-ledger question, not a build decision.
+# work order cannot be reopened, so autonomy over closure is hard-gated exactly
+# like the external gate. Whether members may CHOOSE closure autonomy later is
+# an owner-ledger question, not a build decision.
 IRREVERSIBLE_CATEGORIES = {
-    "meld_closure",
+    "work_order_closure",
 }
+# WRITE-NEW, READ-BOTH: the category was renamed platform-neutral; a
+# thresholds file rendered under the legacy key migrates to the new key with
+# its runtime state intact, and the runtime entry accepts the legacy name.
+LEGACY_CATEGORY_KEYS = {
+    "meld_closure": "work_order_closure",
+}
+
+
+class LegacyCategoryConflict(KeyError):
+    """Both the legacy and the current key carry a row: two accuracy histories
+    for one category. REFUSED BY NAME rather than merged or dropped — a merge
+    would invent an accuracy record, a drop would lose one. The operator
+    resolves by removing the row that is not the seat's real history."""
+
+    def __init__(self, legacy: str, current: str):
+        super().__init__(
+            f"legacy category '{legacy}' and current category '{current}' both present in "
+            f"copilot-thresholds.json; remove the stale row (nothing was written)")
+
+
+def migrate_legacy_categories(state: dict) -> list[str]:
+    """Rename legacy category keys in place, preserving every row field.
+    Returns the list of migrated legacy keys (empty when nothing legacy).
+    Raises LegacyCategoryConflict when both keys exist (piper F3: the old
+    shape dropped the legacy row and still reported it migrated)."""
+    migrated = []
+    categories = state.get("categories", {})
+    for legacy, current in LEGACY_CATEGORY_KEYS.items():
+        if legacy in categories:
+            if current in categories:
+                raise LegacyCategoryConflict(legacy, current)
+            categories[current] = categories.pop(legacy)
+            migrated.append(legacy)
+    return migrated
 
 
 class SettingsError(ValueError):
@@ -102,7 +136,7 @@ def evaluate_unlock(state: dict, category: str) -> bool:
     if state.get("autonomy_mode") != "copilot" or row.get("mode") != "copilot":
         return False
     if category in IRREVERSIBLE_CATEGORIES:
-        # Irreversible actions (a closed meld cannot be reopened) never earn
+        # Irreversible actions (a closed work order cannot be reopened) never earn
         # automatic unlock, in any mode.
         return False
     if category in EXTERNAL_SEND_CATEGORIES and not state.get("external_send_autonomy"):
@@ -177,8 +211,8 @@ def _doctrine(settings: dict[str, object], has_thresholds: bool, authority_marke
         act_directly = (
             "\n\nWhen a category is unlocked (earned or day-one autonomy): act directly, "
             "send a post-action note (\"[action taken]. Reply UNDO if needed.\"), and log "
-            "`decision_presented` with `\"autonomous\": true`. Irreversible categories (meld "
-            "closure) are never acted on directly, regardless of any status value in the "
+            "`decision_presented` with `\"autonomous\": true`. Irreversible categories (work "
+            "order closure) are never acted on directly, regardless of any status value in the "
             "thresholds file."
         )
         if not settings.get("external_send_autonomy"):
@@ -225,6 +259,7 @@ def _doctrine(settings: dict[str, object], has_thresholds: bool, authority_marke
 
 def _render_thresholds(path: Path, settings: dict[str, object], configured_at: str) -> None:
     state = json.loads(path.read_text(encoding="utf-8"))
+    migrate_legacy_categories(state)
     mode = settings["mode"]
     # previous_mode MUST be read BEFORE the new mode is assigned: the original
     # ordering self-clobbered the read, mode_changed was always False, and a
@@ -454,6 +489,8 @@ def record_decision(root: Path, category: str, correct: bool,
 def _record_decision_locked(root: Path, thresholds: Path, category: str,
                             correct: bool, decided_at: str | None) -> dict:
     state = json.loads(thresholds.read_text(encoding="utf-8"))
+    migrate_legacy_categories(state)
+    category = LEGACY_CATEGORY_KEYS.get(category, category)
     if category not in state.get("categories", {}):
         raise KeyError(f"unknown category: {category}")
     row = state["categories"][category]

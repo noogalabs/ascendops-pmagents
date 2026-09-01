@@ -7,7 +7,7 @@
   "sealed_core_sha256": "0540ea08aa8d47ecb1aebbb7f51db85c5a67ab252172804e9ba24e56c2403551",
   "answers_sha256": "4abff06bf1bbd08e1335dd6dd3363108fa12974d9d8353addd4c8fff182c3fd5",
   "manifest_file": "freeze-forward-baseline.sha256",
-  "manifest_sha256": "74ec82dc2dc443bedff7e9d75ec92e6374ac29c911ab515d3e0e7b1f91d20e5a",
+  "manifest_sha256": "d649c1159a0ef7482a76acda938b7f9449bce782c82b2d2a08e6b6c8aa4cd1b6",
   "derived_from_manifest_sha256": "3a7a82096d24a0cbfb5d7aad1df94217143eeb26623acaaae5d4824631db5805",
   "file_count": 69,
   "reproducibility_runs": [
@@ -16,7 +16,7 @@
   ],
   "rerun_evidence": {
     "manifest_file": "freeze-forward-rerun-evidence.sha256",
-    "manifest_sha256": "84ec55ed7aa65db274e19e102d9532534eb9f83aac263580098e3e7d8cb1dc31",
+    "manifest_sha256": "e7d6ad8c6964dea76616447ed3b1dc5257d1cc62aedc0282975e9c8e0e129bef",
     "full_tree_manifest_sha256": "35dd114c3d418ce976e742520438e8f7f91f6c332af8add66fba65de0f5374e5",
     "runs": [
       "freeze-forward-rerun-1",

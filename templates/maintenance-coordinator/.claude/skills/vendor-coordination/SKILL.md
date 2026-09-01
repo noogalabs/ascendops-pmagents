@@ -34,7 +34,7 @@ Every outreach attempt to a vendor is logged. Before contacting any vendor, read
       "status": "pending_outreach | outreach_sent | response_received | scheduled | resolved | stale",
       "last_updated": "<ISO8601>",
       "outreach": [
-        {"attempt": 1, "when": "<ISO8601>", "method": "pm-thread | sms | call | email", "message": "<what was said>", "response": null, "response_at": null}
+        {"attempt": 1, "when": "<ISO8601>", "method": "platform-thread | sms | call | email", "message": "<what was said>", "response": null, "response_at": null}
       ]
     }
   }
@@ -48,26 +48,12 @@ Every outreach attempt to a vendor is logged. Before contacting any vendor, read
 ## Dispatch Workflow
 
 1. **Select the vendor** from the roster (`cortextos bus kb-query "<trade> vendor" --org $CTX_ORG`): handyman-first; escalate to a licensed specialist or emergency vendor only when the work demands it (serious electrical, structural, or a true emergency; gas goes to the gas utility per SOUL.md, never property-side dispatch).
-2. **Assign in the PM platform** (after approval where required):
-   ```bash
-   pm work-orders assign-vendor --work-order-id <id> --vendor "<vendor name>" --json
-   ```
-   Partial name match; on no match the CLI returns available names — surface them, do not guess.
+2. **Assign in the {{platform}} platform** after approval where required. Run the platform skill's assign-vendor command. If there is no match, surface the available names; do not guess.
 3. **Message the vendor, NOT the resident** — scope, unit, access, severity, photos; hidden from the tenant so the resident sees nothing until a window is real:
-   ```bash
-   pm work-orders send-message --meld-id <id> \
-     --text "Hi <vendor>, can you take <work summary> at <unit> <proposed window or 'this week'>? Reply with a confirmed window once you've checked your schedule." \
-     --hide-tenant --json
-   ```
+   Run the platform skill's vendor-message command with: "Hi <vendor>, can you take <work summary> at <unit> <proposed window or 'this week'>? Reply with a confirmed window once you've checked your schedule." Keep it hidden from the resident.
    Log the attempt in the contact log.
-4. **Track acceptance.** Poll `pm work-orders comments <id> --json` at heartbeat cadence. Confirmation = an explicit date/time ("we'll be there Tuesday at 10"). A counter-proposal is NOT a confirmation — route the new window for approval before answering. "We can't make it" → surface for a vendor swap. Silence → run the silence ladder.
-5. **Only after the vendor confirms:** record the window in the PM platform and notify the resident:
-   ```bash
-   pm work-orders schedule-vendor --meld-id <id> --vendor-id <vendor_id> --dtstart <ISO8601> --hours <n> --json
-   pm work-orders send-message --meld-id <id> \
-     --text "Hi <resident>, <vendor> confirmed they'll arrive <confirmed window>. Please make sure access is available." \
-     --hide-vendor --json
-   ```
+4. **Track acceptance.** Run the platform skill's read-comments command at heartbeat cadence. Confirmation = an explicit date/time ("we'll be there Tuesday at 10"). A counter-proposal is NOT a confirmation — route the new window for approval before answering. "We can't make it" → surface for a vendor swap. Silence → run the silence ladder.
+5. **Only after the vendor confirms:** run the platform skill's schedule-vendor command, then its resident-message command with: "Hi <resident>, <vendor> confirmed they'll arrive <confirmed window>. Please make sure access is available." Keep it hidden from the vendor.
    (Resident message is approval-gated while `resident_comms` is locked.)
 6. **Quotes/POs over the approval threshold** (per SOUL.md's approval threshold): draft and route for approval before work proceeds. Push back once on high estimates — ask for wiggle room or a justification you can pass to the owner.
 7. **Close the loop:** verify the work against the ORIGINAL complaint with evidence (photos, verified result, or tenant confirmation) via the `closeout-verification` skill. Do not close on "looks done" or "the vendor said so."
@@ -78,9 +64,7 @@ Every outreach attempt to a vendor is logged. Before contacting any vendor, read
 
 Catch the slow-bleed items no single snapshot flags:
 
-```bash
-pm work-orders list --status open --stuck-hours 48 --limit 500 --json
-```
+Run the platform skill's list command for open work orders silent for at least 48 hours.
 
 Bucket by silence age and propose (never auto-send):
 - **48–72h silent — WARNING:** draft an on-thread nudge to the assigned tech/vendor.

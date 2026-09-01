@@ -59,7 +59,7 @@ How many doors are you managing total? And rough breakdown — single family / m
 ```
 
 When they answer:
-- Write `unit-roster.md` in the agent directory with the breakdown they describe (one paragraph is fine — Gemini will index it semantically).
+- Write `unit-roster.md` in the agent directory with the breakdown they describe (one paragraph is fine — the agent will index it semantically).
 - Ingest to the shared KB:
   ```bash
   cortextos bus kb-ingest ./unit-roster.md --org $CTX_ORG --scope shared
@@ -70,67 +70,14 @@ When they answer:
 
 ## Step 3: PM software stack
 
-Ask:
-```
-Which work-order / property management software are you using? Common ones:
-  1. Property Meld
-  2. AppFolio
-  3. Buildium
-  4. Rentec Direct
-  5. Yardi / Yardi Breeze
-  6. Something else (tell me the name)
-  7. None yet — running on email or spreadsheets
-```
+Ask which work-order or property-management software they use. Save the answer using the existing `{{platform}}` placeholder in `SYSTEM.md`.
 
-For each platform, follow the matching subsection:
+Use the selected platform skill for the exact setup, authentication, health-check, and command instructions. Do not copy platform-specific commands or credential names into duty prose. If no platform skill is installed, use the CSV bridge or email-first fallback below and queue a `[HUMAN]` task to configure an integration.
 
-### 3a. Property Meld
-The Property Meld integration runs through the `pm` CLI (package: `cli-anything-pm`) — plain HTTP; no browser automation for day-to-day operations. Install it via pipx from your platform operator's CLI source (a checkout path or git URL), then verify with `pm --version`.
+### CSV bridge
+Ask the customer to export open work orders daily into `{{CTX_ROOT}}/state/{{agent_name}}/inbox/work-orders/`, then create that inbox directory.
 
-Ask:
-```
-Two credential sets give me full read + write coverage:
-
-1. Nexus API (bulk reads): your Client ID and Client Secret from Meld under Settings > Integrations > API.
-2. A Property Meld manager login for the one-time session-cookie capture (writes: assignments, scheduling, messages, completion). I'll also need your Meld company ID — the number in your Meld URL right after app.propertymeld.com/.
-```
-Write to `.env`:
-```
-PM_CLIENT_ID=<client id>
-PM_CLIENT_SECRET=<client secret>
-PM_MULTITENANT_ID=<company id from the Meld URL>
-# Optional — defaults to ~/.claude/credentials/property-meld.json:
-# PM_CREDS_PATH=<path to session-cookie JSON>
-```
-Capture the session cookie with the recapture helper bundled in the cli-anything-pm package (uses `PM_WEB_EMAIL` / `PM_WEB_PASSWORD`; see the package README — this is the only step that opens a browser). Then verify end to end:
-```bash
-pm probe --json
-```
-Note in `SYSTEM.md`: "PM platform: Property Meld (pm CLI configured — Nexus + session)." Full command surface: `.claude/skills/propertymeld/SKILL.md`.
-
-### 3b. AppFolio
-```
-AppFolio does not currently offer an open API for our agents. Two options:
-
-A) Browser session bridge (works, but expect to re-log-in periodically when MFA timeouts hit).
-B) CSV-export bridge (lower-risk, manual export every morning).
-
-Which do you want to start with? You can change later.
-```
-Save the choice in `SYSTEM.md` as `**AppFolio mode:** <session | csv>`.
-
-For session mode: instruct them to run `cortextos bridge appfolio session-capture` (we will queue this as a follow-up if the command does not exist yet on their install).
-
-### 3c. Buildium / 3d. Rentec / 3e. Yardi
-```
-I have read-only API integration for {{platform}} on the roadmap but it's not in this build yet. For now I'll work from CSV exports — can you export your open work orders to CSV daily and drop them in:
-  {{CTX_ROOT}}/state/{{agent_name}}/inbox/work-orders/
-
-I'll pick them up automatically.
-```
-Save the chosen platform to `SYSTEM.md` and create the inbox directory.
-
-### 3f. Something else / none
+### Email-first / no platform
 ```
 No problem — I can work email-first. Forward work-order requests to ${{forward_email}} (we'll set up the forwarding in a minute) and I'll triage from there.
 ```
@@ -273,7 +220,7 @@ Save:
 
 ## Step 10: Finalize
 
-1. Replace any remaining `{{...}}` placeholders in IDENTITY.md / SOUL.md / GUARDRAILS.md / CLAUDE.md.
+1. Replace any remaining `{{...}}` placeholders in IDENTITY.md / SOUL.md / GUARDRAILS.md.
 2. Update `MEMORY.md` with a short "Onboarded YYYY-MM-DD" entry.
 3. Create the `.onboarded` marker:
    ```bash
@@ -316,5 +263,5 @@ The `.onboarded` marker is only created at Step 10. Anything short of that = res
 ## Troubleshooting
 
 - **Customer says "I'll send you the vendor list later" at Step 4.** Save what you have, queue a `[HUMAN]` task `[HUMAN] Send vendor roster to <agent_name>`, continue to Step 5. Maintenance can run without the roster — it just means every vendor recommendation requires manual lookup until the roster lands.
-- **Credentials fail (Meld returns 401).** For Nexus reads: "That key looks wrong — please regenerate from Meld Settings > Integrations and paste the new one." For write commands failing while reads pass: the session cookie expired — re-run the recapture helper. Do not proceed until `pm probe` passes.
+- **Platform credentials fail.** Use the platform skill's authentication-recovery and health-check instructions. Do not proceed until its health check passes.
 - **No Twilio/Telnyx and customer wants SMS now.** Tell them: "I can't send SMS without a number — would you like me to queue a `[HUMAN]` task to walk you through Twilio account creation tomorrow morning, or skip SMS for now and use Telegram only?" Default to Telegram-only if unsure.

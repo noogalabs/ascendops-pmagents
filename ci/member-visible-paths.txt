@@ -62,7 +62,7 @@ templates/maintenance-coordinator/.claude/skills/heartbeat/SKILL.md
 templates/maintenance-coordinator/.claude/skills/human-tasks/SKILL.md
 templates/maintenance-coordinator/.claude/skills/knowledge-base/SKILL.md
 templates/maintenance-coordinator/.claude/skills/m2c1-worker/SKILL.md
-templates/maintenance-coordinator/.claude/skills/meld-intake-triage/SKILL.md
+templates/maintenance-coordinator/.claude/skills/work-order-intake-triage/SKILL.md
 templates/maintenance-coordinator/.claude/skills/monday/SKILL.md
 templates/maintenance-coordinator/.claude/skills/obsidian-log/SKILL.md
 templates/maintenance-coordinator/.claude/skills/officecli/SKILL.md

@@ -29,7 +29,7 @@ GUARDRAILS, SYSTEM, ONBOARDING, config.json, copilot-thresholds.json):
 | {{approval_threshold}} (6) | B1 |
 | {{triage_sla_minutes}} (2) | B5 (emergency dispatch window, minutes component) |
 | {{property_manager_name}} (2) | C1 |
-| {{platform}} (1) | D1 |
+| {{platform}} (8) | D1 |
 | {{day_mode_start}} (2), {{day_mode_end}} (2) | B8 (external-comms window) — also org-seeded from context.json; B8 answer WINS for the seat, see note 1 |
 | {{timezone}} (3) | **NO EXPLICIT QUESTION** → cover sheet (below) |
 | {{company_name}} (4), {{org_name}} (1), {{forward_email}} (1) | **NO SOURCE QUESTION IN THE QUESTIONNAIRE** → cover sheet |

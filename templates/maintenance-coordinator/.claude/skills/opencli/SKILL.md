@@ -2,7 +2,7 @@
 name: opencli
 effort: medium
 description: "Turn any website into a CLI command by driving Chrome's live session. Use when you need structured data from a site that has no API or where the API is inadequate — reads the browser's actual session (logged-in state, cookies) to extract data. Requires Chrome + Browser Bridge extension setup (one-time)."
-triggers: ["opencli", "browser automation", "website cli", "scrape", "browser adapter", "web adapter", "generate adapter", "opencli explore", "opencli generate", "property meld adapter", "browser control"]
+triggers: ["opencli", "browser automation", "website cli", "scrape", "browser adapter", "web adapter", "generate adapter", "opencli explore", "opencli generate", "property work order adapter", "browser control"]
 ---
 
 # OpenCLI — Turn Websites Into CLI Commands
@@ -73,7 +73,7 @@ opencli generate https://app.example.com \
 
 # Step 3: Use it
 opencli <adapter-name> list-orders
-opencli <adapter-name> get-comments --meld-id 12345
+opencli <adapter-name> get-comments --work-order-id 12345
 ```
 
 ### Record-then-synthesize (alternative for complex auth flows)
@@ -85,53 +85,53 @@ opencli record https://app.example.com
 # Perform the actions manually in Chrome while recording
 # Stop recording — synthesize converts captured calls to adapter
 
-opencli synthesize propertymeld
+opencli synthesize platform-adapter
 ```
 
 ---
 
-## Property Meld Adapter Blueprint
+## the {{platform}} platform Adapter Blueprint
 
-**Goal:** Read meld comments (replacing `pm-get-comments.py` Playwright script)
+**Goal:** Read work order comments (replacing `pm-get-comments.py` Playwright script)
 
-**Status:** Blueprint ready. Requires Chrome extension setup + PropertyMeld login in Chrome to complete.
+**Status:** Blueprint ready. Requires Chrome extension setup + the {{platform}} platform login in Chrome to complete.
 
 ### When extension is connected, run:
 
 ```bash
-# Explore what PropertyMeld exposes
-opencli explore https://app.propertymeld.com \
-  --goal "read meld work orders and associated comments/notes"
+# Explore what the {{platform}} platform exposes
+opencli explore https://app.example.com \
+  --goal "read work order work orders and associated comments/notes"
 
 # Generate the adapter
-opencli generate https://app.propertymeld.com \
-  --goal "list open melds with latest comment for triage"
+opencli generate https://app.example.com \
+  --goal "list open work orders with latest comment for triage"
 ```
 
 ### Expected adapter commands (once generated):
 
 ```bash
-# List open melds
-opencli propertymeld list-melds --status open
+# List open work orders
+opencli platform-adapter list-work-orders --status open
 
-# Get comments on a specific meld
-opencli propertymeld get-comments --meld-id 12345
+# Get comments on a specific work order
+opencli platform-adapter get-comments --work-order-id 12345
 
-# Triage summary (all open melds with latest comment)
-opencli propertymeld triage --format json
+# Triage summary (all open work orders with latest comment)
+opencli platform-adapter triage --format json
 ```
 
-### PropertyMeld API endpoints to target during recording
+### the {{platform}} platform API endpoints to target during recording
 
 Based on existing Playwright scripts, these endpoints carry the relevant data:
 
 | Endpoint | Data |
 |----------|------|
-| `/api/v2/melds/` | Work order list, status, assignee, property |
-| `/api/v2/melds/{id}/comments/` | Meld comments and notes |
-| `/api/v2/melds/{id}/` | Single meld detail |
+| `/api/v2/work-orders/` | Work order list, status, assignee, property |
+| `/api/v2/work-orders/{id}/comments/` | Work order comments and notes |
+| `/api/v2/work-orders/{id}/` | Single work order detail |
 
-**Tip:** Use `opencli record` while navigating the Melds page and opening a meld — it captures the actual API calls Chrome makes, which is more reliable than guessing endpoints.
+**Tip:** Use `opencli record` while navigating the Work orders page and opening a work order — it captures the actual API calls Chrome makes, which is more reliable than guessing endpoints.
 
 ---
 
@@ -144,10 +144,10 @@ For one-off browser interactions without building an adapter:
 opencli browser
 
 # Navigate
-> navigate https://app.propertymeld.com/melds/
+> navigate https://app.example.com/work orders/
 
 # Extract text from current page
-> extract .meld-list-item
+> extract .work order-list-item
 
 # Click a button
 > click "View Details"
@@ -178,9 +178,9 @@ opencli obsidian list     # Obsidian vault
 All commands support structured output:
 
 ```bash
-opencli propertymeld list-melds --format json
-opencli propertymeld list-melds --format csv
-opencli propertymeld list-melds --format table   # default
+opencli platform-adapter list-work-orders --format json
+opencli platform-adapter list-work-orders --format csv
+opencli platform-adapter list-work-orders --format table   # default
 ```
 
 ---

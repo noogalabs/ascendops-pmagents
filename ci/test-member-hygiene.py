@@ -68,5 +68,111 @@ class MemberHygieneTests(unittest.TestCase):
         result=self.run_gate(root); self.assertNotEqual(result.returncode,0); self.assertIn("lacks exact-site allowlist",result.stdout)
 
 
+    # Owner rule 2026-09-01: software-agnostic AND model-agnostic duty surfaces.
+    def _stage(self, root, relative, text):
+        path = root / relative; path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text); subprocess.run(["git","add",relative],cwd=root,check=True)
+
+    def test_named_planted_platform_name_on_duty_surface_dies(self):
+        root=self.fixture(); self.addCleanup(shutil.rmtree, root)
+        self._stage(root, "SOUL.md", "Open the ticket in Property" + "Meld.\n")
+        result=self.run_gate(root); self.assertNotEqual(result.returncode,0)
+        self.assertIn("SOUL.md:1: platform name 'Property" + "Meld' on duty surface",result.stdout)
+
+    def test_named_lowercase_platform_noun_dies(self):
+        root=self.fixture(); self.addCleanup(shutil.rmtree, root)
+        self._stage(root, "SOUL.md", "Close the me" + "ld when done.\n")
+        result=self.run_gate(root); self.assertNotEqual(result.returncode,0); self.assertIn("SOUL.md:1: platform name",result.stdout)
+
+    def test_named_platform_name_inside_platform_variant_skill_passes(self):
+        root=self.fixture(); self.addCleanup(shutil.rmtree, root)
+        self._stage(root, ".claude/skills/propertymeld/SKILL.md", "# Property" + "Meld variant\nRun pm me" + "ld list.\n")
+        result=self.run_gate(root); self.assertEqual(result.returncode,0,result.stdout)
+
+    def test_named_path_reference_to_platform_variant_skill_passes(self):
+        root=self.fixture(); self.addCleanup(shutil.rmtree, root)
+        self._stage(root, "MANIFEST.txt", "abc  .claude/skills/property" + "meld/SKILL.md\n")
+        result=self.run_gate(root); self.assertEqual(result.returncode,0,result.stdout)
+
+    def test_named_prose_platform_name_sharing_a_line_with_the_variant_path_dies(self):
+        root=self.fixture(); self.addCleanup(shutil.rmtree, root)
+        self._stage(root, "SOUL.md", "See .claude/skills/property" + "meld/SKILL.md when Property" + "Meld shows a new ticket.\n")
+        result=self.run_gate(root); self.assertNotEqual(result.returncode,0); self.assertIn("SOUL.md:1: platform name 'Property" + "Meld'",result.stdout)
+
+    def test_named_platform_exact_site_allowlist_passes_then_moved_site_dies(self):
+        import hashlib
+        root=self.fixture(); self.addCleanup(shutil.rmtree, root)
+        line="Example answer: App" + "Folio"
+        self._stage(root, "answers.md", line + "\n")
+        allow = root / "ci/internal-codename-allowlist.tsv"
+        allow.write_text(allow.read_text() + f"answers.md\t1\t{hashlib.sha256(line.encode()).hexdigest()}\tplatform\tsetup-answer example\n")
+        subprocess.run(["git","add","ci/internal-codename-allowlist.tsv"],cwd=root,check=True)
+        self.assertEqual(self.run_gate(root).returncode,0)
+        self._stage(root, "answers.md", "# moved\n" + line + "\n")
+        result=self.run_gate(root); self.assertNotEqual(result.returncode,0)
+        self.assertIn("answers.md:2: platform name",result.stdout); self.assertIn("stale internal-codename allowlist row",result.stdout)
+
+    def test_named_planted_model_name_on_duty_surface_dies(self):
+        root=self.fixture(); self.addCleanup(shutil.rmtree, root)
+        self._stage(root, "GUARDRAILS.md", "Ask Cla" + "ude before sending.\n")
+        result=self.run_gate(root); self.assertNotEqual(result.returncode,0)
+        self.assertIn("GUARDRAILS.md:1: model name 'Cla" + "ude' on duty surface",result.stdout)
+
+    def test_named_planted_model_id_on_duty_skill_dies(self):
+        root=self.fixture(); self.addCleanup(shutil.rmtree, root)
+        self._stage(root, ".claude/skills/intake/SKILL.md", "Route triage to cla" + "ude-sonnet-4-5 when unsure.\n")
+        result=self.run_gate(root); self.assertNotEqual(result.returncode,0); self.assertIn("SKILL.md:1: model name",result.stdout)
+
+    def test_named_model_name_on_runtime_surfaces_passes_as_declared_class(self):
+        root=self.fixture(); self.addCleanup(shutil.rmtree, root)
+        self._stage(root, "CLAUDE.md", "# Cla" + "ude Remote Agent\n")
+        self._stage(root, ".claude/skills/agent-management/SKILL.md", "Spawn a Cla" + "ude Code worker.\n")
+        self._stage(root, "engine/scan.py", "OPENAI_KEY = 'sk-'\n")
+        result=self.run_gate(root); self.assertEqual(result.returncode,0,result.stdout)
+
+    def test_named_frontmatter_model_routing_line_passes_but_body_model_prose_dies(self):
+        root=self.fixture(); self.addCleanup(shutil.rmtree, root)
+        self._stage(root, ".claude/skills/intake/SKILL.md", "---\nname: intake\nmodel: Son" + "net\n---\nTriage the ticket.\n")
+        self.assertEqual(self.run_gate(root).returncode,0)
+        self._stage(root, ".claude/skills/intake/SKILL.md", "---\nname: intake\nmodel: Son" + "net\n---\nWhy this is a Son" + "net skill.\n")
+        result=self.run_gate(root); self.assertNotEqual(result.returncode,0); self.assertIn("SKILL.md:5: model name",result.stdout)
+
+    def test_named_model_key_outside_the_frontmatter_block_dies(self):
+        root=self.fixture(); self.addCleanup(shutil.rmtree, root)
+        self._stage(root, ".claude/skills/intake/SKILL.md", "---\nname: intake\n---\nTriage.\nmodel: Son" + "net\n")
+        result=self.run_gate(root); self.assertNotEqual(result.returncode,0); self.assertIn("SKILL.md:5: model name",result.stdout)
+
+    def test_named_readme_is_a_scanned_duty_surface(self):
+        root=self.fixture(); self.addCleanup(shutil.rmtree, root)
+        self._stage(root, "README.md", "# Pack\nRuns on Cla" + "ude.\n")
+        result=self.run_gate(root); self.assertNotEqual(result.returncode,0); self.assertIn("README.md:2: model name",result.stdout)
+
+    def test_named_hyphenated_model_forms_die_and_bare_controls_die(self):
+        # piper F1: a hyphen after the token must not hide it (platform_re never allowed it)
+        root=self.fixture(); self.addCleanup(shutil.rmtree, root)
+        for i, form in enumerate(("Anthro" + "pic-built", "Open" + "AI-compatible", "Gem" + "ini-powered", "Co" + "dex-driven", "Op" + "us-class", "bare Anthro" + "pic", "bare Op" + "us")):
+            self._stage(root, "SOUL.md", f"An {form} step.\n")
+            result=self.run_gate(root); self.assertNotEqual(result.returncode,0,form); self.assertIn("SOUL.md:1: model name",result.stdout,form)
+
+    def test_named_agents_md_is_a_scanned_duty_surface(self):
+        # piper F2: AGENTS.md ships to members as session protocol + role steps
+        root=self.fixture(); self.addCleanup(shutil.rmtree, root)
+        self._stage(root, "AGENTS.md", "# Session start\nAsk Cla" + "ude first.\n")
+        result=self.run_gate(root); self.assertNotEqual(result.returncode,0); self.assertIn("AGENTS.md:2: model name",result.stdout)
+
+    def test_named_clean_line_declares_the_runtime_exempt_denominator(self):
+        # piper F2: the exempt class must be visible beside CLEAN, with its count
+        root=self.fixture(); self.addCleanup(shutil.rmtree, root)
+        self._stage(root, "CLAUDE.md", "# Cla" + "ude Remote Agent\n"); self._stage(root, "engine/scan.py", "X = 1\n")
+        result=self.run_gate(root); self.assertEqual(result.returncode,0,result.stdout)
+        # fixture: internal.py (.py code class) + engine/scan.py + CLAUDE.md = 3 exempt files
+        self.assertIn("exempt as runtime class: 3 files", result.stdout)
+
+    def test_named_english_word_case_does_not_false_positive(self):
+        root=self.fixture(); self.addCleanup(shutil.rmtree, root)
+        self._stage(root, "SOUL.md", "Tell the resident a short fable about patience.\n")
+        result=self.run_gate(root); self.assertEqual(result.returncode,0,result.stdout)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

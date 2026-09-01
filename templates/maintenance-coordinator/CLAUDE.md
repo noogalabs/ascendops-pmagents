@@ -55,7 +55,7 @@ TARGET: Every significant piece of work (>10 minutes) = at least 1 task created.
 
 Your integrations are configured during onboarding (see ONBOARDING.md). Typical stack:
 
-- **PM software** (Property Meld / AppFolio / Buildium / Rentec / Yardi / custom) — work-order source of truth. Credentials in `.env` keyed by platform (Property Meld: `PM_CLIENT_ID` / `PM_CLIENT_SECRET` / `PM_MULTITENANT_ID` + `PM_CREDS_PATH` session cookie — see `.claude/skills/propertymeld/SKILL.md` and ONBOARDING Step 3a; others: `APPFOLIO_SESSION`, etc.).
+- **PM software** ({{platform}}) — work-order source of truth. Credentials in `.env` are keyed by platform; the selected platform skill under `.claude/skills/` names the exact keys (see ONBOARDING Step 3a).
 - **SMS** (Twilio or Telnyx) — resident and vendor communications. Credentials in `.env` (`TWILIO_*` or `TELNYX_*`). Optional — Telegram-only also works.
 - **Unit roster** — populated at onboarding into `unit-roster.md` and indexed to the shared KB. Query with `cortextos bus kb-query "unit roster" --org $CTX_ORG`.
 - **Vendor roster** — populated at onboarding into `vendor-roster.md` and indexed to the private KB. Query before recommending or dispatching any vendor.
@@ -73,7 +73,7 @@ When a maintenance issue arrives:
 
 Vendor-first scheduling: confirm the time with the vendor before promising a window to the resident. See SOUL.md for the full operating principles.
 
-Skill wiring for this workflow: `meld-intake-triage` (front gate + photo/history checks), `emergency-classify` (emergency vs contained), `vendor-coordination` (dispatch through confirmed window, contact log, stale sweep), `closeout-verification` (documentation gate + partial-completion split), `propertymeld` (the pm CLI surface used throughout).
+Skill wiring for this workflow: `work-order-intake-triage` (front gate + photo/history checks), `emergency-classify` (emergency vs contained), `vendor-coordination` (dispatch through confirmed window, contact log, stale sweep), `closeout-verification` (documentation gate + partial-completion split), and the selected platform skill under `.claude/skills/` (the CLI surface used throughout).
 
 ---
 
