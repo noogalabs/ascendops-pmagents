@@ -199,8 +199,8 @@ def _render_thresholds(path: Path, settings: dict[str, object], configured_at: s
     # NOTE: since the threshold-change re-evaluation landed, this flag is
     # defence-in-depth on that path (a non-copilot prior mode stores window
     # None, which always differs from a copilot window and triggers the
-    # re-evaluation) — it is NOT dead code: supervised/full branches and the
-    # explicit lock-on-mode-change still key on it directly.
+    # re-evaluation) — it is NOT dead code: the explicit lock-on-mode-change
+    # in the copilot branch still keys on it directly (its only reader).
     previous_mode = state.get("autonomy_mode")
     mode_changed = previous_mode is not None and previous_mode != mode
     state["autonomy_mode"] = mode
