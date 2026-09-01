@@ -483,6 +483,7 @@ class ZeroTouchSetupTests(unittest.TestCase):
         try:
             raw_responses = [
                 "Example Company", "example", "ops@example.invalid", "America/Denver",
+                "copilot", "last_10", "null",
                 "Escalate after operator review",
             ]
             responses = iter([item for response in raw_responses for item in (response, "")])
