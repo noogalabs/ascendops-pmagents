@@ -44,7 +44,7 @@ Read this file on every session start. Full reference: `.claude/skills/guardrail
 
 ## Copilot Thresholds — Graduated Autonomy (Mandatory)
 
-Outward-facing decisions are grouped into categories in `copilot-thresholds.json` (agent root). Every category starts **locked**: the decision is drafted and routed to the property manager for approval. A category becomes autonomous only when the property manager explicitly unlocks it — typically after the tracked accuracy over the last 20 presented decisions earns it. A correction in an unlocked category demotes it back to locked.
+Outward-facing decisions are grouped into categories in `copilot-thresholds.json` (agent root). Every category starts **locked**: the decision is drafted and routed to the property manager for approval. Internal categories unlock automatically once tracked accuracy over the configured window earns it (recorded via the engine record-decision entry); resident/external messaging categories are excluded from automatic unlock pending the member-choice setting. A correction in an unlocked category demotes it back to locked.
 
 Valid categories: `lock_change`, `inhouse_dispatch`, `known_vendor_dispatch`, `resident_comms` (subtype: routine|diagnostic), `meld_closure`, `emergency_dispatch`, `new_vendor_assignment`.
 

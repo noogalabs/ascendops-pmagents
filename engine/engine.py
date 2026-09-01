@@ -197,8 +197,8 @@ def validate(path: Path, seat: str):
     )
     try:
         autonomy.parse_settings(result.cover)
-    except ValueError as exc:
-        raise IntakeRejected([("cover.Autonomy mode", str(exc))]) from exc
+    except autonomy.SettingsError as exc:
+        raise IntakeRejected([(exc.field, str(exc))]) from exc
     return result
 
 
@@ -397,8 +397,8 @@ def configure(source: Path, answers: Path, output: Path, seat: str,
                                    f"declared structured artifact {structured_filename} is absent")])
         try:
             autonomy_settings = autonomy.parse_settings(parsed_intake.cover)
-        except ValueError as exc:
-            raise IntakeRejected([("cover.Autonomy mode", str(exc))]) from exc
+        except autonomy.SettingsError as exc:
+            raise IntakeRejected([(exc.field, str(exc))]) from exc
         autonomy.render(
             staged,
             autonomy_settings,
@@ -471,6 +471,11 @@ def configure(source: Path, answers: Path, output: Path, seat: str,
             raise IntakeRejected(exc.failures) from exc
         shutil.rmtree(staging_root)
         result = transaction.replace_directory_transactional(staged, output, already_locked=True)
+        if (output / "copilot-thresholds.json").is_file():
+            # The machine-local engine-path sidecar is keyed to the FINAL
+            # destination name — written only after the staging rename, or the
+            # wrapper resolves a name that no longer exists.
+            autonomy.write_engine_sidecar(output)
         if result.cleanup_warning:
             print(f"WARNING {result.cleanup_warning}", file=sys.stderr)
       except Exception:
@@ -523,6 +528,31 @@ def apply_persisted_append(appender: Path, owner: Path, plan_id: str,
 
 
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "record-decision":
+        rd = argparse.ArgumentParser(prog="engine record-decision",
+                                     description="Record a presented decision outcome and evaluate automatic unlock")
+        rd.add_argument("seat_root", type=Path)
+        rd.add_argument("category")
+        outcome = rd.add_mutually_exclusive_group(required=True)
+        outcome.add_argument("--correct", action="store_true")
+        outcome.add_argument("--incorrect", action="store_true")
+        args = rd.parse_args(sys.argv[2:])
+        import datetime as _dt
+        try:
+            summary = autonomy.record_decision(
+                args.seat_root.resolve(), args.category, args.correct,
+                _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
+        except FileNotFoundError:
+            print("ERROR no copilot-thresholds.json at seat root", file=sys.stderr)
+            return 2
+        except transaction.ConcurrentTransactionError as exc:
+            print(f"ERROR {exc}", file=sys.stderr)
+            return 3
+        except KeyError as exc:
+            print(f"ERROR {exc.args[0]}", file=sys.stderr)
+            return 2
+        print(json.dumps(summary))
+        return 0
     parser = argparse.ArgumentParser()
     parser.add_argument("source_agent_dir", type=Path)
     parser.add_argument("answers_file", type=Path)

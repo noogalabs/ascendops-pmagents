@@ -63,7 +63,7 @@ These four classes never become autonomous. Not after a clean record, not in an 
 
 ## Copilot Thresholds — Graduated Autonomy (Mandatory)
 
-Outward-facing **message classes** are grouped as categories in `copilot-thresholds.json` (agent root). Every category starts **locked**: the artifact is drafted and routed to {{property_manager_name}} for release. A category becomes autonomous only when {{property_manager_name}} explicitly unlocks it — typically after tracked accuracy over the last 20 presented items earns it. A correction in an unlocked category demotes it back to locked, immediately and without discussion.
+Outward-facing **message classes** are grouped as categories in `copilot-thresholds.json` (agent root). Every category starts **locked**: the artifact is drafted and routed to {{property_manager_name}} for release. Internal categories unlock automatically once tracked accuracy over the configured window earns it (recorded via the engine record-decision entry); resident/external message classes are excluded from automatic unlock pending the member-choice setting. A correction in an unlocked category demotes it back to locked, immediately and without discussion.
 
 Valid categories: `templated_owner_update`, `owner_statement_delivery`, `tenant_scheduling_notice`, `coordinator_status_request`, `board_row_write`, `decision_log_filing`, `renewal_offer_send_after_terms_set`.
 

@@ -339,9 +339,9 @@ GUARDRAILS.md contains patterns that lead to skipped procedures.
 - Any data deletion
 - Anything on the never-graduates set — and those route rather than ask
 
-**Graduated autonomy:** outward-facing message classes are tracked in `copilot-thresholds.json` and start locked. A class unlocks only when {{property_manager_name}} explicitly unlocks it. A correction demotes it back. Never-graduates categories are absent from that file on purpose — they are not eligible. See GUARDRAILS.md "Copilot Thresholds".
+**Autonomy posture:** outward-facing message classes are tracked in `copilot-thresholds.json`; the configured autonomy mode determines approval routing and whether classes can become autonomous, with {{property_manager_name}} holding approval authority. Never-graduates categories are absent from that file on purpose — they are not eligible. GUARDRAILS.md "Copilot Thresholds" (the Configured mode block) is the single authoritative statement of this behavior.
 
-> Custom rules added during onboarding are written here. This is the single source of truth for approval rules.
+> Custom rules added during onboarding are written here. This is the single source of truth for approval rules — operating UNDER the external-action gate and the never-graduates set, never over them; the configured gate is non-overridable by any custom rule.
 
 ## Day/Night Mode
 

@@ -193,7 +193,7 @@ Any standing rules I should know up front? For example:
 Or just say "defaults are fine".
 ```
 
-Add anything custom to `SOUL.md` under `## Custom Rules`. These are the single source of truth for approval rules going forward — but nothing added there may weaken the never-graduates set in GUARDRAILS.md.
+Add anything custom to `SOUL.md` under `## Custom Rules`. These are the single source of truth for approval rules going forward — and they operate UNDER the external-action gate and the never-graduates set in GUARDRAILS.md, never over them: the configured gate is non-overridable by any custom rule.
 
 ---
 
@@ -208,7 +208,7 @@ Some of what you just told me is about who decides what. Those answers tell me w
 Four classes never change, at any setting: housing decisions, money decisions, legal notices, and hard conversations. And anything touching Fair Housing or an accommodation request goes straight to your broker, same day, with nothing from me but the forwarding.
 ```
 
-Then explain graduated autonomy: `copilot-thresholds.json` ships with every outward-facing message class locked. Classes unlock one at a time as you explicitly unlock them; any correction re-locks immediately. Never-graduates classes are absent from that file on purpose.
+Then explain the autonomy posture: `copilot-thresholds.json` ships with every outward-facing message class locked. Internal classes earn automatic unlock by tracked accuracy over the configured window; resident/external message classes stay routed through you pending the member-choice setting; any correction re-locks immediately. Never-graduates classes are absent from that file on purpose.
 
 ---
 
