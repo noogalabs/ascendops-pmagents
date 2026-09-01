@@ -230,11 +230,17 @@ def _render_thresholds(path: Path, settings: dict[str, object], configured_at: s
                 outcomes = list(row.get("recent_outcomes") or [])
                 required = int(str(settings["unlock_window"]).removeprefix("last_"))
                 new_accuracy = settings["qualifying_accuracy"]
+                # The new window means the LAST N outcomes: score the slice,
+                # not the whole preserved ring — otherwise a narrowed window
+                # keeps a row unlocked on an overall average its own window
+                # scores below bar, and the next record-decision (which trims
+                # the ring) disagrees with the rerun.
+                windowed = outcomes[-required:]
                 still_qualifies = (
                     new_accuracy is not None
                     and len(outcomes) >= required
-                    and outcomes
-                    and round(100 * sum(outcomes) / len(outcomes), 1) >= new_accuracy
+                    and windowed
+                    and round(100 * sum(windowed) / len(windowed), 1) >= new_accuracy
                 )
                 if not still_qualifies:
                     row["status"] = "locked"

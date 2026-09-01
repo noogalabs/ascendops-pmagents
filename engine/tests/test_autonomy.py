@@ -813,6 +813,31 @@ class ThresholdChangeReEvaluation(unittest.TestCase):
         self.assertEqual(row["status"], "unlocked")
         self.assertEqual(row["unlocked_at"], earned_at)
 
+    def test_narrowed_window_scores_the_last_n_not_the_whole_ring(self):
+        print("ARMED: narrowing the window scores the LAST N — an overall-90 ring whose last 3 are T,F,T re-locks")
+        import subprocess, sys as _sys
+        autonomy.render(self.root, autonomy.parse_settings({
+            "autonomy_mode": "copilot", "unlock_window": "last_10",
+            "qualifying_accuracy": "90"}), "2026-09-01T12:00:00Z")
+        autonomy.write_engine_sidecar(self.root)
+        sequence = ["--correct"] * 7 + ["--correct", "--incorrect", "--correct"]
+        for outcome in sequence:
+            r = subprocess.run(
+                [_sys.executable, str(ROOT / "engine" / "engine.py"), "record-decision",
+                 str(self.root), "lock_change", outcome],
+                capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr)
+        row = self._row()
+        self.assertEqual(row["status"], "unlocked", "fixture failed to earn: overall ring is 9/10 = 90")
+        self.assertEqual(row["recent_outcomes"][-3:], [True, False, True])
+        autonomy.render(self.root, autonomy.parse_settings({
+            "autonomy_mode": "copilot", "unlock_window": "last_3",
+            "qualifying_accuracy": "90"}), "2026-09-02T12:00:00Z")
+        row = self._row()
+        self.assertEqual(row["status"], "locked",
+                         "narrowed window kept a row its own last-3 accuracy (66.7) scores below bar")
+        self.assertEqual(len(row["recent_outcomes"]), 10, "history lost on windowed relock")
+
     def test_null_accuracy_rerun_relocks(self):
         print("ARMED: rerun with accuracy null re-locks — no automatic unlock exists to have earned")
         self._earn("last_3", "90", 3)
