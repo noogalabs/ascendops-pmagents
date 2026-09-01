@@ -134,6 +134,35 @@ class ReviewSweepTests(unittest.TestCase):
             self.assertEqual(candidates, row["promise_subject_sha256"],
                              f"{seat} promise wording changed without fresh disposition")
             for subject, disposition in dispositions.items():
+                named = disposition.get("named_test")
+                if named:
+                    # RESOLUTION, not existence: every named token must resolve
+                    # to a real test artifact in the tree — a path to a real
+                    # file, a class inside the named file, or a test function
+                    # defined somewhere under a tests directory. A stale
+                    # coverage claim dies here by name.
+                    context_src = None
+                    for token in named.split():
+                        if token == "+":
+                            continue
+                        if "/" in token:
+                            test_path = ROOT / token
+                            self.assertTrue(test_path.is_file(),
+                                            f"{seat} {subject}: named_test file missing: {token}")
+                            context_src = test_path.read_text()
+                        elif token.startswith("test_"):
+                            defined = any(f"def {token}" in f.read_text()
+                                          for pattern in ("tests/test_*.py",
+                                                          "engine/tests/test_*.py",
+                                                          "editions/*/tests/test_*.py")
+                                          for f in ROOT.glob(pattern))
+                            self.assertTrue(defined,
+                                            f"{seat} {subject}: named_test function not found: {token}")
+                        else:
+                            self.assertIsNotNone(context_src,
+                                                 f"{seat} {subject}: class {token} named without a file")
+                            self.assertIn(f"class {token}", context_src,
+                                          f"{seat} {subject}: named_test class not found: {token}")
                 valid = (
                     {"gate_surface", "named_test"} <= set(disposition)
                     or "no_gate_reason" in disposition

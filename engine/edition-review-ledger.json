@@ -44,9 +44,9 @@
       },
       "promise_ledger": {
         "INTRO": {
-          "no_gate_reason": "format instructions, provenance behavior, and legal-review disclosure; the autonomy-mode notes added 2026-09-01 restate gated behavior (safety gates, approval-act unlock, re-lock on re-run) whose gates are the engine autonomy casualties",
+          "no_gate_reason": "format instructions, provenance behavior, and legal-review disclosure; the autonomy-mode notes restate gated behavior (automatic unlock-by-accuracy, bridge external exclusion, mode-consistent doctrine) whose gates are the engine autonomy casualties",
           "gate_surface": "engine/autonomy.py (safety_gates, evaluate_unlock pm_approval, render)",
-          "named_test": "engine/tests/test_autonomy.py AutonomyCasualties + ApprovalActCasualties + RendererPurity"
+          "named_test": "engine/tests/test_autonomy.py AutonomyCasualties + AutomaticUnlockCasualties + RenderCodeConsistency + BridgeExternalExclusion + RendererPurity"
         },
         "A2": {
           "no_gate_reason": "question collects the jurisdiction-specific entry rule"
@@ -117,9 +117,9 @@
       },
       "promise_ledger": {
         "INTRO": {
-          "no_gate_reason": "format instructions, provenance behavior, and legal-review disclosure; the autonomy-mode notes added 2026-09-01 restate gated behavior (safety gates, approval-act unlock, re-lock on re-run) whose gates are the engine autonomy casualties",
+          "no_gate_reason": "format instructions, provenance behavior, and legal-review disclosure; the autonomy-mode notes restate gated behavior (automatic unlock-by-accuracy, bridge external exclusion, mode-consistent doctrine) whose gates are the engine autonomy casualties",
           "gate_surface": "engine/autonomy.py (safety_gates, evaluate_unlock pm_approval, render)",
-          "named_test": "engine/tests/test_autonomy.py AutonomyCasualties + ApprovalActCasualties + RendererPurity"
+          "named_test": "engine/tests/test_autonomy.py AutonomyCasualties + AutomaticUnlockCasualties + RenderCodeConsistency + BridgeExternalExclusion + RendererPurity"
         },
         "A1": {
           "no_gate_reason": "question collects portfolio scale"
@@ -220,9 +220,9 @@
       },
       "promise_ledger": {
         "INTRO": {
-          "no_gate_reason": "format instructions, provenance behavior, and legal-review disclosure; the autonomy-mode notes added 2026-09-01 restate gated behavior (safety gates, approval-act unlock, re-lock on re-run) whose gates are the engine autonomy casualties",
+          "no_gate_reason": "format instructions, provenance behavior, and legal-review disclosure; the autonomy-mode notes restate gated behavior (automatic unlock-by-accuracy, bridge external exclusion, mode-consistent doctrine) whose gates are the engine autonomy casualties",
           "gate_surface": "engine/autonomy.py (safety_gates, evaluate_unlock pm_approval, render)",
-          "named_test": "engine/tests/test_autonomy.py AutonomyCasualties + ApprovalActCasualties + RendererPurity"
+          "named_test": "engine/tests/test_autonomy.py AutonomyCasualties + AutomaticUnlockCasualties + RenderCodeConsistency + BridgeExternalExclusion + RendererPurity"
         },
         "A1": {
           "gate_surface": ".claude/skills/applicant-screening/SKILL.md",
@@ -321,9 +321,9 @@
       },
       "promise_ledger": {
         "INTRO": {
-          "no_gate_reason": "format instructions, provenance behavior, and legal-review disclosure; the autonomy-mode notes added 2026-09-01 restate gated behavior (safety gates, approval-act unlock, re-lock on re-run) whose gates are the engine autonomy casualties",
+          "no_gate_reason": "format instructions, provenance behavior, and legal-review disclosure; the autonomy-mode notes restate gated behavior (automatic unlock-by-accuracy, bridge external exclusion, mode-consistent doctrine) whose gates are the engine autonomy casualties",
           "gate_surface": "engine/autonomy.py (safety_gates, evaluate_unlock pm_approval, render)",
-          "named_test": "engine/tests/test_autonomy.py AutonomyCasualties + ApprovalActCasualties + RendererPurity"
+          "named_test": "engine/tests/test_autonomy.py AutonomyCasualties + AutomaticUnlockCasualties + RenderCodeConsistency + BridgeExternalExclusion + RendererPurity"
         },
         "A1": {
           "gate_surface": "engine/intake.py::_validate_accounting_scope",
@@ -414,9 +414,9 @@
       },
       "promise_ledger": {
         "INTRO": {
-          "no_gate_reason": "format instructions, provenance behavior, and legal-review disclosure; the autonomy-mode notes added 2026-09-01 restate gated behavior (safety gates, approval-act unlock, re-lock on re-run) whose gates are the engine autonomy casualties",
+          "no_gate_reason": "format instructions, provenance behavior, and legal-review disclosure; the autonomy-mode notes restate gated behavior (automatic unlock-by-accuracy, bridge external exclusion, mode-consistent doctrine) whose gates are the engine autonomy casualties",
           "gate_surface": "engine/autonomy.py (safety_gates, evaluate_unlock pm_approval, render)",
-          "named_test": "engine/tests/test_autonomy.py AutonomyCasualties + ApprovalActCasualties + RendererPurity"
+          "named_test": "engine/tests/test_autonomy.py AutonomyCasualties + AutomaticUnlockCasualties + RenderCodeConsistency + BridgeExternalExclusion + RendererPurity"
         },
         "A1": {
           "no_gate_reason": "question collects the jurisdiction-specific disposition deadline"

@@ -66,7 +66,7 @@ class AutonomyCasualties(unittest.TestCase):
         self.assertEqual(row["window"], "last_3")
         row.update(total_decisions=3, accuracy_pct=100)
         self.assertTrue(autonomy.evaluate_unlock(state, "lock_change"))
-        # and 2 decisions under a last_3 window must not unlock even approved
+        # and 2 decisions under a last_3 window must not unlock
         row.update(status="locked", total_decisions=2)
         self.assertFalse(autonomy.evaluate_unlock(state, "lock_change"))
 
@@ -219,9 +219,6 @@ class LegacySentinelMigration(unittest.TestCase):
         self.assertNotIn("BET" "TY-AUTONOMY", text)
         self.assertEqual(text.count("### Configured mode:"), 1)
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class RenderCodeConsistency(unittest.TestCase):
     """Per-mode consistency between rendered doctrine CLAIMS about unlock
@@ -282,3 +279,40 @@ class RenderCodeConsistency(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BridgeExternalExclusion(unittest.TestCase):
+    """BRIDGE (PR34 seam): until the member-choice setting ships, external
+    send categories are hard-excluded from automatic unlock and from full's
+    day-one autonomy — a merged head must be safe standalone. Both polarities:
+    an external category at a met bar must NOT unlock; an internal category
+    at the same bar MUST."""
+
+    def _state(self, category):
+        return {"autonomy_mode": "copilot", "categories": {category: {
+            "mode": "copilot", "status": "locked", "window": "last_10",
+            "qualifying_accuracy": 90, "total_decisions": 10, "accuracy_pct": 100,
+        }}}
+
+    def test_external_category_met_bar_does_not_unlock(self):
+        print("ARMED: external-send category at met accuracy bar must NOT auto-unlock (bridge)")
+        state = self._state("resident_comms")
+        self.assertFalse(autonomy.evaluate_unlock(state, "resident_comms"))
+        self.assertEqual(state["categories"]["resident_comms"]["status"], "locked")
+
+    def test_internal_category_met_bar_unlocks(self):
+        state = self._state("lock_change")
+        self.assertTrue(autonomy.evaluate_unlock(state, "lock_change"))
+
+    def test_full_mode_keeps_external_locked_day_one(self):
+        temp = Path(tempfile.mkdtemp(prefix="bridge-"))
+        try:
+            root = temp / "seat"
+            shutil.copytree(ROOT / "templates" / "maintenance-coordinator", root)
+            settings = autonomy.parse_settings({"autonomy_mode": "full"})
+            autonomy.render(root, settings, "2026-09-01T12:00:00Z")
+            state = json.loads((root / "copilot-thresholds.json").read_text())
+            self.assertEqual(state["categories"]["resident_comms"]["status"], "locked")
+            self.assertEqual(state["categories"]["lock_change"]["status"], "unlocked")
+        finally:
+            shutil.rmtree(temp)

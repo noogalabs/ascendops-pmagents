@@ -88,6 +88,14 @@ def evaluate_unlock(state: dict, category: str) -> bool:
     row = state["categories"][category]
     if state.get("autonomy_mode") != "copilot" or row.get("mode") != "copilot":
         return False
+    if category in EXTERNAL_SEND_CATEGORIES:
+        # BRIDGE EXCLUSION (PR34 seam): with the approval act removed, an
+        # accuracy-only unlock would grant external-send autonomy nobody
+        # chose. External categories are hard-excluded from automatic unlock
+        # until the member-choice setting (external_send_autonomy, PR34's
+        # six-cell matrix) replaces this exclusion with choice-dependence.
+        # Every merged head must be safe STANDALONE.
+        return False
     accuracy = row.get("qualifying_accuracy")
     if accuracy is None:
         return False
@@ -115,7 +123,12 @@ def _doctrine(settings: dict[str, object], has_thresholds: bool, authority_marke
                 f"over the configured {settings['unlock_window']} window — earned by the numbers, "
                 "no sign-off step."
             )
-        posture = f"Eligible categories start locked. {earned} A correction re-locks the category."
+        posture = (
+            f"Eligible categories start locked. {earned} A correction re-locks the "
+            "category. Resident/external messaging categories are excluded from "
+            "automatic unlock: every external or resident-facing send stays "
+            "human-approved."
+        )
     elif mode == "supervised":
         posture = (
             "Every category is permanently approval-gated. No accuracy record unlocks anything; "
