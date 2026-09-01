@@ -175,13 +175,16 @@ def _doctrine(settings: dict[str, object], has_thresholds: bool, authority_marke
 def _render_thresholds(path: Path, settings: dict[str, object], configured_at: str) -> None:
     state = json.loads(path.read_text(encoding="utf-8"))
     mode = settings["mode"]
+    # previous_mode MUST be read BEFORE the new mode is assigned: the original
+    # ordering self-clobbered the read, mode_changed was always False, and a
+    # full->copilot rerun preserved day-one unlocks nothing had earned.
+    previous_mode = state.get("autonomy_mode")
+    mode_changed = previous_mode is not None and previous_mode != mode
     state["autonomy_mode"] = mode
     state["safety_gates"] = {
         "fair_housing_screening": {"status": "locked", "safety_gate": True},
         "external_resident_send": {"status": "locked", "safety_gate": True},
     }
-    previous_mode = state.get("autonomy_mode")
-    mode_changed = previous_mode is not None and previous_mode != mode
     for category, row in state.get("categories", {}).items():
         is_safety_gate = category in EXTERNAL_SEND_CATEGORIES
         row["mode"] = mode
@@ -230,16 +233,25 @@ exec python3 "$ENGINE" record-decision "$SCRIPT_DIR" "$@"
 
 
 def _write_runtime_entry(root: Path) -> None:
-    """Write the byte-constant exec wrapper into the seat and the resolved
-    engine path into the seat's sidecar (the same _sidecar placement the
-    DestinationLock uses — machine-variant content lives outside the
-    digested tree)."""
+    """Write the byte-constant exec wrapper into the seat. The machine-local
+    engine-path SIDECAR is deliberately NOT written here: render() runs
+    against the configurator's STAGING directory, and a sidecar named for the
+    staging dir is orphaned by the final rename, leaving the wrapper inert on
+    every real install. The configurator writes the sidecar against the FINAL
+    destination via write_engine_sidecar() after the rename."""
     import os as _os
     wrapper = root / "record-decision.sh"
     transaction.atomic_write_text(wrapper, RECORD_DECISION_WRAPPER)
     _os.chmod(wrapper, 0o755)
+
+
+def write_engine_sidecar(final_root: Path) -> None:
+    """Write the resolved engine path to the sidecar named for the FINAL
+    destination (the DestinationLock placement). Called by the configurator
+    AFTER the staging rename — and by any caller that renders directly into a
+    final-named directory."""
     engine_path = Path(__file__).resolve().with_name("engine.py")
-    sidecar = root.parent / f".{root.name}.engine-path"
+    sidecar = final_root.parent / f".{final_root.name}.engine-path"
     transaction.atomic_write_text(sidecar, str(engine_path) + "\n")
 
 

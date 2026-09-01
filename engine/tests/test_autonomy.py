@@ -560,6 +560,7 @@ class DoctrineLineRunnable(unittest.TestCase):
         autonomy.render(self.root, autonomy.parse_settings({
             "autonomy_mode": "copilot", "unlock_window": "last_10",
             "qualifying_accuracy": "90"}), "2026-09-01T12:00:00Z")
+        autonomy.write_engine_sidecar(self.root)
 
     def tearDown(self):
         shutil.rmtree(self.temp)
@@ -598,8 +599,97 @@ class DoctrineLineRunnable(unittest.TestCase):
         autonomy.render(other, autonomy.parse_settings({
             "autonomy_mode": "copilot", "unlock_window": "last_10",
             "qualifying_accuracy": "90"}), "2026-09-01T12:00:00Z")
+        autonomy.write_engine_sidecar(other)
         self.assertEqual((self.root / "record-decision.sh").read_bytes(),
                          (other / "record-decision.sh").read_bytes())
+
+class ModeChangeByName(unittest.TestCase):
+    """Drives the EXACT branch the mode_changed flag guards (the earlier
+    copilot-supervised-copilot round trip converged through supervised's
+    unconditional lock and never touched it — fourth convergent-outcome mask
+    of the shift)."""
+
+    def setUp(self):
+        self.temp = Path(tempfile.mkdtemp(prefix="mode-change-"))
+        self.root = self.temp / "seat"
+        shutil.copytree(ROOT / "templates" / "maintenance-coordinator", self.root)
+
+    def tearDown(self):
+        shutil.rmtree(self.temp)
+
+    def _state(self):
+        return json.loads((self.root / "copilot-thresholds.json").read_text())
+
+    def test_full_to_copilot_rerun_locks_unearned_internal(self):
+        print("ARMED: full->copilot rerun locks internal categories nothing earned")
+        autonomy.render(self.root, autonomy.parse_settings({
+            "autonomy_mode": "full"}), "2026-09-01T12:00:00Z")
+        self.assertEqual(self._state()["categories"]["lock_change"]["status"], "unlocked")
+        autonomy.render(self.root, autonomy.parse_settings({
+            "autonomy_mode": "copilot", "unlock_window": "last_10",
+            "qualifying_accuracy": "90"}), "2026-09-02T12:00:00Z")
+        row = self._state()["categories"]["lock_change"]
+        self.assertEqual(row["status"], "locked",
+                         "copilot posture violated: day-one unlock survived with nothing earned")
+
+    def test_copilot_earned_to_full_stays_unlocked_with_history(self):
+        print("ARMED: copilot-earned unlock survives a rerun into full with unlocked_at preserved")
+        import subprocess, sys as _sys
+        autonomy.render(self.root, autonomy.parse_settings({
+            "autonomy_mode": "copilot", "unlock_window": "last_3",
+            "qualifying_accuracy": "90"}), "2026-09-01T12:00:00Z")
+        autonomy.write_engine_sidecar(self.root)
+        for n in range(3):
+            r = subprocess.run(
+                [_sys.executable, str(ROOT / "engine" / "engine.py"), "record-decision",
+                 str(self.root), "lock_change", "--correct"],
+                capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr)
+        earned_at = self._state()["categories"]["lock_change"]["unlocked_at"]
+        self.assertIsNotNone(earned_at)
+        autonomy.render(self.root, autonomy.parse_settings({
+            "autonomy_mode": "full"}), "2026-09-02T12:00:00Z")
+        row = self._state()["categories"]["lock_change"]
+        self.assertEqual(row["status"], "unlocked")
+        self.assertEqual(row["unlocked_at"], earned_at, "earned unlocked_at was rewritten")
+        self.assertEqual(len(row["recent_outcomes"]), 3)
+
+
+class ProductionEntryThroughStaging(unittest.TestCase):
+    """ENFORCEMENT-ENV: the configurator stages the seat and renames it into
+    place — the wrapper and its sidecar must work at the FINAL name after the
+    real production path, not in a directly-rendered test dir. A sidecar
+    named for the staging dir left record-decision inert on every real
+    install and the direct-render casualties never saw it."""
+
+    def test_configured_seat_wrapper_records_and_no_orphan_sidecar(self):
+        print("ARMED: a configurator-built seat (through the staging rename) has a working wrapper and no orphan sidecar")
+        import subprocess, sys as _sys
+        sys.path.insert(0, str(ROOT / "engine" / "tests"))
+        import test_contract_goldens as g
+        temp = Path(tempfile.mkdtemp(prefix="staging-"))
+        self.addCleanup(shutil.rmtree, temp)
+        source = temp / "raw"
+        output = temp / "configured-seat"
+        g.prepare_raw_template(source)
+        g.engine.configure(
+            source,
+            g.DEMO / "fixtures" / "ridgeline-maintenance-answers.md",
+            output,
+            "maintenance-coordinator",
+            clock=g.golden_clock,
+        )
+        self.assertTrue((output / "record-decision.sh").is_file())
+        sidecar = output.parent / f".{output.name}.engine-path"
+        self.assertTrue(sidecar.is_file(), "sidecar missing at the FINAL destination name")
+        orphans = list(output.parent.glob(".*.glue-candidate-*.engine-path"))
+        self.assertEqual(orphans, [], f"orphan staging sidecars left behind: {orphans}")
+        run = subprocess.run(
+            [str(output / "record-decision.sh"), "lock_change", "--correct"],
+            cwd=output, capture_output=True, text=True)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        state = json.loads((output / "copilot-thresholds.json").read_text())
+        self.assertEqual(state["categories"]["lock_change"]["total_decisions"], 1)
 
 
 if __name__ == "__main__":
