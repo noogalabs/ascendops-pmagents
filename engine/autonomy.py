@@ -13,8 +13,8 @@ MODES = {"copilot", "supervised", "full"}
 DEFAULT_MODE = "copilot"
 DEFAULT_UNLOCK_WINDOW = "last_10"
 DEFAULT_QUALIFYING_ACCURACY = None
-BEGIN = "<!-- BETTY-AUTONOMY:BEGIN -->"
-END = "<!-- BETTY-AUTONOMY:END -->"
+BEGIN = "<!-- PMAGENTS-AUTONOMY:BEGIN -->"
+END = "<!-- PMAGENTS-AUTONOMY:END -->"
 BLOCK = re.compile(rf"\n?{re.escape(BEGIN)}.*?{re.escape(END)}\n?", re.S)
 EXTERNAL_SEND_CATEGORIES = {
     "resident_comms",
