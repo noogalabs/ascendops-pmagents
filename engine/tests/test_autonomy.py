@@ -101,9 +101,12 @@ class AutonomyCasualties(unittest.TestCase):
 class CategoryClassificationCompleteness(unittest.TestCase):
     def test_every_shipped_category_is_explicitly_classified(self):
         print("ARMED: an unclassified new category must fail this suite, not silently unlock in full mode")
-        both = autonomy.EXTERNAL_SEND_CATEGORIES | autonomy.INTERNAL_CATEGORIES
-        overlap = autonomy.EXTERNAL_SEND_CATEGORIES & autonomy.INTERNAL_CATEGORIES
-        self.assertEqual(overlap, set(), f"categories classified twice: {overlap}")
+        sets = (autonomy.EXTERNAL_SEND_CATEGORIES, autonomy.INTERNAL_CATEGORIES,
+                autonomy.IRREVERSIBLE_CATEGORIES)
+        both = set().union(*sets)
+        for i, a in enumerate(sets):
+            for b in sets[i + 1:]:
+                self.assertEqual(a & b, set(), f"categories classified twice: {a & b}")
         thresholds_files = sorted(ROOT.glob("templates/**/copilot-thresholds.json")) + \
             sorted(ROOT.glob("editions/**/copilot-thresholds.json"))
         self.assertGreaterEqual(len(thresholds_files), 2, "thresholds census lost its subjects")
@@ -114,7 +117,7 @@ class CategoryClassificationCompleteness(unittest.TestCase):
             if missing:
                 unclassified[str(f.relative_to(ROOT))] = sorted(missing)
         self.assertEqual(unclassified, {},
-                         f"unclassified categories (add to EXTERNAL_SEND_CATEGORIES or INTERNAL_CATEGORIES): {unclassified}")
+                         f"unclassified categories (add to EXTERNAL_SEND_CATEGORIES, INTERNAL_CATEGORIES, or IRREVERSIBLE_CATEGORIES): {unclassified}")
 
 
 class AutomaticUnlockCasualties(unittest.TestCase):
@@ -720,6 +723,103 @@ class FullModeCorrectionByName(unittest.TestCase):
                          "full-mode day-one unlock demoted by a correction")
         self.assertEqual(row["total_decisions"], 1)
         self.assertEqual(row["recent_outcomes"], [False])
+
+class IrreversibleGateByName(unittest.TestCase):
+    """Meld closure is irreversible (doctrine: a closed meld cannot be
+    reopened) — it never earns autonomy in any mode."""
+
+    def test_meld_closure_met_bar_never_unlocks_via_cli(self):
+        print("ARMED: meld_closure at a met accuracy bar never auto-unlocks")
+        import subprocess, sys as _sys
+        temp = Path(tempfile.mkdtemp(prefix="irrev-"))
+        self.addCleanup(shutil.rmtree, temp)
+        root = temp / "seat"
+        shutil.copytree(ROOT / "templates" / "maintenance-coordinator", root)
+        autonomy.render(root, autonomy.parse_settings({
+            "autonomy_mode": "copilot", "unlock_window": "last_3",
+            "qualifying_accuracy": "90"}), "2026-09-01T12:00:00Z")
+        autonomy.write_engine_sidecar(root)
+        for n in range(3):
+            r = subprocess.run(
+                [_sys.executable, str(ROOT / "engine" / "engine.py"), "record-decision",
+                 str(root), "meld_closure", "--correct"],
+                capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr)
+        state = json.loads((root / "copilot-thresholds.json").read_text())
+        self.assertEqual(state["categories"]["meld_closure"]["status"], "locked")
+        self.assertTrue(state["categories"]["meld_closure"]["irreversible_gate"])
+
+    def test_full_mode_leaves_meld_closure_locked(self):
+        print("ARMED: full mode day-one leaves the irreversible category locked")
+        temp = Path(tempfile.mkdtemp(prefix="irrev-full-"))
+        self.addCleanup(shutil.rmtree, temp)
+        root = temp / "seat"
+        shutil.copytree(ROOT / "templates" / "maintenance-coordinator", root)
+        autonomy.render(root, autonomy.parse_settings({
+            "autonomy_mode": "full"}), "2026-09-01T12:00:00Z")
+        state = json.loads((root / "copilot-thresholds.json").read_text())
+        self.assertEqual(state["categories"]["meld_closure"]["status"], "locked")
+        self.assertEqual(state["categories"]["lock_change"]["status"], "unlocked")
+
+
+class ThresholdChangeReEvaluation(unittest.TestCase):
+    """A copilot rerun with CHANGED window/accuracy re-evaluates every
+    unlocked row against the new settings over the preserved history."""
+
+    def setUp(self):
+        self.temp = Path(tempfile.mkdtemp(prefix="thresh-"))
+        self.root = self.temp / "seat"
+        shutil.copytree(ROOT / "templates" / "maintenance-coordinator", self.root)
+
+    def tearDown(self):
+        shutil.rmtree(self.temp)
+
+    def _earn(self, window, accuracy, n):
+        import subprocess, sys as _sys
+        autonomy.render(self.root, autonomy.parse_settings({
+            "autonomy_mode": "copilot", "unlock_window": window,
+            "qualifying_accuracy": accuracy}), "2026-09-01T12:00:00Z")
+        autonomy.write_engine_sidecar(self.root)
+        for _ in range(n):
+            r = subprocess.run(
+                [_sys.executable, str(ROOT / "engine" / "engine.py"), "record-decision",
+                 str(self.root), "lock_change", "--correct"],
+                capture_output=True, text=True)
+            assert r.returncode == 0, r.stderr
+
+    def _row(self):
+        return json.loads((self.root / "copilot-thresholds.json").read_text())["categories"]["lock_change"]
+
+    def test_raised_window_relocks_underqualified_row(self):
+        print("ARMED: earned under last_1, rerun last_10 — re-locks with history intact")
+        self._earn("last_1", "90", 1)
+        self.assertEqual(self._row()["status"], "unlocked")
+        autonomy.render(self.root, autonomy.parse_settings({
+            "autonomy_mode": "copilot", "unlock_window": "last_10",
+            "qualifying_accuracy": "90"}), "2026-09-02T12:00:00Z")
+        row = self._row()
+        self.assertEqual(row["status"], "locked")
+        self.assertEqual(row["recent_outcomes"], [True], "history lost on threshold relock")
+        self.assertEqual(row["demotion_reason"], "threshold change")
+
+    def test_lowered_accuracy_keeps_qualifying_row_unlocked(self):
+        print("ARMED: earned 3/3 under last_3/90, rerun last_3/80 — stays unlocked, unlocked_at intact")
+        self._earn("last_3", "90", 3)
+        earned_at = self._row()["unlocked_at"]
+        autonomy.render(self.root, autonomy.parse_settings({
+            "autonomy_mode": "copilot", "unlock_window": "last_3",
+            "qualifying_accuracy": "80"}), "2026-09-02T12:00:00Z")
+        row = self._row()
+        self.assertEqual(row["status"], "unlocked")
+        self.assertEqual(row["unlocked_at"], earned_at)
+
+    def test_null_accuracy_rerun_relocks(self):
+        print("ARMED: rerun with accuracy null re-locks — no automatic unlock exists to have earned")
+        self._earn("last_3", "90", 3)
+        autonomy.render(self.root, autonomy.parse_settings({
+            "autonomy_mode": "copilot", "unlock_window": "last_3",
+            "qualifying_accuracy": "null"}), "2026-09-02T12:00:00Z")
+        self.assertEqual(self._row()["status"], "locked")
 
 
 if __name__ == "__main__":

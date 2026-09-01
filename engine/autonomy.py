@@ -39,8 +39,14 @@ INTERNAL_CATEGORIES = {
     "inhouse_dispatch",
     "known_vendor_dispatch",
     "lock_change",
-    "meld_closure",
     "new_vendor_assignment",
+}
+# Irreversible actions never auto-unlock in any mode: doctrine says a closed
+# meld cannot be reopened, so autonomy over closure is hard-gated exactly like
+# the external bridge. Whether members may CHOOSE closure autonomy later is an
+# owner-ledger question, not a build decision.
+IRREVERSIBLE_CATEGORIES = {
+    "meld_closure",
 }
 
 
@@ -87,6 +93,10 @@ def evaluate_unlock(state: dict, category: str) -> bool:
     doctrine follows code. Supervised and full modes never evaluate here."""
     row = state["categories"][category]
     if state.get("autonomy_mode") != "copilot" or row.get("mode") != "copilot":
+        return False
+    if category in IRREVERSIBLE_CATEGORIES:
+        # Irreversible actions (a closed meld cannot be reopened) never earn
+        # automatic unlock, in any mode.
         return False
     if category in EXTERNAL_SEND_CATEGORIES:
         # BRIDGE EXCLUSION (PR34 seam): with the approval act removed, an
@@ -153,8 +163,8 @@ def _doctrine(settings: dict[str, object], has_thresholds: bool, authority_marke
             "\n\nWhen a category is unlocked (earned or day-one autonomy): act directly, "
             "send a post-action note (\"[action taken]. Reply UNDO if needed.\"), and log "
             "`decision_presented` with `\"autonomous\": true`. External or resident-facing "
-            "categories are never acted on directly, regardless of any status value in the "
-            "thresholds file."
+            "categories, and irreversible categories (meld closure), are never acted on "
+            "directly, regardless of any status value in the thresholds file."
         )
     if has_thresholds:
         threshold_note = (
@@ -187,9 +197,12 @@ def _render_thresholds(path: Path, settings: dict[str, object], configured_at: s
     }
     for category, row in state.get("categories", {}).items():
         is_safety_gate = category in EXTERNAL_SEND_CATEGORIES
+        is_irreversible = category in IRREVERSIBLE_CATEGORIES
         row["mode"] = mode
         if is_safety_gate:
             row["safety_gate"] = True
+        if is_irreversible:
+            row["irreversible_gate"] = True
         # MERGE, NOT REPLACE (owner follow-up made load-bearing): a rerun must
         # never silently revoke earned autonomy. Runtime rows (counters,
         # recent_outcomes, unlocked_at/demoted_at history) are ALWAYS
@@ -199,21 +212,46 @@ def _render_thresholds(path: Path, settings: dict[str, object], configured_at: s
         # day-one; copilot starts locked and earned unlocks resume via the
         # next record-decision evaluation over the preserved window).
         if mode == "copilot":
+            old_window = row.get("window")
+            old_accuracy = row.get("qualifying_accuracy")
             row["window"] = settings["unlock_window"]
             row["qualifying_accuracy"] = settings["qualifying_accuracy"]
             if mode_changed or row.get("status") not in ("locked", "unlocked"):
                 row["status"] = "locked"
-            if is_safety_gate:
+            elif (row.get("status") == "unlocked"
+                    and (old_window != settings["unlock_window"]
+                         or old_accuracy != settings["qualifying_accuracy"])):
+                # THRESHOLD CHANGE RE-EVALUATES: an unlocked row must still
+                # qualify under the NEW settings over its preserved history
+                # (occupancy = the recorded ring). Qualifying rows keep their
+                # unlocked_at; non-qualifying rows re-lock with history
+                # preserved; a null accuracy re-locks (no automatic unlock
+                # exists to have earned).
+                outcomes = list(row.get("recent_outcomes") or [])
+                required = int(str(settings["unlock_window"]).removeprefix("last_"))
+                new_accuracy = settings["qualifying_accuracy"]
+                still_qualifies = (
+                    new_accuracy is not None
+                    and len(outcomes) >= required
+                    and outcomes
+                    and round(100 * sum(outcomes) / len(outcomes), 1) >= new_accuracy
+                )
+                if not still_qualifies:
+                    row["status"] = "locked"
+                    row["demoted_at"] = configured_at
+                    row["demotion_reason"] = "threshold change"
+            if is_safety_gate or is_irreversible:
                 row["status"] = "locked"
         elif mode == "supervised":
             row["status"] = "locked"
             row["window"] = None
             row["qualifying_accuracy"] = None
         else:
-            row["status"] = "locked" if is_safety_gate else "unlocked"
+            gated = is_safety_gate or is_irreversible
+            row["status"] = "locked" if gated else "unlocked"
             row["window"] = None
             row["qualifying_accuracy"] = None
-            if not is_safety_gate and not row.get("unlocked_at"):
+            if not gated and not row.get("unlocked_at"):
                 row["unlocked_at"] = configured_at
         row.setdefault("unlocked_at", None)
     transaction.atomic_write_text(path, json.dumps(state, indent=2) + "\n")
