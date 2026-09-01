@@ -33,10 +33,15 @@ MODEL_ID_RE = re.compile(r"(?i)(?<![./])\bclaude-[a-z0-9-]+\b|\bgpt-[0-9][a-z0-9
 # itself here; these are exempt as a CLASS (named in the census output), not
 # as duty text. Duty surfaces are everything else.
 RUNTIME_SURFACE_NAMES = {"HEARTBEAT.md", "AGENTS.md", "TOOLS.md", "CLAUDE.md", "SYSTEM.md",
-                         "config.json", "settings.json", ".env.example", "README.md"}
+                         "config.json", "settings.json", ".env.example"}
+# README.md is member-facing front-page prose: scanned as a duty surface; its
+# genuine runtime mentions are allowlisted by exact site (dane fold 2026-09-01).
 # Engine and edition CODE is runtime mechanics (credential patterns, harness
 # wiring); duty text never lives in .py files.
 RUNTIME_CODE_SUFFIXES = (".py",)
+# A skill's frontmatter `model:` line is RUNTIME ROUTING config (which engine
+# the harness runs the skill on), not duty prose (dane ruling 2026-09-01).
+FRONTMATTER_MODEL_RE = re.compile(r"^model:\s*\S+\s*$")
 RUNTIME_SKILL_DIRS = ("/.claude/skills/agent-management/", "/.claude/skills/m2c1-worker/",
                       "/.claude/skills/worker-agents/", "/.claude/skills/delegation-matrix/",
                       "/.claude/skills/auto-skill/", "/.claude/skills/soul-philosophy/",
@@ -143,7 +148,13 @@ def scan(root: Path) -> list[str]:
     for relative in tracked(root):
         if relative in SELF:
             continue
+        in_frontmatter = False
         for number, line in enumerate(readable_lines(root, relative), 1):
+            # YAML frontmatter block = line 1 "---" through the next "---".
+            if number == 1 and line.strip() == "---":
+                in_frontmatter = True
+            elif in_frontmatter and line.strip() == "---":
+                in_frontmatter = False
             privacy_line = line.replace("NEEDS-" + PRIVATE_TERMS[0].upper(), "PROVENANCE-TAG")
             if private_re.search(privacy_line):
                 failures.append(f"{relative}:{number}: private identity token")
@@ -176,7 +187,7 @@ def scan(root: Path) -> list[str]:
             # Model/vendor names: runtime-mechanics surfaces are exempt as a
             # named class; every duty surface needs an exact-site row under
             # token "model".
-            if not is_runtime_surface(relative):
+            if not is_runtime_surface(relative) and not (in_frontmatter and FRONTMATTER_MODEL_RE.match(line)):
                 model_hit = model_re.search(line) or MODEL_ID_RE.search(line)
                 if model_hit:
                     key_prefix = (relative, number, line_hash(line), "model")

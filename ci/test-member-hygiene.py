@@ -120,7 +120,7 @@ class MemberHygieneTests(unittest.TestCase):
 
     def test_named_planted_model_id_on_duty_skill_dies(self):
         root=self.fixture(); self.addCleanup(shutil.rmtree, root)
-        self._stage(root, ".claude/skills/intake/SKILL.md", "model: cla" + "ude-sonnet-4-5\n")
+        self._stage(root, ".claude/skills/intake/SKILL.md", "Route triage to cla" + "ude-sonnet-4-5 when unsure.\n")
         result=self.run_gate(root); self.assertNotEqual(result.returncode,0); self.assertIn("SKILL.md:1: model name",result.stdout)
 
     def test_named_model_name_on_runtime_surfaces_passes_as_declared_class(self):
@@ -129,6 +129,23 @@ class MemberHygieneTests(unittest.TestCase):
         self._stage(root, ".claude/skills/agent-management/SKILL.md", "Spawn a Cla" + "ude Code worker.\n")
         self._stage(root, "engine/scan.py", "OPENAI_KEY = 'sk-'\n")
         result=self.run_gate(root); self.assertEqual(result.returncode,0,result.stdout)
+
+    def test_named_frontmatter_model_routing_line_passes_but_body_model_prose_dies(self):
+        root=self.fixture(); self.addCleanup(shutil.rmtree, root)
+        self._stage(root, ".claude/skills/intake/SKILL.md", "---\nname: intake\nmodel: Son" + "net\n---\nTriage the ticket.\n")
+        self.assertEqual(self.run_gate(root).returncode,0)
+        self._stage(root, ".claude/skills/intake/SKILL.md", "---\nname: intake\nmodel: Son" + "net\n---\nWhy this is a Son" + "net skill.\n")
+        result=self.run_gate(root); self.assertNotEqual(result.returncode,0); self.assertIn("SKILL.md:5: model name",result.stdout)
+
+    def test_named_model_key_outside_the_frontmatter_block_dies(self):
+        root=self.fixture(); self.addCleanup(shutil.rmtree, root)
+        self._stage(root, ".claude/skills/intake/SKILL.md", "---\nname: intake\n---\nTriage.\nmodel: Son" + "net\n")
+        result=self.run_gate(root); self.assertNotEqual(result.returncode,0); self.assertIn("SKILL.md:5: model name",result.stdout)
+
+    def test_named_readme_is_a_scanned_duty_surface(self):
+        root=self.fixture(); self.addCleanup(shutil.rmtree, root)
+        self._stage(root, "README.md", "# Pack\nRuns on Cla" + "ude.\n")
+        result=self.run_gate(root); self.assertNotEqual(result.returncode,0); self.assertIn("README.md:2: model name",result.stdout)
 
     def test_named_english_word_case_does_not_false_positive(self):
         root=self.fixture(); self.addCleanup(shutil.rmtree, root)

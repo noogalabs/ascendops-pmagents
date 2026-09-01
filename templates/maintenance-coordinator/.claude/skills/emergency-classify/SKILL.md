@@ -3,6 +3,7 @@ name: emergency-classify
 description: "You MUST use this skill whenever a work order or message reads as urgent, after-hours, or an emergency, and BEFORE you escalate to the property manager or pull an overnight watch on it. It decides the one question that matters — is this a real emergency that needs action NOW, or an emergency that is already CONTAINED with a known resolution path — and applies the stand-down rule so we do not babysit a settled situation overnight. Pass the work-order ID or a short description after the command."
 triggers: ["emergency", "urgent work order", "after hours", "stand down", "is this an emergency", "overnight escalation", "should I escalate", "habitability", "no heat", "no AC", "water leak", "gas leak", "lockout", "do I pull a watch"]
 context: fork
+model: sonnet
 ---
 
 # Emergency Classify + Stand-Down

@@ -3,6 +3,7 @@ name: vendor-coordination
 description: "Run vendor dispatch with follow-through: pick the right vendor, confirm the window with the vendor BEFORE telling the resident, track every contact attempt in a state log, chase silence on a fixed ladder, sweep for stale work orders daily, and verify the work against the original complaint before close-out. Every outward message is approval-gated per SOUL.md."
 triggers: ["vendor", "dispatch", "vendor dispatch", "contractor", "trade dispatch", "vendor follow-up", "vendor acceptance", "vendor silent", "stale work order", "SLA clock", "schedule vendor"]
 context: fork
+model: sonnet
 ---
 
 # Vendor Coordination

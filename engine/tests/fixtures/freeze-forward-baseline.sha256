@@ -9,7 +9,7 @@ b3a3adb49919d7ada9baa04bfda503e3b7674b33435b7302e5c31d654191e4d2  ./.claude/skil
 8ca9c5bdf46ac3928ff174fec2f753e277d187b6b59b68b04166921be83d2313  ./.claude/skills/comms/SKILL.md
 208c8c4054d9ce182d1f7c174c9e964a3986f87c5c8e7f6af3c6dc13ba1fe7f6  ./.claude/skills/cron-management/SKILL.md
 912d33a6a32871ce66aa60b4c0a11ca9b10f691bf450cb7edf40fb38cc403dcf  ./.claude/skills/delegation-matrix/SKILL.md
-c5d489fc5726f9db0d5a61e9086664b5d912e146838c09c82a7c49f330a9ab40  ./.claude/skills/emergency-classify/SKILL.md
+695168408afee74f3668be21e95690c1a672dafa81324ddcd6601f15af859e51  ./.claude/skills/emergency-classify/SKILL.md
 43ca07ef08b8eb7d2d3c47bc9abecfbd531b069fabd738e04b7194026e00b652  ./.claude/skills/env-management/SKILL.md
 a666e00e43806507e1b0c707a49840f551a73cd6784cd740f5f8e377dd767c5c  ./.claude/skills/event-logging/SKILL.md
 afa7c6de1493f02457c64294a1af81694cf7eda65597772055bed66caa7a2a9e  ./.claude/skills/framework-upstream-auto-update/SKILL.md
@@ -30,7 +30,7 @@ e617d3428b3a01b5a4a34b23bed5c8a7e6f3c395d3e096279740437c2206c89e  ./.claude/skil
 6e897b397da3c250580736be220f14cdabb4c22d284de41e99725216159300c1  ./.claude/skills/system-diagnostics/SKILL.md
 f53e25c5673d13fc5255c23ad5b27b95f355723ad8482fdc4a0dd6bd3e5f33a9  ./.claude/skills/tasks/SKILL.md
 da5e0522bc8eeaae5f1dac199e4feb5ba307a0c041264ba9caca09c7d4afb895  ./.claude/skills/tool-registration/SKILL.md
-6d0b9556baec020647573ae7b233d448b75e550894e4da9b11f0880772241cee  ./.claude/skills/vendor-coordination/SKILL.md
+b199b45823906bfb02616bc2f8cd0ac71bdacc1a74e9b3ab40b62bab2850b64e  ./.claude/skills/vendor-coordination/SKILL.md
 9f696d5895e4596ac8fbb72756c37ef84e0ec5a72daf06641e1a96b27596a1c5  ./.claude/skills/work-order-intake-triage/SKILL.md
 6b3ff40d3c940ec8cde064b43c2f6a7b985306cffe138ed3bccd9c912ca337a9  ./.claude/skills/worker-agents/SKILL.md
 bfaccbf46fbca0336c949c3c6996aaa8d3d4840bdd45614d14b269c19aacaeb8  ./.env.example
