@@ -172,6 +172,19 @@ class ContractGoldenTests(unittest.TestCase):
             self.assertRegex(row["reviewed_head"], r"^[0-9a-f]{8,40}$")
             self.assertTrue(row["retention_location"].startswith("orgs/ascendops/ops/pmagents-evidence/"))
 
+    def test_named_included_product_provenance_destinations_exist(self):
+        print("ARMED: every included-product provenance destination exists")
+        with PROVENANCE_TSV.open(newline="") as handle:
+            rows = list(csv.DictReader(handle, delimiter="\t"))
+        included = [row for row in rows if row["disposition"] == "included-product"]
+        self.assertTrue(included)
+        for row in included:
+            destination = REPO / row["destination_path"]
+            self.assertTrue(
+                destination.exists(),
+                f"{row['artifact_id']} names absent destination {row['destination_path']}",
+            )
+
     def test_named_freeze_forward_metadata_pins_real_qa_approved_bytes(self):
         print("ARMED: freeze-forward manifest and provenance are immutable")
         metadata = json.loads(BASELINE_META.read_text())

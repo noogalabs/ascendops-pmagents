@@ -348,6 +348,35 @@ class ZeroTouchSetupTests(unittest.TestCase):
         self.assertEqual(json.loads((output / "copilot-thresholds.json").read_text())["agent"],
                          "ridge-maint")
 
+    def test_named_retry_rematerializes_a_corrected_member_source(self):
+        print("ARMED: retry must rematerialize the member's corrected source")
+        source = self.tmp / "raw-retry-source"
+        shutil.copytree(ROOT / "templates" / "maintenance-coordinator", source)
+        marker = source / "member-correction.txt"
+        marker.write_text("before", encoding="utf-8")
+        output = self.tmp / "orgs" / "ridgeline" / "agents" / "ridge-retry"
+        fixture = ROOT / "editions" / "maintenance" / "fixtures" / "ridgeline-maintenance-answers.md"
+        responses = iter(["1", str(source), str(output), "2", str(fixture), "retry"])
+        calls = []
+
+        def correcting_configure(actual_source, _answers, destination, _seat, **_kwargs):
+            calls.append((actual_source / "member-correction.txt").read_text(encoding="utf-8"))
+            if len(calls) == 1:
+                marker.write_text("after", encoding="utf-8")
+                raise setup.engine.IntakeRejected([
+                    ("template.member-correction", "correct the selected template source"),
+                ])
+            destination.mkdir(parents=True)
+
+        result = setup.run_setup(
+            ask=lambda _prompt: next(responses),
+            out=io.StringIO(),
+            err=io.StringIO(),
+            configure_fn=correcting_configure,
+        )
+        self.assertEqual(result, 0)
+        self.assertEqual(calls, ["before", "after"])
+
     def test_named_guided_happy_path_equals_direct_configure_bytes(self):
         print("ARMED: wrapper artifact mutation dies against direct configure bytes")
         wrapped = self.tmp / "wrapped"

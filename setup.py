@@ -413,6 +413,13 @@ def run_setup(
                     return 2
                 if output.exists():
                     actual_source = output
+                elif seat == "maintenance-coordinator":
+                    # A retry means the member may have corrected the selected source.
+                    # Never retry the one-time materialized snapshot.
+                    shutil.rmtree(actual_source, ignore_errors=True)
+                    actual_source = materialize_template(
+                        source, materialized_root / "source", output, now=now,
+                    )
         print(f"Configured agent: {output}", file=out)
         render_cross_seat_completion(output, seat, out)
         print("Next: review the generated agent with your implementation contact before activation.", file=out)
