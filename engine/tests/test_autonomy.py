@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime
 import io
 import json
+import re
 import shutil
 import tempfile
 import unittest
@@ -98,9 +99,6 @@ class AutonomyCasualties(unittest.TestCase):
         self.assertFalse(output.exists())
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class CategoryClassificationCompleteness(unittest.TestCase):
     def test_every_shipped_category_is_explicitly_classified(self):
@@ -192,3 +190,41 @@ class FieldAttribution(unittest.TestCase):
             with self.assertRaises(autonomy.SettingsError) as ctx:
                 autonomy.parse_settings(cover)
             self.assertEqual(ctx.exception.field, expected_field, cover)
+
+
+class LegacySentinelMigration(unittest.TestCase):
+    """WRITE-NEW, READ-BOTH: an install rendered under the legacy sentinel
+    rerenders to exactly ONE member-neutral block — never an appended second
+    section beside a legacy remnant."""
+
+    def setUp(self):
+        self.temp = Path(tempfile.mkdtemp(prefix="autonomy-legacy-"))
+
+    def tearDown(self):
+        shutil.rmtree(self.temp)
+
+    def test_legacy_sentinel_install_rerenders_to_single_new_block(self):
+        print("ARMED: legacy-sentinel install must rerender to exactly one new-marker block")
+        # The DISCRIMINATING layout is the fallback path (no Copilot Thresholds
+        # heading): the heading path splices between anchors and incidentally
+        # removes any old block, so only the fallback exposes a read-new-only
+        # BLOCK leaving a legacy remnant plus an appended second section.
+        root = self.temp / "seat"
+        shutil.copytree(ROOT / "templates" / "maintenance-coordinator", root)
+        guardrails = root / "GUARDRAILS.md"
+        stripped = re.sub(r"^## Copilot Thresholds[^\n]*$", "## Decision Ledger",
+                          guardrails.read_text(), flags=re.M)
+        transaction.atomic_write_text(guardrails, stripped)
+        settings = autonomy.parse_settings({"autonomy_mode": "copilot"})
+        autonomy.render(root, settings, "2026-09-01T12:00:00Z")
+        # simulate a pre-rename install: rewrite the block markers to legacy form
+        legacy = guardrails.read_text().replace("PMAGENTS-AUTONOMY", "BET" "TY-AUTONOMY")
+        transaction.atomic_write_text(guardrails, legacy)
+        autonomy.render(root, settings, "2026-09-01T12:05:00Z")
+        text = guardrails.read_text()
+        self.assertEqual(text.count("PMAGENTS-AUTONOMY:BEGIN"), 1)
+        self.assertNotIn("BET" "TY-AUTONOMY", text)
+        self.assertEqual(text.count("### Configured mode:"), 1)
+
+if __name__ == "__main__":
+    unittest.main()

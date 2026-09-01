@@ -15,7 +15,11 @@ DEFAULT_UNLOCK_WINDOW = "last_10"
 DEFAULT_QUALIFYING_ACCURACY = None
 BEGIN = "<!-- PMAGENTS-AUTONOMY:BEGIN -->"
 END = "<!-- PMAGENTS-AUTONOMY:END -->"
-BLOCK = re.compile(rf"\n?{re.escape(BEGIN)}.*?{re.escape(END)}\n?", re.S)
+# WRITE-NEW, READ-BOTH: render emits only the member-neutral marker, but the
+# removal path recognizes the legacy sentinel forever — an install rendered
+# before the rename must rerender to exactly ONE new-marker block, never an
+# appended second section beside a legacy remnant.
+BLOCK = re.compile(r"\n?<!-- (?:PMAGENTS|BETTY)-AUTONOMY:BEGIN -->.*?<!-- (?:PMAGENTS|BETTY)-AUTONOMY:END -->\n?", re.S)
 EXTERNAL_SEND_CATEGORIES = {
     "resident_comms",
     "templated_owner_update",
