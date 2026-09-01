@@ -35,7 +35,7 @@ b199b45823906bfb02616bc2f8cd0ac71bdacc1a74e9b3ab40b62bab2850b64e  ./.claude/skil
 6b3ff40d3c940ec8cde064b43c2f6a7b985306cffe138ed3bccd9c912ca337a9  ./.claude/skills/worker-agents/SKILL.md
 bfaccbf46fbca0336c949c3c6996aaa8d3d4840bdd45614d14b269c19aacaeb8  ./.env.example
 014a81371c4f36e8c6eeaddf9f47f7b23ea9dc2c905040032bae1ba70ade472d  ./.gitignore
-eb505fad510d55e3e97fbec5f6a6e777158740bc9cd7ec9acc9ecd3788b31c90  ./AGENTS.md
+fdaf4ebea25315afe8e3b5caf829714f24b1889a44df5a223c11faa7b0cc2728  ./AGENTS.md
 02156558b9a31e150cfdf735653ef78a94aa4e64699ff3960190d75af676c580  ./CLAUDE.md
 1ce2c5b4f1f3dc9a3c979b72c6a64216b63f035fad81cfbe94aa54f4766b1485  ./GOALS.md
 c28932cfc52ad8901eb5c81462876e33b621db5c64d1e1ab226a5cadadeacedf  ./GUARDRAILS.md
