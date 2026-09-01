@@ -81,12 +81,10 @@ def parse_settings(raw_cover: dict[str, str]) -> dict[str, object]:
 
 
 def evaluate_unlock(state: dict, category: str) -> bool:
-    """Unlock a copilot category only when the accuracy bar is met AND a
-    property-manager approval act is RECORDED on the row. The rendered
-    doctrine promises explicit human approval of every unlock; an unlock
-    from counters alone would be that promise lying (code follows doctrine,
-    dane ruling 1788290274614). The approval act is a dict written by the
-    approval workflow: {"approved_by": <name>, "approved_at": <ISO time>}."""
+    """Unlock a copilot category AUTOMATICALLY when the accuracy bar over the
+    configured window is met. Owner-ruled 2026-09-01 (overruling the earlier
+    human-approves-each-unlock reading): unlocks are earned by the numbers;
+    doctrine follows code. Supervised and full modes never evaluate here."""
     row = state["categories"][category]
     if state.get("autonomy_mode") != "copilot" or row.get("mode") != "copilot":
         return False
@@ -98,10 +96,6 @@ def evaluate_unlock(state: dict, category: str) -> bool:
         return False
     if row["accuracy_pct"] < accuracy:
         return False
-    approval = row.get("pm_approval")
-    if (not isinstance(approval, dict) or not approval.get("approved_by")
-            or not approval.get("approved_at")):
-        return False
     row["status"] = "unlocked"
     return True
 
@@ -112,13 +106,14 @@ def _doctrine(settings: dict[str, object], has_thresholds: bool, authority_marke
         accuracy = settings["qualifying_accuracy"]
         if accuracy is None:
             earned = (
-                f"No numeric qualifying accuracy is configured; after the configured {settings['unlock_window']} "
-                "evidence window, unlock still requires explicit property-manager approval."
+                f"No numeric qualifying accuracy is configured, so no automatic unlock fires; "
+                f"the {settings['unlock_window']} window still accumulates the accuracy record."
             )
         else:
             earned = (
-                f"They may unlock only after {accuracy}% qualifying accuracy over the configured "
-                f"{settings['unlock_window']} window and explicit property-manager approval."
+                f"A category unlocks AUTOMATICALLY once tracked accuracy reaches {accuracy}% "
+                f"over the configured {settings['unlock_window']} window — earned by the numbers, "
+                "no sign-off step."
             )
         posture = f"Eligible categories start locked. {earned} A correction re-locks the category."
     elif mode == "supervised":
@@ -140,17 +135,6 @@ def _doctrine(settings: dict[str, object], has_thresholds: bool, authority_marke
             "send a post-action note (\"[action taken]. Reply UNDO if needed.\"), and log "
             "`decision_presented` with `\"autonomous\": true`."
         )
-        if mode == "copilot":
-            # The approval-act requirement is COPILOT-ONLY: it governs earned
-            # unlocks. Full mode's day-one unlocks have no ladder to approve —
-            # rendering this sentence there made the doctrine lie against
-            # _render_thresholds (bot P1; fixing copilot's gate-that-lies had
-            # leaked a doctrine-lie into full).
-            act_directly += (
-                " An unlock itself only takes effect once the property manager's "
-                "approval act is recorded on the category (`pm_approval` with "
-                "approver and timestamp)."
-            )
     threshold_note = " Runtime state is recorded in `copilot-thresholds.json`." if has_thresholds else ""
     authority_note = ""
     if authority_markers:

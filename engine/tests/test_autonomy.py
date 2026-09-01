@@ -64,9 +64,7 @@ class AutonomyCasualties(unittest.TestCase):
         _, state = self._render("copilot", "last_3", "90")
         row = state["categories"]["lock_change"]
         self.assertEqual(row["window"], "last_3")
-        row.update(total_decisions=3, accuracy_pct=100,
-                   pm_approval={"approved_by": "property manager",
-                                "approved_at": "2026-09-01T12:00:00Z"})
+        row.update(total_decisions=3, accuracy_pct=100)
         self.assertTrue(autonomy.evaluate_unlock(state, "lock_change"))
         # and 2 decisions under a last_3 window must not unlock even approved
         row.update(status="locked", total_decisions=2)
@@ -119,34 +117,30 @@ class CategoryClassificationCompleteness(unittest.TestCase):
                          f"unclassified categories (add to EXTERNAL_SEND_CATEGORIES or INTERNAL_CATEGORIES): {unclassified}")
 
 
-class ApprovalActCasualties(unittest.TestCase):
-    """Code follows doctrine: the doctrine promises explicit PM approval of
-    every unlock, so counters alone must never unlock (gate-that-lies class)."""
+class AutomaticUnlockCasualties(unittest.TestCase):
+    """Owner-ruled 2026-09-01: unlocks are AUTOMATIC on the accuracy numbers
+    (doctrine follows code). These supersede the approval-act casualties."""
 
     def _copilot_row(self):
-        state = {"autonomy_mode": "copilot", "categories": {"lock_change": {
+        return {"autonomy_mode": "copilot", "categories": {"lock_change": {
             "mode": "copilot", "status": "locked", "window": "last_10",
             "qualifying_accuracy": 90, "total_decisions": 10, "accuracy_pct": 100,
         }}}
-        return state
 
-    def test_accuracy_alone_never_unlocks_without_recorded_approval(self):
-        print("ARMED: counters/accuracy alone must not unlock without a recorded PM approval act")
+    def test_met_accuracy_bar_unlocks_automatically(self):
+        print("ARMED: a met accuracy bar unlocks with no sign-off step")
         state = self._copilot_row()
-        self.assertFalse(autonomy.evaluate_unlock(state, "lock_change"))
-        self.assertEqual(state["categories"]["lock_change"]["status"], "locked")
-
-    def test_recorded_approval_with_met_bar_unlocks(self):
-        state = self._copilot_row()
-        state["categories"]["lock_change"]["pm_approval"] = {
-            "approved_by": "property manager", "approved_at": "2026-09-01T12:00:00Z"}
         self.assertTrue(autonomy.evaluate_unlock(state, "lock_change"))
+        self.assertEqual(state["categories"]["lock_change"]["status"], "unlocked")
 
-    def test_approval_without_met_bar_does_not_unlock(self):
+    def test_unmet_bar_does_not_unlock(self):
         state = self._copilot_row()
         state["categories"]["lock_change"]["accuracy_pct"] = 50
-        state["categories"]["lock_change"]["pm_approval"] = {
-            "approved_by": "property manager", "approved_at": "2026-09-01T12:00:00Z"}
+        self.assertFalse(autonomy.evaluate_unlock(state, "lock_change"))
+
+    def test_null_accuracy_never_auto_unlocks(self):
+        state = self._copilot_row()
+        state["categories"]["lock_change"]["qualifying_accuracy"] = None
         self.assertFalse(autonomy.evaluate_unlock(state, "lock_change"))
 
 
@@ -172,7 +166,6 @@ class RendererPurity(unittest.TestCase):
         autonomy.render(root, cop, "2026-09-01T12:05:00Z")
         text = (root / "GUARDRAILS.md").read_text()
         self.assertIn("Reply UNDO", text)
-        self.assertIn("pm_approval", text)
         # and a second identical render is byte-stable (idempotent)
         autonomy.render(root, cop, "2026-09-01T12:05:00Z")
         self.assertEqual(text, (root / "GUARDRAILS.md").read_text())
@@ -232,8 +225,10 @@ if __name__ == "__main__":
 
 class RenderCodeConsistency(unittest.TestCase):
     """Per-mode consistency between rendered doctrine CLAIMS about unlock
-    requirements and evaluate_unlock BEHAVIOR — a fix leaking across mode
-    prose (or code drifting from prose) dies here by name."""
+    requirements and evaluate_unlock BEHAVIOR (direction is always
+    doctrine-matches-code; the agreed truth is AUTOMATIC unlock-by-accuracy
+    per owner ruling 2026-09-01). Any mode prose promising an approval step the code
+    does not require dies here by name."""
 
     def setUp(self):
         self.temp = Path(tempfile.mkdtemp(prefix="autonomy-consistency-"))
@@ -251,37 +246,39 @@ class RenderCodeConsistency(unittest.TestCase):
         return ((root / "GUARDRAILS.md").read_text(),
                 json.loads((root / "copilot-thresholds.json").read_text()))
 
-    def _met_bar_row(self, state, approval):
+    NO_SIGNOFF_CLAIMS = ("pm_approval", "approval act is recorded",
+                         "explicit property-manager approval",
+                         "explicit property manager approval")
+
+    def test_copilot_prose_claims_auto_and_code_auto_unlocks(self):
+        print("ARMED: copilot doctrine claims automatic unlock and the code delivers it")
+        doctrine, state = self._render("copilot")
+        self.assertIn("unlocks AUTOMATICALLY", doctrine)
+        for claim in self.NO_SIGNOFF_CLAIMS:
+            self.assertNotIn(claim, doctrine, claim)
         row = state["categories"]["lock_change"]
         row.update(total_decisions=10, accuracy_pct=100,
                    qualifying_accuracy=90, window="last_10")
-        if approval:
-            row["pm_approval"] = {"approved_by": "pm",
-                                  "approved_at": "2026-09-01T12:00:00Z"}
-        return row
-
-    def test_copilot_prose_requires_approval_and_code_enforces_it(self):
-        print("ARMED: copilot doctrine and evaluate_unlock must both require the approval act")
-        doctrine, state = self._render("copilot")
-        self.assertIn("pm_approval", doctrine)
-        self._met_bar_row(state, approval=False)
-        self.assertFalse(autonomy.evaluate_unlock(state, "lock_change"))
-        self._met_bar_row(state, approval=True)
         self.assertTrue(autonomy.evaluate_unlock(state, "lock_change"))
 
-    def test_full_prose_never_claims_approval_gated_unlocks(self):
-        print("ARMED: full-mode doctrine must not claim approval-gated unlocks (day-one autonomy)")
+    def test_full_prose_claims_day_one_and_no_signoff(self):
+        print("ARMED: full-mode doctrine claims day-one autonomy with no sign-off promises")
         doctrine, state = self._render("full")
-        self.assertNotIn("pm_approval", doctrine)
-        self.assertNotIn("approval act is recorded", doctrine)
-        # and the state agrees: eligible categories unlocked with no approval act
+        for claim in self.NO_SIGNOFF_CLAIMS:
+            self.assertNotIn(claim, doctrine, claim)
+        self.assertIn("day one", doctrine)
         self.assertEqual(state["categories"]["lock_change"]["status"], "unlocked")
-        self.assertNotIn("pm_approval", state["categories"]["lock_change"])
 
     def test_supervised_prose_promises_no_unlock_and_code_agrees(self):
-        print("ARMED: supervised doctrine promises no unlock and evaluate_unlock agrees even with approval")
+        print("ARMED: supervised doctrine promises no unlock and evaluate_unlock agrees")
         doctrine, state = self._render("supervised")
         self.assertIn("No accuracy record unlocks anything", doctrine)
-        row = self._met_bar_row(state, approval=True)
+        row = state["categories"]["lock_change"]
+        row.update(total_decisions=10, accuracy_pct=100,
+                   qualifying_accuracy=90, window="last_10")
         self.assertFalse(autonomy.evaluate_unlock(state, "lock_change"))
         self.assertEqual(row["status"], "locked")
+
+
+if __name__ == "__main__":
+    unittest.main()
