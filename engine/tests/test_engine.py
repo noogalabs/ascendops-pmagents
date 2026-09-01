@@ -138,6 +138,11 @@ class GlueEngineTests(unittest.TestCase):
             "configuration_date": configuration_date,
         }
         (direct / "seat-config.json").write_text(json.dumps(direct_seat, indent=2) + "\n")
+        engine.autonomy.render(
+            direct,
+            engine.autonomy.parse_settings(engine.validate(self.answers, "maintenance-coordinator").cover),
+            configuration_date + "T00:00:00Z",
+        )
         self.assertEqual(digest(direct), digest(wrapped))
 
     def test_named_reject_list_collects_failures_and_writes_zero_bytes(self):

@@ -104,6 +104,18 @@ def _durable_replace(src: Path, dst: Path) -> None:
         os.replace(src, dst)
 
 
+def atomic_write_text(path: Path, text: str) -> None:
+    """Durably replace one UTF-8 text file through the transaction rename chokepoint."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.atomic-tmp-{os.getpid()}")
+    with temporary.open("w", encoding="utf-8") as handle:
+        handle.write(text)
+        handle.flush()
+        os.fsync(handle.fileno())
+    _durable_replace(temporary, path)
+    _fsync_directory(path.parent)
+
+
 def _lock_exclusive_nonblocking(handle) -> None:
     """Acquire a non-blocking exclusive lock; raise ``BlockingIOError`` on contention.
 

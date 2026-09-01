@@ -400,7 +400,7 @@ class WindowsPlatformShapeTests(unittest.TestCase):
         # that merely mentions these tokens, and cannot be evaded by whitespace
         # variants like `os.open (path)` the way a text-regex census could.
         self.assertEqual(
-            fsync_directory_calls, 6,
+            fsync_directory_calls, 7,
             "call-site count changed; review the new site's cross-platform behavior "
             "and update this pin deliberately, do not just bump the number",
         )

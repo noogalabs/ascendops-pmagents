@@ -15,6 +15,9 @@ Company name: Ridgeline Residential Management
 Org short-name: ridgeline
 Forward email: turnover@ridgeline.example
 Timezone: America/Denver
+Autonomy mode: [documented] copilot
+Unlock window: [documented] last_10
+Qualifying accuracy: [documented] null
 
 Day mode start: 08:00
 Day mode end: 18:00
