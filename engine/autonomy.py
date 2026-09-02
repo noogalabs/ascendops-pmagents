@@ -21,6 +21,13 @@ END = "<!-- PMAGENTS-AUTONOMY:END -->"
 # appended second section beside a legacy remnant.
 BLOCK = re.compile(r"\n?<!-- (?:PMAGENTS|BETTY)-AUTONOMY:BEGIN -->.*?<!-- (?:PMAGENTS|BETTY)-AUTONOMY:END -->\n?", re.S)
 EXTERNAL_SEND_CATEGORIES = {
+    # business-development seat (PR18): every prospect/owner-facing send
+    "cold_outreach_first_touch",
+    "nurture_value_touch",
+    "appointment_reminder",
+    "meeting_confirmation",
+    "intake_form_link_send",
+    "post_call_recap",
     "resident_comms",
     "templated_owner_update",
     "owner_statement_delivery",
@@ -33,6 +40,9 @@ EXTERNAL_SEND_CATEGORIES = {
 # is added unclassified — the closed list above cannot silently miss a future
 # external-send-shaped category in full mode.
 INTERNAL_CATEGORIES = {
+    # business-development seat (PR18): internal notes to the manager, no external recipient
+    "alert_triage_note",
+    "internal_status_to_manager",
     "board_row_write",
     "decision_log_filing",
     "emergency_dispatch",

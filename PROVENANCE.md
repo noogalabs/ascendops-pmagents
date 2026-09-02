@@ -87,3 +87,14 @@ shipped: its member-facing extras remain pending owner review. The reviewed
 mapping table still governs semantic question-to-value ownership, while every
 destination retarget from that draft to the classroom tree is documented and
 covered by the declared-consumer and production-runtime casualties.
+## Business Development edition
+
+The Business Development edition was assembled from the mapping-owner-reviewed BD
+table, the fictional Ridgeline BD fixture, the reviewed 42-question questionnaire,
+and the reviewed 67-file Business Development bootstrap package. Three generic
+owner-acquisition companion documents ship at the library root, where the fan-wide
+companion-truth and promise-ledger sweeps inspect them. The imported operating prose
+was scrubbed so speed-to-lead instructions defer to the configured cover authority;
+day-mode values remain absent until the maintenance peer capability is expressible.
+The edition consumes the canonical shared engine and contributes only its registry
+row; shared peer-value capability remains owned by the named PR13b successor.

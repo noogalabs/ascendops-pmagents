@@ -458,6 +458,52 @@
           "named_test": "test_named_turnover_seam_contract_and_permanent_human_gates"
         }
       }
+    },
+    "business-development": {
+      "edition": "business-development",
+      "mapping": "business-development.json",
+      "mapping_driven": true,
+      "companions": ["BDM Judgment Guide.md", "BDM Owner-Acquisition Playbook.md", "BDM Pipeline Board.md"],
+      "companion_claim": "Companion documents in this folder: BDM Owner-Acquisition Playbook, BDM Pipeline Board, and BDM Judgment Guide (all Generic Baseline).",
+      "banned_companion_claims": [],
+      "promise_subject_sha256": {
+        "INTRO": "d34dee9a26898828bc4bcd7ed60f6a5018233ebc9316b81df4bd284e9284f79f",
+        "A2": "c32eecda5f4a78e8185df9f2f02abd489899ab9ed779a5191e6ea9f3d49566eb",
+        "A4": "61029720dd051a0a8cbf208615632021f4a99239f06c2ff9ac34d0dec325b019",
+        "A5": "8905336707f10d06a44307c9d531533cb15d8d8a537f62c4470b84a6e001ecdc",
+        "A6": "c0c1e57c9dac7684c06543f54154b0e5c36c55c66f106011a3d4a8f172941487",
+        "A7": "f9bb918d5d723aca9fc692c5e8e802a00f5553cd0cdf3561f377e37d38aa35e3",
+        "B5": "27b84c58ee7c8e16b1ca19d0da6914a8a41655b97fb125f047ce59bc309cbf36",
+        "B6": "f19059cfb3a9baf944fceb34f7b9004c058ba3ea8eabc742d6742fc8c8580114",
+        "B9": "6b23e8d58ec814b40e6e45ee82c18c41756aec3b2806481c983bdebae50fc921",
+        "B10": "0a8a3fd5bcd9748548be9992db5000d57ac67fdbb226bcdd62079e4e3f16c777",
+        "B11": "73157f6424cfa29b927ecc208ed9d38cfa0a53aa418c5c17f1004964155ca9a0",
+        "B12": "a8c9c99bba65d9174a9af7b7a86780e181c97007f87d964850b526c130673620",
+        "C2": "86fc28d7bd5cd39ce89d179ed7a92c201fd0c77f87c30905e7cb35d000c158cc",
+        "C3": "346df4b33070bc795f453f0d0ad058caf14ecb524ad7176680b9abf415bfdfd1",
+        "D10": "966208d944c596e3f5124f6ef502cb143ea74ccbd5f467702e9e7921ce24d283",
+        "D11": "ace9f7ccf0166b1710c20faeefe6d64c90bf9babc9dafea6e2c555f300085242",
+        "D12": "06ccdb4ca0b8d2b383c5574e88f452708a0c06149bf39e47494dd4a6b1b7a00b"
+      },
+      "promise_ledger": {
+        "INTRO": {"no_gate_reason": "format, shipped-library truth, and legal-review disclosure; 2026-09-02 rebase onto main: the standard Configuration Cover Sheet block (autonomy mode / unlock window / qualifying accuracy / resident messaging autonomy, PR34 wording) appended verbatim from the accounting edition; its autonomy-mode notes restate gated behavior as standing facts exactly as the accounting INTRO disposition records, no BD-specific promise wording changed", "gate_surface": "engine/autonomy.py (safety_gates, evaluate_unlock pm_approval, render)", "named_test": "engine/tests/test_autonomy.py AutonomyCasualties + AutomaticUnlockCasualties + RenderCodeConsistency + MemberChoiceCasualties + RenderCodeConsistencyChoice + IrreversibleGateByName + RendererPurity"},
+        "A2": {"no_gate_reason": "question collects market-specific public ownership sources"},
+        "A4": {"gate_surface": ".claude/skills/property-and-owner-gates/SKILL.md", "named_test": "test_named_business_development_promise_surfaces_and_companions"},
+        "A5": {"gate_surface": ".claude/skills/fee-and-contract-gates/SKILL.md", "named_test": "test_named_business_development_promise_surfaces_and_companions"},
+        "A6": {"no_gate_reason": "question collects company-side signature and disclosure authority"},
+        "A7": {"gate_surface": ".claude/skills/never-promise-list/SKILL.md", "named_test": "test_named_business_development_promise_surfaces_and_companions"},
+        "B5": {"gate_surface": ".claude/skills/never-promise-list/SKILL.md", "named_test": "test_named_business_development_promise_surfaces_and_companions"},
+        "B6": {"gate_surface": ".claude/skills/never-promise-list/SKILL.md", "named_test": "test_named_business_development_promise_surfaces_and_companions"},
+        "B9": {"gate_surface": ".claude/skills/fee-and-contract-gates/SKILL.md", "named_test": "test_named_business_development_promise_surfaces_and_companions"},
+        "B10": {"gate_surface": ".claude/skills/fee-and-contract-gates/SKILL.md", "named_test": "test_named_business_development_promise_surfaces_and_companions"},
+        "B11": {"gate_surface": ".claude/skills/never-promise-list/SKILL.md", "named_test": "test_named_business_development_promise_surfaces_and_companions"},
+        "B12": {"gate_surface": ".claude/skills/fee-and-contract-gates/SKILL.md", "named_test": "test_named_business_development_promise_surfaces_and_companions"},
+        "C2": {"gate_surface": ".claude/skills/escalation-log/SKILL.md", "named_test": "test_named_business_development_promise_surfaces_and_companions"},
+        "C3": {"gate_surface": ".claude/skills/fee-and-contract-gates/SKILL.md", "named_test": "test_named_business_development_promise_surfaces_and_companions"},
+        "D10": {"gate_surface": ".claude/skills/never-promise-list/SKILL.md", "named_test": "test_named_business_development_promise_surfaces_and_companions"},
+        "D11": {"no_gate_reason": "question collects the operator-approved inspection description"},
+        "D12": {"gate_surface": ".claude/skills/draft-release-gate/SKILL.md and .claude/skills/shadow-mode-calibration/SKILL.md", "named_test": "test_named_business_development_promise_surfaces_and_companions"}
+      }
     }
   }
 }

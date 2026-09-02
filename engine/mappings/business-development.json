@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "seat": "business-development",
+  "library_id": "business-development-2026-08-25",
+  "source_table": "mapping-tables/bd.md",
+  "structured_answers_file": "business-development-config.json",
+  "cover_fields": [
+    {"label":"Company name","key":"company_name"},
+    {"label":"Org short-name","key":"org_short_name"},
+    {"label":"Forward email","key":"forward_email"},
+    {"label":"Timezone","key":"timezone"},
+    {"label":"Owner speed-to-lead window","key":"speed_to_lead_minutes"}
+  ],
+  "placeholders": [
+    {"placeholder":"bd_manager_name","source":"C2","extractor":"first_person"},
+    {"placeholder":"legal_counsel","source":"C4","extractor":"first_person"},
+    {"placeholder":"broker_of_record","source":"C3","extractor":"first_person"},
+    {"placeholder":"escalation_turnaround","source":"B12","extractor":"identity"},
+    {"placeholder":"referral_fee_payer","source":"C7","extractor":"first_person"},
+    {"placeholder":"pipeline_board_platform","source":"D1","extractor":"identity"},
+    {"placeholder":"pipeline_board_location","source":"D1","extractor":"identity"},
+    {"placeholder":"onboarding_specialist","source":"C5","extractor":"first_person"},
+    {"placeholder":"handoff_channel","source":"C5","extractor":"identity"},
+    {"placeholder":"property_access_coordinator","source":"C6","extractor":"first_person"},
+    {"placeholder":"esignature_tool","source":"D4","extractor":"identity"},
+    {"placeholder":"pma_signer","source":"D4","extractor":"identity"},
+    {"placeholder":"owner_intake_form_link","source":"D3","extractor":"identity"},
+    {"placeholder":"company_name","source":"cover.company_name","extractor":"identity"},
+    {"placeholder":"speed_to_lead_minutes","source":"cover.speed_to_lead_minutes","extractor":"identity"},
+    {"placeholder":"agent_name","source":"cover.org_short_name","extractor":"identity"},
+    {"placeholder":"org","source":"cover.org_short_name","extractor":"identity"},
+    {"placeholder":"org_name","source":"cover.org_short_name","extractor":"identity"},
+    {"placeholder":"current_timestamp","source":"cover.timezone","extractor":"identity"}
+  ],
+  "config_keys": [
+    {"path":"/timezone","source":"cover.timezone","extractor":"identity","value_type":"string","mode":"replace"},
+    {"path":"/speed_to_lead_minutes","source":"cover.speed_to_lead_minutes","extractor":"identity","value_type":"integer","minimum":1,"mode":"create"}
+  ],
+  "cross_seat": {
+    "fill_exempt": ["quotable_standards", "protection_program_terms_verbatim", "pet_damage_coverage", "leasing_guarantee_program"],
+    "never_graduate": ["fair-housing", "contract-change", "legal-advice", "fee-deviation", "red-flag-property"],
+    "checks": [],
+    "cross_seat_lane": [
+      {"lane_id":"BD-14","from_seat":"business-development","to_seat":"leasing"}
+    ]
+  }
+}

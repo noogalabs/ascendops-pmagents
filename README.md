@@ -12,6 +12,7 @@ The repository starts with the reviewed maintenance edition and the six-seat map
 - `editions/leasing/` — mapping-driven leasing and renewals edition.
 - `editions/turnover/` — mapping-driven turnover questionnaire, fictional fixture, tests, and make-ready library.
 - `editions/accounting/` — mapping-driven accounting questionnaire, fictional fixture, tests, and reviewed accounting library.
+- `editions/business-development/` — mapping-driven owner-acquisition questionnaire, fictional fixture, tests, and reviewed BDM library.
 - `mapping-tables/` — the six authoritative mapping tables; collectively they are the cross-seat seam register.
 - `templates/maintenance-coordinator/` — the clean shipped maintenance agent source used by guided setup.
 - `fixtures/ridgeline/` — fictional integration fixtures.

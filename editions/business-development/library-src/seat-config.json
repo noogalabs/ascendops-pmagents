@@ -1,0 +1,167 @@
+{
+  "_about": "Structured answers for the BD seat. The questionnaire's closing text says every board dropdown, alert clock, and quoted standard reads from this configuration. Scalars that are spent in bootstrap prose or config.json are minted as double-brace placeholders instead and are NOT duplicated here. Values below are shapes with fictional or empty defaults; the install fills them.",
+  "_frozen_docs": "The BDM questionnaire, playbook, board, and judgment guide are reference documents. They are never edited. This file is the one door company specifics enter through.",
+
+  "_descriptive": {
+    "_cite": "A1",
+    "current_door_count": null,
+    "benchmark_tier": "under_150 | 150_to_400 | 400_plus",
+    "_note": "Tier selects the healthy-pipeline benchmark band used by pipeline-metrics-and-review. It is not an alert threshold."
+  },
+
+  "markets": {
+    "_cite": "A2, A3",
+    "states": [],
+    "tax_record_lookup_by_market": {},
+    "service_area_boundary": "",
+    "_note": "tax_record_lookup_by_market is a map, one lookup site per market. Ownership is verified there before any agreement is sent. A market with no lookup site is a lane that cannot run: flag it, do not substitute a nearby market's site."
+  },
+
+  "acceptance": {
+    "_cite": "A3, A4",
+    "minimum_rent_threshold": null,
+    "accepted_property_types": [],
+    "accepted_conditions": [],
+    "above_market_walkaway_pct": null,
+    "code_violation_rule": "never accepted without BD-manager approval and a documented remediation plan"
+  },
+
+  "state_rules": {
+    "_cite": "A5, A6, A7, A8, A9",
+    "agreement_per_unit_or_per_owner": "",
+    "accepted_ownership_entity_types": [],
+    "company_signer_requirements": "",
+    "required_disclosures_at_signing": [],
+    "fee_disclosure_rules": "",
+    "deposit_limits_and_handling": "",
+    "fair_housing_confirmations": "",
+    "age_or_student_restriction_answer": "",
+    "record_retention": {
+      "won_deals": "permanent",
+      "lost_deals_active_months": 12,
+      "duplicates_days": 30,
+      "_cite": "A9 (board defaults shown; confirm with counsel)"
+    },
+    "_unconfirmed_rule": "A state-law field left empty or marked 'confirm with counsel' means that lane is NOT live. The agent never fills a legal answer from a hint, a sibling market, or a prior install."
+  },
+
+  "packages": {
+    "_cite": "B1, B2, B3, B4, B5, B6, B7, B8",
+    "tier_names": [],
+    "monthly_fee_by_tier": {},
+    "top_package_included_programs": [],
+    "leasing_guarantee_program": { "exists": false, "markets": [], "terms": "" },
+    "protection_program_terms_verbatim": "",
+    "pet_policy": { "screening_process": "", "monthly_fee": null, "fee_goes_to": "owner", "damage_coverage": null },
+    "rehab_management": { "pct_under_threshold": null, "flat_fee_above": null, "invoice_threshold": 3000 },
+    "_note": "protection_program_terms_verbatim is quoted to owners word for word. Coverage is never paraphrased upward. leasing_guarantee_program.exists=false means the agent never references a leasing guarantee in that market, at any stage."
+  },
+
+  "agreement_terms": {
+    "_cite": "B10, B11, B12",
+    "maintenance_auth_threshold": null,
+    "company_minimum_auth_threshold": null,
+    "termination_notice_period": "",
+    "satisfaction_guarantee_window": "",
+    "fee_deviation_approver": "bd_manager",
+    "agreement_language_approver": "broker_of_record",
+    "quoted_escalation_turnaround": ""
+  },
+
+  "referrals": {
+    "_cite": "B9, C7",
+    "fee_schedule_by_type": {},
+    "signed_agreement_required": true,
+    "unpaid_alert_days_after_won": 7,
+    "paid_by": ""
+  },
+
+  "people": {
+    "_cite": "C1, C2, C3, C4, C5, C6, C7, C8, C9",
+    "bdms": [],
+    "bd_manager": "",
+    "broker_of_record": "",
+    "legal_counsel": "",
+    "onboarding_specialist": "",
+    "handoff_channel": "",
+    "property_access_coordinator": "",
+    "referral_fee_payer": "",
+    "redirect_recipients": { "brokerage": "", "investment": "" },
+    "decline_referral_partners": [],
+    "_note": "An empty bd_manager is a PHASE-ZERO stop, not a default. Every gate in this seat routes to a named person; a gate with no name is an unrouted gate, and the seat does not run one."
+  },
+
+  "platform": {
+    "_cite": "D1, D2, D3, D4",
+    "pipeline_board_system": "",
+    "pipeline_board_location": "",
+    "active_lead_sources": [],
+    "company_specific_lead_sources": [],
+    "owner_intake_form_location": "",
+    "owner_intake_form_link": "",
+    "esignature_tool": "",
+    "company_side_executor": ""
+  },
+
+  "clocks": {
+    "_cite": "D5, D6",
+    "max_contact_attempts": null,
+    "max_attempt_window_days": null,
+    "cold_lead_days_no_touch": null,
+    "nurture_exhausted_touches": null,
+    "nurture_exhausted_window_days": null,
+    "nurture_no_touch_alert_days": 30,
+    "lost_lead_reengagement_window_days": null,
+    "unsigned_agreement_alert_hours": null,
+    "unsigned_agreement_escalate_days": null,
+    "days_in_stage_review_flag": null,
+    "stage_max_days": {
+      "S0": null, "S1": null, "S2": null, "S3": null, "S4": null,
+      "S5_warning": null, "S5_escalate": null, "S6": null,
+      "_cite": "D6 names S0-S4 explicitly; S5 and S6 come from the board's own stage specs and are carried here so the register is complete"
+    }
+  },
+
+  "activity_targets": {
+    "_cite": "D7, D8",
+    "weekly": { "new_leads": null, "discovery_calls": null, "appointments_held": null, "agreements_signed": null, "doors_added": null, "outbound_calls": null, "followup_touches": null },
+    "daily_outbound_call_floor": null,
+    "monthly_door_goal": null,
+    "target_days_lead_to_close": null,
+    "pipeline_minimum_multiple": 3
+  },
+
+  "cadence": {
+    "_cite": "D9",
+    "weekly_review_when": "",
+    "weekly_review_attendees": [],
+    "monthly_report_recipients": []
+  },
+
+  "quotable_standards": {
+    "_cite": "D10, D11, D12",
+    "typical_days_to_lease": "",
+    "screening_point_count": null,
+    "marketing_site_count": null,
+    "leasing_line_coverage": "",
+    "inspection_schedule": "",
+    "owner_update_cadence": "",
+    "nonemergency_response_sla": "",
+    "eviction_timeline_range": "",
+    "_note": "Every value here is a claim the agent may make out loud. An empty value is NOT a gap to fill with the generic example -- it is a claim the agent may not make. A days-to-lease number is always quoted as typical, never as a guarantee, and an eviction range is always quoted as typical for the market, never as a promise."
+  },
+
+  "compliance": {
+    "_cite": "A8, A9, D2",
+    "do_not_contact_list_location": "",
+    "permitted_lead_source_verification": "every source is confirmed compliant before the first touch; no purchased or scraped lists",
+    "opt_out_rule": "an opt-out stops every cadence on that contact immediately, is logged the same minute, and is never overridden by a later campaign"
+  },
+
+  "shadow_mode": {
+    "active": true,
+    "digest_recipients_cite": "C-group",
+    "ends_when": "the BD manager says so, out loud, after a run of digests that matches reality",
+    "_note": "No outbound and no board write of record while active. See .claude/skills/shadow-mode-calibration/."
+  }
+}

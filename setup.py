@@ -21,6 +21,7 @@ SEAT_LABELS = {
     "accounting": "Accounting",
     "maintenance-coordinator": "Maintenance coordinator",
     "turnover-coordinator": "Turnover coordinator",
+    "business-development": "Business development",
 }
 SEATS = tuple({"id": seat, "label": SEAT_LABELS.get(seat, seat.replace("-", " ").title())}
               for seat in engine.SUPPORTED)
