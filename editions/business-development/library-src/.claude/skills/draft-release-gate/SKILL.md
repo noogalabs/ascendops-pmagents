@@ -31,7 +31,7 @@ Every draft, every time. In order, because the first one catches the most.
 | 1 | Any number, date, timeline, outcome, or coverage amount in it? | `never-promise-list` |
 | 2 | Does anything in it touch a fee, a term, or a threshold? | `fee-and-contract-gates` — if yes, it does not get staged, it gets escalated |
 | 3 | Anything protected-class adjacent? | `fair-housing-guard` — route, do not stage |
-| 4 | Is every quoted figure from `seat-config.json` rather than the generic example? | `pricing-presentation` |
+| 4 | Is every quoted figure from `business-development-config.json` rather than the generic example? | `pricing-presentation` |
 | 5 | Is this a bare nudge? | `followup-and-nurture` — rewrite it |
 | 6 | Does it name anyone it did not need to name? | `prospect-data-handling` |
 | 7 | Would two or three plain sentences do the job better? | Usually yes |
@@ -42,7 +42,7 @@ A draft failing check 2 or 3 is not a draft. It is an escalation wearing one.
 
 ## The Class Register
 
-Classes ship **locked**. They graduate one at a time, lowest consequence first, by explicit action of {{bd_manager_name}} <!-- C2 -->. Never by accuracy alone, and never by this seat's own assessment.
+Classes ship **locked**. Owner/prospect-facing classes stay locked until the member opts in on the cover sheet (external send autonomy: yes); once opted in, a class graduates by its accuracy window one category at a time, lowest consequence first, and {{bd_manager_name}} <!-- C2 --> can re-lock any class at any time. Never by this seat's own assessment outside that window, and never while the member has not opted in.
 
 Register: `copilot-thresholds.json`.
 

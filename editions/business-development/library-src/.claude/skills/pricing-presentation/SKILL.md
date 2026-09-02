@@ -12,7 +12,7 @@ Two presentations, in this order, always. The rate conversation comes first beca
 
 ## The Rule That Governs Every Number Here
 
-**Every figure comes from `seat-config.json`. Never from the generic example, never from memory, never from what a similar company charges.**
+**Every figure comes from `business-development-config.json`. Never from the generic example, never from memory, never from what a similar company charges.**
 
 An empty field is not a gap to fill with something sensible. It is a number you may not say. If `packages.leasing_guarantee_program.exists` is false in this market, there is no leasing guarantee to reference — not "something similar", not "we usually", not at all <!-- B5 -->.
 

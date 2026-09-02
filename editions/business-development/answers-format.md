@@ -171,7 +171,7 @@ Answer: ________________________________________
 
 B12. Who can approve a fee deviation or a PMA modification, and what turnaround do you quote the owner while you escalate?
 
-Hint: The BDM never discounts or modifies unilaterally: fees go to the manager, contract language to the broker of record. Common quoted turnaround: 24 to 48 hours.
+Hint: The BDM never discounts or modifies unilaterally: fees go to the manager, contract language to the broker of record. Common quoted turnaround: 24 to 48 hours. End the answer with the labeled lines the engine reads, one per line: `Quoted turnaround: ...`.
 
 Answer: ________________________________________
 
@@ -184,7 +184,7 @@ Answer: ________________________________________
 
 C2. Who is the BDM's manager: the person every fee deviation, red-flag property, stalled deal, and walk-away decision escalates to?
 
-Hint: Also the weekly pipeline review partner. Every escalation is logged in the CRM before the manager conversation, not after.
+Hint: Also the weekly pipeline review partner. Every escalation is logged in the CRM before the manager conversation, not after. End the answer with the labeled lines the engine reads, one per line: `BD manager: ...`.
 
 Answer: ________________________________________
 
@@ -202,7 +202,7 @@ Answer: ________________________________________
 
 C5. Who is your onboarding specialist, and through what channel does the signed-PMA handoff reach them?
 
-Hint: This person is named in the post-PMA email as the owner's new main point of contact; the onboarding call is scheduled within 48 hours of signing.
+Hint: This person is named in the post-PMA email as the owner's new main point of contact; the onboarding call is scheduled within 48 hours of signing. End the answer with the labeled lines the engine reads, one per line: `Handoff channel: ...`.
 
 Answer: ________________________________________
 
@@ -233,7 +233,7 @@ Answer: ________________________________________
 ### Group D: Platform, Cadence, and Quoted Standards
 D1. What platform hosts your pipeline board?
 
-Hint: The board is platform-agnostic: Google Sheets, Excel, Airtable, Notion, or a CRM all work. Name the system and where it lives.
+Hint: The board is platform-agnostic: Google Sheets, Excel, Airtable, Notion, or a CRM all work. Name the system and where it lives. End the answer with the labeled lines the engine reads, one per line: `Board location: ...`.
 
 Answer: ________________________________________
 
@@ -245,37 +245,37 @@ Answer: ________________________________________
 
 D3. Where does your Owner Intake Form live, and what is the link the post-PMA email sends?
 
-Hint: Step 1 of the post-PMA email asks the owner to complete it within 24 hours; the BDM can also offer to complete it together on a call.
+Hint: Step 1 of the post-PMA email asks the owner to complete it within 24 hours; the BDM can also offer to complete it together on a call. End the answer with the labeled lines the engine reads, one per line: `Owner intake form link: ...`.
 
 Answer: ________________________________________
 
 D4. How is the PMA sent and signed, and who executes it on the company side?
 
-Hint: Name the e-signature tool. The W-9 goes out attached to the PMA send, and an unsigned appointment means the PMA is sent the same business day.
+Hint: Name the e-signature tool. The W-9 goes out attached to the PMA send, and an unsigned appointment means the PMA is sent the same business day. End the answer with the labeled lines the engine reads, one per line: `E-signature tool: ...`, `Company signer: ...`.
 
 Answer: ________________________________________
 
 D5. What are your contact-attempt and archive thresholds?
 
-Hint: Common defaults: unresponsive after 6 attempts over 10 days; a lead is cold at 3 days without a touch; nurture is exhausted after 8 touches over 180 days. Also set your re-engagement window for lost leads.
+Hint: Common defaults: unresponsive after 6 attempts over 10 days; a lead is cold at 3 days without a touch; nurture is exhausted after 8 touches over 180 days. Also set your re-engagement window for lost leads. End the answer with the labeled lines the engine reads, one per line: `Max contact attempts: ...`, `Attempt window days: ...`, `Cold lead days: ...`, `Nurture exhausted touches: ...`, `Nurture exhausted window days: ...`, `Lost lead re-engagement days: ...`.
 
 Answer: ________________________________________
 
 D6. What are your stall and escalation clocks on an unsigned PMA and on stage age?
 
-Hint: Common defaults: red alert at 48 hours unsigned, manager escalation at 5 days; stage maximums of 3, 5, 3, 7, and 1 days for stages S0 through S4. Also pick the days-in-stage number your weekly review flags.
+Hint: Common defaults: red alert at 48 hours unsigned, manager escalation at 5 days; stage maximums of 3, 5, 3, 7, and 1 days for stages S0 through S4. Also pick the days-in-stage number your weekly review flags. End the answer with the labeled lines the engine reads, one per line: `Unsigned alert hours: ...`, `Unsigned escalate days: ...`, `Stage max days S0: ...`, `Stage max days S1: ...`, `Stage max days S2: ...`, `Stage max days S3: ...`, `Stage max days S4: ...`, `Days in stage review flag: ...`.
 
 Answer: ________________________________________
 
 D7. What are your weekly activity goals, and what is your daily outbound call floor?
 
-Hint: The weekly metrics table needs your numbers: new leads, discovery calls, appointments held, PMAs signed, doors added, outbound calls, follow-up touches. Suggested daily floor: 10 to 20 outbound prospecting calls.
+Hint: The weekly metrics table needs your numbers: new leads, discovery calls, appointments held, PMAs signed, doors added, outbound calls, follow-up touches. Suggested daily floor: 10 to 20 outbound prospecting calls. End the answer with the labeled lines the engine reads, one per line: `Weekly new leads: ...`, `Weekly discovery calls: ...`, `Weekly appointments held: ...`, `Weekly agreements signed: ...`, `Weekly doors added: ...`, `Weekly outbound calls: ...`, `Weekly follow-up touches: ...`, `Daily outbound call floor: ...`.
 
 Answer: ________________________________________
 
 D8. What is your monthly door goal, and what is your target for average days from lead to close?
 
-Hint: The pipeline-below-minimum alert fires when active pipeline doors fall under 3 times the monthly goal. Benchmark: unsigned-PMA stage averages under 3 days on won deals.
+Hint: The pipeline-below-minimum alert fires when active pipeline doors fall under 3 times the monthly goal. Benchmark: unsigned-PMA stage averages under 3 days on won deals. End the answer with the labeled lines the engine reads, one per line: `Monthly door goal: ...`, `Target days lead to close: ...`.
 
 Answer: ________________________________________
 

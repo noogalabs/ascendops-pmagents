@@ -285,7 +285,7 @@ Answer: 30 days written notice from either party, available after the first 90 d
 
 B12. Who can approve a fee deviation or a PMA modification, and what turnaround do you quote the owner while you escalate?
 
-Hint: The BDM never discounts or modifies unilaterally: fees go to the manager, contract language to the broker of record. Common quoted turnaround: 24 to 48 hours.
+Hint: The BDM never discounts or modifies unilaterally: fees go to the manager, contract language to the broker of record. Common quoted turnaround: 24 to 48 hours. End the answer with the labeled lines the engine reads, one per line: `Quoted turnaround: ...`.
 
 Answer: Fee deviations, discounts, waivers, and price matches: Rhea Calder, BD manager.
   Management-agreement language, any clause, any threshold: Sloane Karr, broker of record.
@@ -293,6 +293,7 @@ Answer: Fee deviations, discounts, waivers, and price matches: Rhea Calder, BD m
   by end of the next business day. NOTE: the approver half of this question is already answered
   by C2 and C3 - only the turnaround is new here, and an answer naming a third approver would be
   an inconsistency to surface, not a third route.
+  Quoted turnaround: by end of the next business day
 
 ### Group C: People, Escalation, and Handoff
 C1. Who are the BDMs on your team?
@@ -304,7 +305,7 @@ Answer: Two BDMs. Nika Ansell covers Pine Basin; Bram Teller covers Cedar Mesa. 
 
 C2. Who is the BDM's manager: the person every fee deviation, red-flag property, stalled deal, and walk-away decision escalates to?
 
-Hint: Also the weekly pipeline review partner. Every escalation is logged in the CRM before the manager conversation, not after.
+Hint: Also the weekly pipeline review partner. Every escalation is logged in the CRM before the manager conversation, not after. End the answer with the labeled lines the engine reads, one per line: `BD manager: ...`.
 
 Answer: Rhea Calder, Business Development Manager. Every fee deviation, red-flag property,
   stalled deal, and walk-away decision escalates to her, and she is the weekly pipeline review
@@ -313,6 +314,7 @@ Answer: Rhea Calder, Business Development Manager. Every fee deviation, red-flag
   people in different lanes (Dana Wren for leasing and PM assist, Ellis Shore for turnover and
   accounting, Morgan Vale for maintenance). Six seats, four distinct names, and that is the
   correct state for a per-seat routing question. Cross-check on difference; never unify them.
+  BD manager: Rhea Calder
 
 C3. Who is your broker of record?
 
@@ -339,12 +341,13 @@ Answer: Harlan Voss of Voss Legal Group. Takeovers involving litigation or evict
 
 C5. Who is your onboarding specialist, and through what channel does the signed-PMA handoff reach them?
 
-Hint: This person is named in the post-PMA email as the owner's new main point of contact; the onboarding call is scheduled within 48 hours of signing.
+Hint: This person is named in the post-PMA email as the owner's new main point of contact; the onboarding call is scheduled within 48 hours of signing. End the answer with the labeled lines the engine reads, one per line: `Handoff channel: ...`.
 
 Answer: Tam Ruiz, Owner Onboarding Specialist. The signed-agreement handoff reaches her on the
   Ridgeline owner-onboarding chat channel, with the executed agreement auto-filed to the owner
   record in WorkTrail. She is named in the post-agreement email as the owner's new main point of
   contact, and the onboarding call is scheduled within 48 hours of signing.
+  Handoff channel: Ridgeline owner-onboarding chat channel
 
 C6. Who coordinates property access after signing: your local market director or ops lead?
 
@@ -388,7 +391,7 @@ Answer: Two, both fictional: Cedar Ridge Property Group for properties outside t
 ### Group D: Platform, Cadence, and Quoted Standards
 D1. What platform hosts your pipeline board?
 
-Hint: The board is platform-agnostic: Google Sheets, Excel, Airtable, Notion, or a CRM all work. Name the system and where it lives.
+Hint: The board is platform-agnostic: Google Sheets, Excel, Airtable, Notion, or a CRM all work. Name the system and where it lives. End the answer with the labeled lines the engine reads, one per line: `Board location: ...`.
 
 Answer: A spreadsheet workbook bootstrapped from the BDM Pipeline Board Template, living in the
   Ridgeline shared drive under the BD folder. CROSS-SEAT: this is deliberately NOT the property
@@ -396,6 +399,7 @@ Answer: A spreadsheet workbook bootstrapped from the BDM Pipeline Board Template
   maintenance seat's D1 answer, and this seat holds a pointer to it. A BD pipeline board being a
   different system from the PM software is normal rather than a discrepancy: this answer records
   which platform carries this seat's work and claims nothing about the inventory.
+  Board location: Ridgeline shared drive, BD folder, BDM Pipeline Board workbook
 
 D2. Which lead sources are active for your company today, and what company-specific sources should be added to the board's dropdown?
 
@@ -413,16 +417,17 @@ Answer: Active today, five sources: inbound web, owner referrals, realtor referr
 
 D3. Where does your Owner Intake Form live, and what is the link the post-PMA email sends?
 
-Hint: Step 1 of the post-PMA email asks the owner to complete it within 24 hours; the BDM can also offer to complete it together on a call.
+Hint: Step 1 of the post-PMA email asks the owner to complete it within 24 hours; the BDM can also offer to complete it together on a call. End the answer with the labeled lines the engine reads, one per line: `Owner intake form link: ...`.
 
 Answer: The Owner Intake Form lives on the fictional FormBasin service. The link the
   post-agreement email sends is https://forms.ridgeline.example/owner-intake. Step 1 of that
   email asks the owner to complete it within 24 hours, and the BDM offers to fill it out
   together on a call for owners who would rather do it that way.
+  Owner intake form link: https://forms.ridgeline.example/owner-intake
 
 D4. How is the PMA sent and signed, and who executes it on the company side?
 
-Hint: Name the e-signature tool. The W-9 goes out attached to the PMA send, and an unsigned appointment means the PMA is sent the same business day.
+Hint: Name the e-signature tool. The W-9 goes out attached to the PMA send, and an unsigned appointment means the PMA is sent the same business day. End the answer with the labeled lines the engine reads, one per line: `E-signature tool: ...`, `Company signer: ...`.
 
 Answer: The agreement is sent and signed through InkPath, and the W-9 goes out attached to the
   send. Sloane Karr, Principal Broker, executes on the company side. An unsigned appointment
@@ -430,10 +435,12 @@ Answer: The agreement is sent and signed through InkPath, and the W-9 goes out a
   is the same e-signature tool the leasing seat uses for executed leases - one tool company-wide
   is the expected shape, and a difference would be a finding. DUPLICATE-QUESTION: A6 already
   asked who signs on the company side; same person, written once.
+  E-signature tool: InkPath
+  Company signer: Sloane Karr
 
 D5. What are your contact-attempt and archive thresholds?
 
-Hint: Common defaults: unresponsive after 6 attempts over 10 days; a lead is cold at 3 days without a touch; nurture is exhausted after 8 touches over 180 days. Also set your re-engagement window for lost leads.
+Hint: Common defaults: unresponsive after 6 attempts over 10 days; a lead is cold at 3 days without a touch; nurture is exhausted after 8 touches over 180 days. Also set your re-engagement window for lost leads. End the answer with the labeled lines the engine reads, one per line: `Max contact attempts: ...`, `Attempt window days: ...`, `Cold lead days: ...`, `Nurture exhausted touches: ...`, `Nurture exhausted window days: ...`, `Lost lead re-engagement days: ...`.
 
 Answer: Unresponsive after 6 attempts over 10 days, then archived. A lead is cold at 3 days with
   no touch. Nurture is exhausted after 8 touches over 180 days. Re-engagement window for lost
@@ -441,10 +448,16 @@ Answer: Unresponsive after 6 attempts over 10 days, then archived. A lead is col
   runs clocks that look like these and are not - a 48-hour approval hold, a 3-business-day
   missing-items window - but their subject is a tenant applicant and this seat's is a property
   owner. Different populations, similar shapes. Do not collapse them.
+  Max contact attempts: 6
+  Attempt window days: 10
+  Cold lead days: 3
+  Nurture exhausted touches: 8
+  Nurture exhausted window days: 180
+  Lost lead re-engagement days: 90
 
 D6. What are your stall and escalation clocks on an unsigned PMA and on stage age?
 
-Hint: Common defaults: red alert at 48 hours unsigned, manager escalation at 5 days; stage maximums of 3, 5, 3, 7, and 1 days for stages S0 through S4. Also pick the days-in-stage number your weekly review flags.
+Hint: Common defaults: red alert at 48 hours unsigned, manager escalation at 5 days; stage maximums of 3, 5, 3, 7, and 1 days for stages S0 through S4. Also pick the days-in-stage number your weekly review flags. End the answer with the labeled lines the engine reads, one per line: `Unsigned alert hours: ...`, `Unsigned escalate days: ...`, `Stage max days S0: ...`, `Stage max days S1: ...`, `Stage max days S2: ...`, `Stage max days S3: ...`, `Stage max days S4: ...`, `Days in stage review flag: ...`.
 
 Answer: Unsigned agreement: red alert at 48 hours, escalation to Rhea Calder at 5 days. Stage
   maximums: S0 3 days, S1 5 days, S2 3 days, S3 7 days, S4 1 day. Days-in-stage the weekly
@@ -452,22 +465,40 @@ Answer: Unsigned agreement: red alert at 48 hours, escalation to Rhea Calder at 
   board document but nothing here asks for their numbers, so they stay unset rather than being
   filled from the board's example. An unset stage maximum is a gate that does not fire, which is
   honest; a guessed one is a gate that fires at a number nobody chose.
+  Unsigned alert hours: 48
+  Unsigned escalate days: 5
+  Stage max days S0: 3
+  Stage max days S1: 5
+  Stage max days S2: 3
+  Stage max days S3: 7
+  Stage max days S4: 1
+  Days in stage review flag: 10
 
 D7. What are your weekly activity goals, and what is your daily outbound call floor?
 
-Hint: The weekly metrics table needs your numbers: new leads, discovery calls, appointments held, PMAs signed, doors added, outbound calls, follow-up touches. Suggested daily floor: 10 to 20 outbound prospecting calls.
+Hint: The weekly metrics table needs your numbers: new leads, discovery calls, appointments held, PMAs signed, doors added, outbound calls, follow-up touches. Suggested daily floor: 10 to 20 outbound prospecting calls. End the answer with the labeled lines the engine reads, one per line: `Weekly new leads: ...`, `Weekly discovery calls: ...`, `Weekly appointments held: ...`, `Weekly agreements signed: ...`, `Weekly doors added: ...`, `Weekly outbound calls: ...`, `Weekly follow-up touches: ...`, `Daily outbound call floor: ...`.
 
 Answer: Weekly: 20 new leads, 12 discovery calls, 6 appointments held, 3 agreements signed, 8
   doors added, 75 outbound calls, 40 follow-up touches. Daily outbound call floor: 15.
+  Weekly new leads: 20
+  Weekly discovery calls: 12
+  Weekly appointments held: 6
+  Weekly agreements signed: 3
+  Weekly doors added: 8
+  Weekly outbound calls: 75
+  Weekly follow-up touches: 40
+  Daily outbound call floor: 15
 
 D8. What is your monthly door goal, and what is your target for average days from lead to close?
 
-Hint: The pipeline-below-minimum alert fires when active pipeline doors fall under 3 times the monthly goal. Benchmark: unsigned-PMA stage averages under 3 days on won deals.
+Hint: The pipeline-below-minimum alert fires when active pipeline doors fall under 3 times the monthly goal. Benchmark: unsigned-PMA stage averages under 3 days on won deals. End the answer with the labeled lines the engine reads, one per line: `Monthly door goal: ...`, `Target days lead to close: ...`.
 
 Answer: Monthly door goal: 8. Target average days from lead to close: 21. DUPLICATE-QUESTION: A1
   already asked the monthly new-door growth target and the answer is the same 8. One number,
   written once - if a company answers these two differently, carry both and flag the
   disagreement rather than picking the later one.
+  Monthly door goal: 8
+  Target days lead to close: 21
 
 D9. When is your weekly pipeline review, who attends, and who receives the monthly leadership report?
 

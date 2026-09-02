@@ -10,7 +10,7 @@ triggers: ["method", "how to open", "cold call", "opener", "outreach", "how do I
 
 Everything below follows from that one line. The job is not to explain the company well. It is to ask the questions that let an owner arrive somewhere on their own — because a conclusion they reached survives the drive home, and a pitch they heard does not.
 
-This is question-led, conclusion-driven selling: the prospect is persuaded by what they conclude, not what they are told. The framing is the seat's craft; the specifics of what the company offers come from `seat-config.json`.
+This is question-led, conclusion-driven selling: the prospect is persuaded by what they conclude, not what they are told. The framing is the seat's craft; the specifics of what the company offers come from `business-development-config.json`.
 
 ---
 

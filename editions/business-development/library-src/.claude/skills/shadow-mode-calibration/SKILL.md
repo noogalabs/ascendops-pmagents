@@ -12,7 +12,7 @@ Every morning it works the alerts, runs the board checks, drafts what it would h
 
 **The point is not caution.** It is calibration. A week of digests either shows the seat's judgment tracks the manager's, or shows exactly where it does not — and finding that out on paper costs nothing, while finding it out through an owner costs a deal and possibly a reputation.
 
-State: `seat-config.json` → `shadow_mode.active`.
+State: `business-development-config.json` → `shadow_mode.active`.
 
 ---
 

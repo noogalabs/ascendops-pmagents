@@ -37,7 +37,7 @@ Classify the statement passed in `$ARGUMENTS` — an owner's words, a prospect's
 | `SOURCE_OF_INCOME` | Vouchers, housing assistance, subsidy programs — where the market protects it | **YES** |
 | `TENANT_APPROVAL_RIGHTS` | The owner wants to personally approve or reject individual applicants <!-- judgment §4 --> | **YES** — this is a fair housing exposure wearing a contract-term costume. It is *also* a contract modification: route to counsel **and** to {{broker_of_record}} |
 | `STEERING_ADJACENT` | Marketing questions about schools, "neighborhood character", "the kind of area", or targeting where marketing goes | **YES** |
-| `SCREENING_CRITERIA_QUESTION` | A neutral question about the screening process itself: what is checked, what the criteria are | **NO** — answer from `quotable_standards` in `seat-config.json` only, and only what is documented there. If nothing is documented, say nothing is documented. Never describe criteria you have not read |
+| `SCREENING_CRITERIA_QUESTION` | A neutral question about the screening process itself: what is checked, what the criteria are | **NO** — answer from `quotable_standards` in `business-development-config.json` only, and only what is documented there. If nothing is documented, say nothing is documented. Never describe criteria you have not read |
 | `CLEAR` | Nothing above fires | **NO** |
 
 When two classes could apply, the more protective one fires. When you are genuinely unsure, it fires.

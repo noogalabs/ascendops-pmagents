@@ -16,7 +16,7 @@
 <!-- How do they want stalled deals surfaced — one digest, or as each one trips? -->
 
 ## Working Hours
-<!-- When are they reachable for a same-day escalation? Prospecting hours are separate; see seat-config.json. -->
+<!-- When are they reachable for a same-day escalation? Prospecting hours are separate; see business-development-config.json. -->
 
 ## Communication Style
 <!-- Plain talk or structured? Do they want the number first or the story first? -->

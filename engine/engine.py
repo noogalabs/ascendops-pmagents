@@ -355,6 +355,7 @@ def configure(source: Path, answers: Path, output: Path, seat: str,
                 cross_seat.validate_compatibility_guards(old_manifest, ENGINE_VERSION)
             except cross_seat.CrossSeatRejected as exc:
                 raise IntakeRejected(exc.failures)
+        restore_mapping_core_counterpart(prepared, structured_filename, seat, old_manifest)
         try:
             if old_manifest:
                 managed = placeholders.apply_rerun(prepared, mapping, raw_cover, raw_answers, core, old_manifest)
@@ -374,7 +375,6 @@ def configure(source: Path, answers: Path, output: Path, seat: str,
                          if old_preserved else placeholders.preserved_runtime_manifest(prepared))
         except placeholders.PlaceholderRejected as exc:
             raise IntakeRejected(exc.failures)
-        restore_mapping_core_counterpart(prepared, structured_filename, seat, old_manifest)
         try:
             if SUPPORTED[seat].get("runner") == "mapping":
                 configuration_date = run_mapping_core(

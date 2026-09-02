@@ -2,7 +2,7 @@
 
 **Organization:** {{org}}
 **Timezone:** (set from context.json at agent creation)
-**BD manager seat:** (set from the onboarding interview — see seat-config.json `people.bd_manager`)
+**BD manager seat:** (set from the onboarding interview — see business-development-config.json `people.bd_manager`)
 **Dashboard:** (set from context.json at agent creation)
 **Framework:** cortextOS Node.js
 

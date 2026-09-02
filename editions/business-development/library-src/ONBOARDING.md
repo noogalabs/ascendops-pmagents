@@ -3,7 +3,7 @@
 Run this once, on first boot. It is the one door your company's specifics come through. There are 42 questions in four groups. Expect 60 to 90 minutes for a complete first pass, and it is fine to stop partway — the file records where you are.
 
 **Two rules for the whole interview:**
-1. The reference documents (the questionnaire, the playbook, the pipeline board spec, the judgment guide) are never edited. Answers go into `seat-config.json` and into the placeholders in the bootstrap files. Nothing else changes.
+1. The reference documents (the questionnaire, the playbook, the pipeline board spec, the judgment guide) are never edited. Answers go into `business-development-config.json` and into the placeholders in the bootstrap files. Nothing else changes.
 2. "Confirm with counsel" is a valid first answer on any legal question, and it is a better answer than a guess. A legal field left unconfirmed means **that lane is not live** — the seat will say so rather than run on a hint.
 
 ---
@@ -144,7 +144,7 @@ If you don't have a days-to-lease number, I won't quote one. If your screening i
 
 ## Step 6: Build the board
 
-With D1 answered, set up the workbook. Eleven tabs, the column schema, and the dropdown sources driven from `seat-config.json`: `.claude/skills/pipeline-board/SKILL.md`.
+With D1 answered, set up the workbook. Eleven tabs, the column schema, and the dropdown sources driven from `business-development-config.json`: `.claude/skills/pipeline-board/SKILL.md`.
 
 Confirm before moving on:
 - Every dropdown that has a fill-in source is populated from the answers, not typed by hand
@@ -189,8 +189,8 @@ Set `shadow_mode.active` to true and confirm the digest recipients from Group C.
 
 ## Step 9: Finalize
 
-1. Write every answer to `seat-config.json` and fill every placeholder in the bootstrap files.
-2. Re-read `seat-config.json` and list anything still empty. Split the list two ways and report it that way:
+1. Write every answer to `business-development-config.json` and fill every placeholder in the bootstrap files.
+2. Re-read `business-development-config.json` and list anything still empty. Split the list two ways and report it that way:
    - **Not yet answered** — come back to these.
    - **Legal, unconfirmed** — these are not gaps to fill, they are lanes that are not live. Name each lane explicitly.
 3. Confirm crons are registered: `cortextos bus list-crons $CTX_AGENT_NAME`
@@ -215,7 +215,7 @@ Starting tomorrow morning you'll get an end-of-day digest. Nothing goes out unti
 
 ## If onboarding is interrupted
 
-Answers are written as they come in, not at the end. On restart, read `seat-config.json`, find the first empty field in question order, and pick up there:
+Answers are written as they come in, not at the end. On restart, read `business-development-config.json`, find the first empty field in question order, and pick up there:
 
 ```
 Picking up where we left off — we got through [group], next up is [question].
@@ -230,7 +230,7 @@ Never restart the interview from the top on someone who already answered thirty 
 | Symptom | Cause | Fix |
 |---|---|---|
 | Telegram silent at Step 0 | Bad token or chat id | Fix `.env`, restart, retry Step 0 |
-| Board dropdowns empty | LOOKUP TABLES not driven from `seat-config.json` | Re-run Step 6 |
-| Alerts never fire | Clocks from D5/D6 not written, or the platform cannot compute days-in-stage | Check `clocks` in `seat-config.json`; if the platform is the limit, say so rather than reporting a quiet zero |
+| Board dropdowns empty | LOOKUP TABLES not driven from `business-development-config.json` | Re-run Step 6 |
+| Alerts never fire | Clocks from D5/D6 not written, or the platform cannot compute days-in-stage | Check `clocks` in `business-development-config.json`; if the platform is the limit, say so rather than reporting a quiet zero |
 | Seat refuses to run a lane | A legal field is unconfirmed | That is correct behaviour. Get the answer from counsel; do not fill it from the hint |
 | Seat refuses to start at all | `people.bd_manager` is empty | Fill C2. There is no default |

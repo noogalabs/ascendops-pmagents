@@ -9,7 +9,7 @@ PRESERVED_RUNTIME_TOKENS = {"CTX_ROOT"}
 UNRESOLVED_MARKER = re.compile(r"\[NEEDS-(?:D[A-Z]{4}|CONFIRM)\]", re.I)
 SUPPORTED_EXTRACTORS = {
     "currency", "emergency_minutes", "first_integer", "first_person", "labeled_integer",
-    "identity", "literal", "maintenance_platform", "window_end", "window_start",
+    "labeled_text", "identity", "literal", "maintenance_platform", "window_end", "window_start",
 }
 
 
@@ -44,6 +44,14 @@ def load_mapping(path: Path):
     for row in config_rows:
         if not isinstance(row.get("path"), str) or not row["path"].startswith("/"):
             failures.append(("mapping.config_keys", "config-key path must be an RFC6901 pointer"))
+        target = row.get("file", "config.json")
+        if (not isinstance(target, str) or "/" in target or "\\" in target
+                or target in {"", ".", ".."} or not target.endswith(".json")):
+            failures.append((f"mapping.config_keys.{row.get('path')}",
+                             "file must be a bare .json filename in the seat root"))
+        elif "file" in row and row.get("value_from") == "pointer":
+            failures.append((f"mapping.config_keys.{row.get('path')}",
+                             "file is not supported on pointer rows"))
         if row.get("mode", "replace") not in {"replace", "create"}:
             failures.append((f"mapping.config_keys.{row.get('path')}", "mode must be replace or create"))
         if row.get("value_type", "string") not in {"string", "integer", "number", "boolean"}:
@@ -92,10 +100,10 @@ def load_mapping(path: Path):
             if extractor == "literal" and not isinstance(row.get("value"), str):
                 failures.append((f"mapping.config_keys.{row.get('path')}",
                                  "literal extractor requires a string value"))
-            if (extractor == "labeled_integer"
+            if (extractor in {"labeled_integer", "labeled_text"}
                     and (not isinstance(row.get("label"), str) or not row["label"].strip())):
                 failures.append((f"mapping.config_keys.{row.get('path')}",
-                                 "labeled_integer requires a string label"))
+                                 f"{extractor} requires a string label"))
     if schema_version >= 2:
         timezone_rows = [row for row in config_rows if row.get("path") == "/timezone"]
         if len(timezone_rows) != 1:
@@ -117,10 +125,10 @@ def load_mapping(path: Path):
         if extractor == "literal" and not isinstance(row.get("value"), str):
             failures.append((f"mapping.{row.get('placeholder')}",
                              "literal extractor requires a string value"))
-        if (extractor == "labeled_integer"
+        if (extractor in {"labeled_integer", "labeled_text"}
                 and (not isinstance(row.get("label"), str) or not row["label"].strip())):
             failures.append((f"mapping.{row.get('placeholder')}",
-                             "labeled_integer requires a string label"))
+                             f"{extractor} requires a string label"))
         sites = row.get("sites")
         if sites is None:
             continue
@@ -205,6 +213,19 @@ def extract_value(row, value, core):
         match = re.search(r"Emergency\s+dispatch(?:\s+within)?\s+(\d+)\s+minutes?", value, re.I)
         if not match: raise ValueError("Emergency dispatch minutes not found")
         return match.group(1)
+    if kind == "labeled_text":
+        # Mirrors labeled_integer for prose values: exactly one line of the form
+        # "<label>: <text>" in the answer, text taken verbatim to end of line.
+        # Missing or duplicated label rejects BY NAME (fail-closed) rather than
+        # letting a whole multi-paragraph answer flow into a single-value slot.
+        label = row["label"]
+        pattern = re.compile(rf"^\s*{re.escape(label)}\s*:\s*(.+?)\s*$", re.M)
+        matches = list(pattern.finditer(value))
+        if not matches:
+            raise ValueError(f"labeled text line {label!r}: not found")
+        if len(matches) > 1:
+            raise ValueError(f"labeled text line {label!r}: appears more than once")
+        return matches[0].group(1)
     if kind == "first_person": return re.split(r"[,;]", value, maxsplit=1)[0].strip()
     if kind == "maintenance_platform":
         return value_extractors.maintenance_platform(value)
@@ -307,18 +328,40 @@ def validate_consumed_values(mapping, raw_cover, raw_answers):
         raise PlaceholderRejected(failures)
 
 
+def _row_target(row):
+    """Target JSON file of a mapping config row (bare filename in the seat root)."""
+    return row.get("file", "config.json")
+
+
+def _item_target(item):
+    """Target JSON file of a managed config_key manifest item.
+
+    Items without "config_file" (pointer rows, manifests written before file
+    targeting existed) commit to config.json; the display "file" field is
+    "<filename>#<pointer>" and is never parsed.
+    """
+    return item.get("config_file", "config.json")
+
+
 def _plan_config_keys_initial(root, mapping, cover, answers, core):
     rows = [row for row in mapping.get("config_keys", []) if row.get("value_from") != "pointer"]
     if not rows:
-        return None, []
-    path = root / "config.json"
-    if not path.is_file():
-        raise PlaceholderRejected([("mapping.config_keys", "config.json is missing")])
-    data = json.loads(path.read_text())
+        return []
+    data_by_file = {}
+    for row in rows:
+        filename = _row_target(row)
+        if filename in data_by_file:
+            continue
+        path = root / filename
+        if not path.is_file():
+            raise PlaceholderRejected([("mapping.config_keys", f"{filename} is missing")])
+        data_by_file[filename] = json.loads(path.read_text())
     manifest = []
     failures = []
     for row in rows:
         pointer = row["path"]
+        filename = _row_target(row)
+        data = data_by_file[filename]
         try:
             node, leaf = _pointer_parent(data, pointer, create=row.get("mode", "replace") == "create")
             exists = ((isinstance(node, list) and isinstance(leaf, int) and 0 <= leaf < len(node))
@@ -328,64 +371,76 @@ def _plan_config_keys_initial(root, mapping, cover, answers, core):
             value = _typed_value(row, extract(row, cover, answers, core))
             if isinstance(node, list) and not exists:
                 raise IndexError("create mode cannot extend arrays")
-            manifest.append({
+            item = {
                 "row_type": "config_key",
                 "config_path": pointer,
                 "question_id": row["source"],
-                "file": "config.json#" + pointer,
+                "file": filename + "#" + pointer,
                 "count": 1,
                 "value": value,
-            })
+            }
+            if filename != "config.json":
+                # Only non-default targets are recorded, so seats that never
+                # leave config.json keep byte-identical manifests and goldens.
+                item["config_file"] = filename
+            manifest.append(item)
         except (KeyError, IndexError, TypeError, ValueError) as exc:
             failures.append((f"mapping.config_keys.{pointer}", str(exc)))
     if failures:
         raise PlaceholderRejected(failures)
-    return path, manifest
+    return manifest
 
 
-def _commit_config_keys(path, manifest, *, mode_by_path=None):
-    if path is None:
+def _commit_config_keys(root, manifest, *, mode_by_path=None):
+    """Write resolved config rows into their target files (one load and one write per file).
+
+    Items name their target with "config_file"; items without one (pointer rows,
+    manifests written before file targeting existed) commit to config.json.
+    """
+    if not manifest:
         return
     mode_by_path = mode_by_path or {}
-    data = json.loads(path.read_text())
+    groups = {}
     for item in manifest:
-        pointer = item["config_path"]
-        mode = mode_by_path.get(pointer, item.get("mode", "replace"))
-        try:
-            node, leaf = _pointer_parent(data, pointer, create=mode == "create")
-        except (KeyError, IndexError, TypeError, ValueError) as exc:
-            if isinstance(exc, KeyError) and exc.args:
-                detail = f"missing parent segment {exc.args[0]!r}"
-            else:
-                detail = f"parent traversal failed: {exc}"
-            raise PlaceholderRejected([
-                (f"mapping.config_keys.{pointer}", detail)
-            ]) from exc
-        exists = ((isinstance(node, list) and isinstance(leaf, int) and 0 <= leaf < len(node))
-                  or (isinstance(node, dict) and leaf in node))
-        if not exists and mode != "create":
-            raise PlaceholderRejected([
-                (f"mapping.config_keys.{pointer}", "declared replace target is absent")
-            ])
-        if isinstance(node, list):
-            if not exists:
+        groups.setdefault(_item_target(item), []).append(item)
+    for filename, items in groups.items():
+        path = root / filename
+        if not path.is_file():
+            raise PlaceholderRejected([("mapping.config_keys", f"{filename} is missing")])
+        data = json.loads(path.read_text())
+        for item in items:
+            pointer = item["config_path"]
+            mode = mode_by_path.get((filename, pointer), item.get("mode", "replace"))
+            try:
+                node, leaf = _pointer_parent(data, pointer, create=mode == "create")
+            except (KeyError, IndexError, TypeError, ValueError) as exc:
+                if isinstance(exc, KeyError) and exc.args:
+                    detail = f"missing parent segment {exc.args[0]!r}"
+                else:
+                    detail = f"parent traversal failed: {exc}"
                 raise PlaceholderRejected([
-                    (f"mapping.config_keys.{pointer}", "create mode cannot extend arrays")
+                    (f"mapping.config_keys.{pointer}", detail)
+                ]) from exc
+            exists = ((isinstance(node, list) and isinstance(leaf, int) and 0 <= leaf < len(node))
+                      or (isinstance(node, dict) and leaf in node))
+            if not exists and mode != "create":
+                raise PlaceholderRejected([
+                    (f"mapping.config_keys.{pointer}", "declared replace target is absent")
                 ])
-            node[leaf] = item["value"]
-        else:
-            node[leaf] = item["value"]
-    path.write_text(json.dumps(data, indent=2) + "\n")
+            if isinstance(node, list):
+                if not exists:
+                    raise PlaceholderRejected([
+                        (f"mapping.config_keys.{pointer}", "create mode cannot extend arrays")
+                    ])
+                node[leaf] = item["value"]
+            else:
+                node[leaf] = item["value"]
+        path.write_text(json.dumps(data, indent=2) + "\n")
 
 
 def commit_config_manifest(root: Path, manifest):
-    """Commit pre-resolved config rows to the staged config artifact."""
-    if not manifest:
-        return
-    path = root / "config.json"
-    if not path.is_file():
-        raise PlaceholderRejected([("mapping.config_keys", "config.json is missing")])
-    _commit_config_keys(path, manifest)
+    """Commit pre-resolved config rows to their staged target files."""
+    _commit_config_keys(root, manifest)
 
 
 def apply_initial(root: Path, mapping, cover, answers, core):
@@ -415,9 +470,7 @@ def apply_initial(root: Path, mapping, cover, answers, core):
         except (KeyError, TypeError, ValueError) as exc:
             failures.append((f"mapping.{name}", f"value extraction failed: {exc}"))
     if failures: raise PlaceholderRejected(failures)
-    config_path, config_manifest = _plan_config_keys_initial(
-        root, mapping, cover, answers, core
-    )
+    config_manifest = _plan_config_keys_initial(root, mapping, cover, answers, core)
     manifest = []
     for name, row in rows.items():
         value = values[name]
@@ -442,13 +495,12 @@ def apply_initial(root: Path, mapping, cover, answers, core):
                 marker = f"<!-- BETTY-PH:{name} -->{value}<!-- /BETTY-PH:{name} -->"
                 path.write_text(text.replace(token, marker))
                 manifest.append({"placeholder": name, "question_id": row["source"], "file": relative, "count": count, "value": value})
-    if config_path is not None:
-        _commit_config_keys(
-            config_path,
-            config_manifest,
-            mode_by_path={row["path"]: row.get("mode", "replace")
-                          for row in mapping.get("config_keys", [])},
-        )
+    _commit_config_keys(
+        root,
+        config_manifest,
+        mode_by_path={(_row_target(row), row["path"]): row.get("mode", "replace")
+                      for row in mapping.get("config_keys", [])},
+    )
     manifest.extend(config_manifest)
     return manifest
 
@@ -486,11 +538,12 @@ def apply_rerun(root: Path, mapping, cover, answers, core, old_manifest):
             continue
         if item.get("row_type") == "config_key":
             pointer = item.get("config_path")
+            filename = _item_target(item)
             row = next((candidate for candidate in mapping.get("config_keys", [])
-                        if candidate.get("path") == pointer), None)
+                        if candidate.get("path") == pointer and _row_target(candidate) == filename), None)
             if row is None:
                 failures.append((f"manifest.config_key.{pointer}", "managed config key no longer has a mapping row")); continue
-            path = root / "config.json"
+            path = root / filename
             try:
                 data = json.loads(path.read_text())
                 node, leaf = _pointer_parent(data, pointer)

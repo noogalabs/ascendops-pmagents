@@ -35,7 +35,7 @@ When two sources disagree, that is a **discrepancy**: carry both, name both, fla
 | ALERTS DASHBOARD | Red | Every alert condition, auto-populated, no manual entry |
 | BDM DAILY VIEW | Blue | Filtered: what needs attention today |
 | WEEKLY REVIEW VIEW | Green | Filtered: the full walk |
-| LOOKUP TABLES | Grey | Every dropdown source — driven from `seat-config.json` |
+| LOOKUP TABLES | Grey | Every dropdown source — driven from `business-development-config.json` |
 
 ---
 
@@ -77,7 +77,7 @@ G1 deal status · G2 won date · G3 lost date · G4 lost reason · G5 lost to co
 
 ## Dropdowns Come From The Config, Not From Typing
 
-Every dropdown with a fill-in source reads from LOOKUP TABLES, and LOOKUP TABLES is driven from `seat-config.json`:
+Every dropdown with a fill-in source reads from LOOKUP TABLES, and LOOKUP TABLES is driven from `business-development-config.json`:
 
 | Dropdown | Config key | Question |
 |---|---|---|

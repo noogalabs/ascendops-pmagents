@@ -212,6 +212,69 @@ class PlaceholderTests(unittest.TestCase):
             )
         self.assertEqual(path.read_bytes(), before)
 
+    def test_named_config_key_file_target_lands_in_declared_file_and_survives_rerun(self):
+        print("ARMED: a config row with a file target writes that file, not config.json, and replays on rerun")
+        config = self.root / "config.json"; config.write_text(json.dumps({"timezone": ""}))
+        structured = self.root / "seat-config.json"
+        structured.write_text(json.dumps({"people": {"bd_manager": ""}, "clocks": {"max_contact_attempts": None}}))
+        placeholder = {"placeholder": "company_name", "source": "cover.company_name", "extractor": "identity"}
+        mapping = {
+            "placeholders": [placeholder],
+            "config_keys": [
+                {"path": "/timezone", "source": "cover.timezone", "extractor": "identity", "value_type": "string"},
+                {"path": "/people/bd_manager", "source": "C2", "extractor": "labeled_text", "label": "BD manager",
+                 "value_type": "string", "file": "seat-config.json"},
+                {"path": "/clocks/max_contact_attempts", "source": "D5", "extractor": "labeled_integer",
+                 "label": "Max contact attempts", "value_type": "integer", "minimum": 1, "file": "seat-config.json"},
+            ],
+        }
+        (self.root / "IDENTITY.md").write_text("{{company_name}}")
+        answers = dict(self.answers, C2="Rhea Calder, manager.\n  BD manager: Rhea Calder",
+                       D5="Six attempts over ten days.\n  Max contact attempts: 6")
+        manifest = engine.placeholders.apply_initial(self.root, mapping, self.cover, answers, self.core)
+        self.assertEqual(json.loads(structured.read_text()),
+                         {"people": {"bd_manager": "Rhea Calder"}, "clocks": {"max_contact_attempts": 6}})
+        self.assertEqual(json.loads(config.read_text()), {"timezone": "America/Denver"})
+        rows = {item["config_path"]: item for item in manifest if item.get("row_type") == "config_key"}
+        self.assertEqual(rows["/people/bd_manager"]["config_file"], "seat-config.json")
+        self.assertEqual(rows["/people/bd_manager"]["file"], "seat-config.json#/people/bd_manager")
+        self.assertNotIn("config_file", rows["/timezone"])
+        updated = engine.placeholders.apply_rerun(
+            self.root, mapping, self.cover, dict(answers, D5="  Max contact attempts: 7"), self.core, manifest,
+        )
+        self.assertEqual(json.loads(structured.read_text()),
+                         {"people": {"bd_manager": "Rhea Calder"}, "clocks": {"max_contact_attempts": 7}})
+        self.assertEqual(json.loads(config.read_text()), {"timezone": "America/Denver"})
+        self.assertEqual(next(item for item in updated if item.get("config_path") == "/clocks/max_contact_attempts")
+                         ["config_file"], "seat-config.json")
+        structured.write_text(json.dumps({"people": {"bd_manager": "Someone Else"}, "clocks": {"max_contact_attempts": 7}}))
+        with self.assertRaises(engine.placeholders.PlaceholderRejected) as caught:
+            engine.placeholders.apply_rerun(self.root, mapping, self.cover, answers, self.core, updated)
+        self.assertIn("manifest.config_key./people/bd_manager", str(caught.exception.failures))
+
+    def test_named_config_key_file_target_missing_file_or_unsafe_target_rejects_by_name(self):
+        print("ARMED: an absent target file, an unsafe file value, and a file on a pointer row reject by name")
+        (self.root / "config.json").write_text(json.dumps({"timezone": ""}))
+        (self.root / "IDENTITY.md").write_text("{{company_name}}")
+        placeholder = {"placeholder": "company_name", "source": "cover.company_name", "extractor": "identity"}
+        row = {"path": "/people/bd_manager", "source": "C2", "extractor": "labeled_text", "label": "BD manager",
+               "value_type": "string", "file": "seat-config.json"}
+        with self.assertRaises(engine.placeholders.PlaceholderRejected) as caught:
+            engine.placeholders.apply_initial(self.root, {"placeholders": [placeholder], "config_keys": [row]},
+                                              self.cover, dict(self.answers, C2="  BD manager: Rhea Calder"), self.core)
+        self.assertIn("seat-config.json is missing", str(caught.exception.failures))
+        path = self.tmp / "mapping.json"
+        for bad in ("../config.json", "state/config.json", "config.txt", ""):
+            path.write_text(json.dumps({"placeholders": [placeholder], "config_keys": [dict(row, file=bad)]}))
+            with self.assertRaises(engine.placeholders.PlaceholderRejected) as caught:
+                engine.placeholders.load_mapping(path)
+            self.assertIn("file must be a bare .json filename", str(caught.exception.failures), bad)
+        path.write_text(json.dumps({"placeholders": [placeholder], "config_keys": [
+            {"path": "/timezone", "value_from": "pointer", "pointer_name": "tz", "file": "seat-config.json"}]}))
+        with self.assertRaises(engine.placeholders.PlaceholderRejected) as caught:
+            engine.placeholders.load_mapping(path)
+        self.assertIn("file is not supported on pointer rows", str(caught.exception.failures))
+
     def test_named_currency_integral_decimal_configures_without_rounding_fractional_value(self):
         path = self.root / "config.json"
         path.write_text(json.dumps({"threshold": 1}))
