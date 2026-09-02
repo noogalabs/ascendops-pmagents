@@ -17,7 +17,7 @@
   "source_table_sha256": "bc9ddbba1211d6b8fa90a5aad005e7c3c8e78b9510442a9dbee0d1e2d8643af6",
   "structured_answers_file": "turnover-config.json",
   "placeholders": [
-    {"placeholder":"agent_name","source":"cover.org_short_name","extractor":"literal","value":"turnover-coordinator"},
+    {"placeholder":"agent_name","extractor":"literal","value":"turnover-coordinator"},
     {"placeholder":"company_name","source":"cover.company_name","extractor":"identity"},
     {"placeholder":"operator_name","source":"D3","extractor":"first_person"},
     {"placeholder":"owner_name","source":"D3","extractor":"first_person"},

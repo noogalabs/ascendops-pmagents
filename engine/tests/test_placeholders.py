@@ -297,6 +297,24 @@ class PlaceholderTests(unittest.TestCase):
             engine.placeholders.load_mapping(path)
         self.assertIn("mapping.config_keys./timezone", str(caught.exception.failures))
         self.assertIn("row requires a source", str(caught.exception.failures))
+        # fleet rule (task 1788358269857): a literal row with a source is a dead provenance field
+        path.write_text(json.dumps(self.mapping({"placeholder": "agent_name", "source": "cover.org_short_name",
+                                                 "extractor": "literal", "value": "seat-x"})))
+        with self.assertRaises(engine.placeholders.PlaceholderRejected) as caught:
+            engine.placeholders.load_mapping(path)
+        self.assertIn("must not carry a source", str(caught.exception.failures))
+        path.write_text(json.dumps({"placeholders": [{"placeholder": "company_name", "source": "cover.company_name", "extractor": "identity"}],
+                                    "config_keys": [{"path": "/timezone", "source": "cover.timezone", "extractor": "literal", "value": "UTC"}]}))
+        with self.assertRaises(engine.placeholders.PlaceholderRejected) as caught:
+            engine.placeholders.load_mapping(path)
+        self.assertIn("mapping.config_keys./timezone", str(caught.exception.failures))
+        self.assertIn("must not carry a source", str(caught.exception.failures))
+        shipped = [json.loads(path.read_text()) for path in sorted((HERE / "mappings").glob("*.json"))]
+        self.assertTrue(shipped)
+        for mapping in shipped:
+            for row in mapping.get("placeholders", []) + mapping.get("config_keys", []):
+                if row.get("extractor") == "literal":
+                    self.assertNotIn("source", row, row)
 
     def test_named_currency_integral_decimal_configures_without_rounding_fractional_value(self):
         path = self.root / "config.json"

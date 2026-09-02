@@ -365,7 +365,7 @@ class GlueEngineTests(unittest.TestCase):
     def test_named_mapping_production_entry_supports_literal_first_and_labeled_integer(self):
         print("ARMED: mapping production entry supports literal, first_integer, and labeled_integer")
         cases = (
-            ("literal", {"source": "B1", "value": "day"}, "day", None),
+            ("literal", {"value": "day"}, "day", None),
             ("first_integer", {"source": "B1"}, "450", None),
             ("labeled_integer", {"source": "B1", "label": "Notice days"}, "60",
              "Use 2 delivery methods.\n  Notice days: 60"),
