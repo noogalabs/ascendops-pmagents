@@ -13,9 +13,9 @@ engine/cross_seat.py	531	3f4518b621beeb90304ffeb9bbd2eba0a5ce5bf0bfdc0236cb7c525
 engine/engine.py	2	1dbf450a00e47fcb94798e2d32cd078e797d0c71266ff2ea4e32e51e2be052f4	betty	internal compatibility/protocol identifier
 engine/intake.py	1	73505029cafa49d04f78da08932d38e0034ff79a6e733d89c719c79c01079abd	betty	internal compatibility/protocol identifier
 editions/pm-assist/tests/test_configurator.py	72	676001af9d581370a038fcc2bbf72d9b5601088d2dc2a962780c865db19a259b	betty	internal compatibility/protocol identifier
-engine/placeholders.py	495	db7d6f7236e626a00558d01eeaa61b9c7c86c2a86e69e509d9a82de913d5c778	betty	internal compatibility/protocol identifier
-engine/placeholders.py	590	c10a0fb9985eb2fdec142fbc3af355954cdfcb5995b7e69c5bc6b47338e68d82	betty	internal compatibility/protocol identifier
-engine/placeholders.py	593	58b87b3597667a92632284fd8957f18be4a7e4e3d3ac6b8b2288e8033acf4c85	betty	internal compatibility/protocol identifier
+engine/placeholders.py	506	db7d6f7236e626a00558d01eeaa61b9c7c86c2a86e69e509d9a82de913d5c778	betty	internal compatibility/protocol identifier
+engine/placeholders.py	601	c10a0fb9985eb2fdec142fbc3af355954cdfcb5995b7e69c5bc6b47338e68d82	betty	internal compatibility/protocol identifier
+engine/placeholders.py	604	58b87b3597667a92632284fd8957f18be4a7e4e3d3ac6b8b2288e8033acf4c85	betty	internal compatibility/protocol identifier
 engine/tests/fixtures/e2/legacy-placeholders-v1.py	98	db7d6f7236e626a00558d01eeaa61b9c7c86c2a86e69e509d9a82de913d5c778	betty	internal compatibility/protocol identifier
 engine/tests/fixtures/e2/legacy-placeholders-v1.py	154	c10a0fb9985eb2fdec142fbc3af355954cdfcb5995b7e69c5bc6b47338e68d82	betty	internal compatibility/protocol identifier
 engine/tests/fixtures/e2/legacy-placeholders-v1.py	157	58b87b3597667a92632284fd8957f18be4a7e4e3d3ac6b8b2288e8033acf4c85	betty	internal compatibility/protocol identifier
@@ -34,6 +34,7 @@ mapping-tables/bd.md	569	f20cecb856793b540b395e050ceabdbd4c76ce0592eee44b2cf751b
 mapping-tables/leasing.md	255	63702d84a8b956edbe1fbb62683a6be562e69c59ef97be2bc9ad25ff87dc9930	platform	census/validation prose naming platform strings it scans for (not duty text)
 mapping-tables/pm-assist.md	378	4d65e8fdc862a18e35499b1157e9aed0fd48d41cf3fbe257ff8af0ee5cbc695a	platform	census/validation prose naming platform strings it scans for (not duty text)
 engine/PR13B-ENGINE-CAPABILITIES-REPORT.md	23	6634e70bcd2a9abb5f166d9361c7624b6f5636bac04dac9bcd94d6bc4cfd1f88	platform	engine extractor defect report quoting a platform-name input (runtime evidence, not duty text)
+engine/tests/test_placeholders.py	286	86b42b30d834dc4296f6ab8c82ef2de42019b1f91d76bfcad7ad6737fb05820e	betty	internal compatibility/protocol identifier
 editions/accounting/library-src/.claude/skills/ar-rent-posting/SKILL.md	26	f69308d51f8a3215de608dc62465245333863cb914e29c2e9a9e57d0e2885b4b	platform	platform-specific duty prose outside the maintenance pack: accounting edition neutralization round (follow-on to 2026-09-01 owner rule)
 editions/turnover/library-src/the-make-ready-deep-dive-process-flow-and-board-design.md	313	4c25237c8d569192735f317e06dc1d2787560f971a4c626ec3b93f8a9ed3d1aa	platform	platform-specific duty prose outside the maintenance pack: turnover edition neutralization round (follow-on to 2026-09-01 owner rule)
 editions/turnover/library-src/turnover-tracking-board-full-system-design.md	24	e0f8cb6e9ccd9b109aec551f395f265c8459c091819da110a64c61931e11d663	platform	platform-specific duty prose outside the maintenance pack: turnover edition neutralization round (follow-on to 2026-09-01 owner rule)
@@ -59,3 +60,5 @@ editions/pm-assist/library-src/AGENTS.md	294	1c37fd5f84658a60cfdc9d6fad0e927f28a
 editions/business-development/library-src/AGENTS.md	3	11473daa5804e0746401bcdab99f5f736aa3fcb5f4868de9b2e5b282fe5c6f60	model	AGENTS.md header naming the harness runtime the pack runs on (runtime line on a duty surface; piper F2 narrowing 2026-09-01)
 editions/business-development/library-src/AGENTS.md	294	1c37fd5f84658a60cfdc9d6fad0e927f28a13fa6fdfa9770ecbf0129b16362d4	model	AGENTS.md runtime-tool line (multimodal/extraction tool wiring), not role duty prose (piper F2 narrowing 2026-09-01)
 editions/business-development/tests/test_configurator.py	142	13ed98525a2cf92e522cb3cf6284cc7c2b1f9c6c1fdfdeb72a47f632e494112f	betty	internal compatibility/protocol identifier
+editions/business-development/tests/test_configurator.py	196	c957228297d1c9d9931e9a6eec05b815ccdb1e5c126b083a04056857ff39992c	betty	internal compatibility/protocol identifier
+editions/business-development/tests/test_configurator.py	197	4aee88aa086619bc11edae9acda1b03a4c753d912049814e29f3fa1f90584915	betty	internal compatibility/protocol identifier

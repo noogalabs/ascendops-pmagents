@@ -275,6 +275,29 @@ class PlaceholderTests(unittest.TestCase):
             engine.placeholders.load_mapping(path)
         self.assertIn("file is not supported on pointer rows", str(caught.exception.failures))
 
+    def test_named_literal_row_needs_no_source_and_other_rows_reject_without_one(self):
+        print("ARMED: a literal row carries no dead source; every other row must name one")
+        (self.root / "IDENTITY.md").write_text("{{agent_name}} {{company_name}}")
+        mapping = self.mapping({"placeholder": "agent_name", "extractor": "literal", "value": "seat-x"},
+                               {"placeholder": "company_name", "source": "cover.company_name", "extractor": "identity"})
+        manifest = engine.placeholders.apply_initial(self.root, mapping, self.cover, self.answers, self.core)
+        row = next(item for item in manifest if item["placeholder"] == "agent_name")
+        self.assertEqual((row["question_id"], row["value"]), ("literal", "seat-x"))
+        self.assertIn("<!-- BETTY-PH:agent_name -->seat-x<!-- /BETTY-PH:agent_name -->", (self.root / "IDENTITY.md").read_text())
+        rerun = engine.placeholders.apply_rerun(self.root, mapping, self.cover, self.answers, self.core, manifest)
+        self.assertEqual(next(item for item in rerun if item["placeholder"] == "agent_name")["question_id"], "literal")
+        path = self.tmp / "mapping.json"
+        path.write_text(json.dumps(self.mapping({"placeholder": "company_name", "extractor": "identity"})))
+        with self.assertRaises(engine.placeholders.PlaceholderRejected) as caught:
+            engine.placeholders.load_mapping(path)
+        self.assertIn("row requires a source", str(caught.exception.failures))
+        path.write_text(json.dumps({"placeholders": [{"placeholder": "company_name", "source": "cover.company_name", "extractor": "identity"}],
+                                    "config_keys": [{"path": "/timezone", "extractor": "identity", "value_type": "string"}]}))
+        with self.assertRaises(engine.placeholders.PlaceholderRejected) as caught:
+            engine.placeholders.load_mapping(path)
+        self.assertIn("mapping.config_keys./timezone", str(caught.exception.failures))
+        self.assertIn("row requires a source", str(caught.exception.failures))
+
     def test_named_currency_integral_decimal_configures_without_rounding_fractional_value(self):
         path = self.root / "config.json"
         path.write_text(json.dumps({"threshold": 1}))

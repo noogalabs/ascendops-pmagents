@@ -100,6 +100,9 @@ def load_mapping(path: Path):
             if extractor == "literal" and not isinstance(row.get("value"), str):
                 failures.append((f"mapping.config_keys.{row.get('path')}",
                                  "literal extractor requires a string value"))
+            if extractor != "literal" and not isinstance(row.get("source"), str):
+                failures.append((f"mapping.config_keys.{row.get('path')}",
+                                 "row requires a source (only literal rows derive from no answer)"))
             if (extractor in {"labeled_integer", "labeled_text"}
                     and (not isinstance(row.get("label"), str) or not row["label"].strip())):
                 failures.append((f"mapping.config_keys.{row.get('path')}",
@@ -125,6 +128,9 @@ def load_mapping(path: Path):
         if extractor == "literal" and not isinstance(row.get("value"), str):
             failures.append((f"mapping.{row.get('placeholder')}",
                              "literal extractor requires a string value"))
+        if extractor != "literal" and not isinstance(row.get("source"), str):
+            failures.append((f"mapping.{row.get('placeholder')}",
+                             "row requires a source (only literal rows derive from no answer)"))
         if (extractor in {"labeled_integer", "labeled_text"}
                 and (not isinstance(row.get("label"), str) or not row["label"].strip())):
             failures.append((f"mapping.{row.get('placeholder')}",
@@ -176,6 +182,11 @@ def _number(value, *, integer=False):
     if integer:
         raise ValueError("currency threshold must be stated in whole dollars")
     return token
+
+
+def _question_id(row):
+    """Manifest provenance for a row: its source, or "literal" for a row that derives from no answer."""
+    return row["source"] if "source" in row else "literal"
 
 
 def extract(row, cover, answers, core):
@@ -374,7 +385,7 @@ def _plan_config_keys_initial(root, mapping, cover, answers, core):
             item = {
                 "row_type": "config_key",
                 "config_path": pointer,
-                "question_id": row["source"],
+                "question_id": _question_id(row),
                 "file": filename + "#" + pointer,
                 "count": 1,
                 "value": value,
@@ -489,12 +500,12 @@ def apply_initial(root: Path, mapping, cover, answers, core):
                     return node
                 data = walk(data); path.write_text(json.dumps(data, indent=2) + "\n")
                 for pointer in pointers:
-                    manifest.append({"placeholder": name, "question_id": row["source"], "file": relative + "#" + pointer, "count": 1, "value": value})
+                    manifest.append({"placeholder": name, "question_id": _question_id(row), "file": relative + "#" + pointer, "count": 1, "value": value})
             else:
                 text = path.read_text(); count = text.count(token)
                 marker = f"<!-- BETTY-PH:{name} -->{value}<!-- /BETTY-PH:{name} -->"
                 path.write_text(text.replace(token, marker))
-                manifest.append({"placeholder": name, "question_id": row["source"], "file": relative, "count": count, "value": value})
+                manifest.append({"placeholder": name, "question_id": _question_id(row), "file": relative, "count": count, "value": value})
     _commit_config_keys(
         root,
         config_manifest,
@@ -557,7 +568,7 @@ def apply_rerun(root: Path, mapping, cover, answers, core, old_manifest):
                 value = _typed_value(row, extract(row, cover, answers, core))
                 node[leaf] = value
                 path.write_text(json.dumps(data, indent=2) + "\n")
-                new_manifest.append({**item, "question_id": row["source"], "value": value})
+                new_manifest.append({**item, "question_id": _question_id(row), "value": value})
             except (OSError, json.JSONDecodeError, KeyError, IndexError, TypeError, ValueError) as exc:
                 failures.append((f"manifest.config_key.{pointer}", f"managed JSON pointer changed: {exc}"))
             continue
@@ -592,6 +603,6 @@ def apply_rerun(root: Path, mapping, cover, answers, core, old_manifest):
                 failures.append((f"manifest.{name}", f"managed delimiter count changed in {item['file']}")); continue
             replacement = f"<!-- BETTY-PH:{name} -->{value}<!-- /BETTY-PH:{name} -->"
             path.write_text(pattern.sub(lambda _: replacement, text))
-        new_manifest.append({**item, "question_id": row["source"], "value": value})
+        new_manifest.append({**item, "question_id": _question_id(row), "value": value})
     if failures: raise PlaceholderRejected(failures)
     return new_manifest

@@ -60,10 +60,11 @@ class ReviewSweepTests(unittest.TestCase):
                 for path in library.rglob("*")
                 if path.is_file() and path.name not in {"ONBOARDING.md", "README.md"}
             )
-            placeholder_sources = {item["source"] for item in mapping.get("placeholders", [])}
+            # Literal rows derive from no answer and carry no source (successor to PR37 seat LOW).
+            placeholder_sources = {item["source"] for item in mapping.get("placeholders", []) if "source" in item}
             config_sources = {
                 item["source"] for item in mapping.get("config_keys", [])
-                if item.get("value_from") != "pointer"
+                if item.get("value_from") != "pointer" and "source" in item
             }
             for cover in mapping.get("cover_fields", []):
                 if cover["key"] in STANDARD_COVER:

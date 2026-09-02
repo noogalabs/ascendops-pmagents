@@ -27,10 +27,10 @@
     {"placeholder":"owner_intake_form_link","source":"D3","extractor":"labeled_text","label":"Owner intake form link"},
     {"placeholder":"company_name","source":"cover.company_name","extractor":"identity"},
     {"placeholder":"speed_to_lead_minutes","source":"cover.speed_to_lead_minutes","extractor":"identity"},
-    {"placeholder":"agent_name","source":"cover.org_short_name","extractor":"literal","value":"business-development"},
+    {"placeholder":"agent_name","extractor":"literal","value":"business-development"},
     {"placeholder":"org","source":"cover.org_short_name","extractor":"identity"},
     {"placeholder":"org_name","source":"cover.org_short_name","extractor":"identity"},
-    {"placeholder":"current_timestamp","source":"cover.timezone","extractor":"literal","value":"(stamped by setup at scaffold)"}
+    {"placeholder":"current_timestamp","extractor":"literal","value":"(stamped by setup at scaffold)"}
   ],
   "config_keys": [
     {"path":"/timezone","source":"cover.timezone","extractor":"identity","value_type":"string","mode":"replace"},

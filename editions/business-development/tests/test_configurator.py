@@ -187,4 +187,21 @@ class BusinessDevelopmentEditionTests(unittest.TestCase):
         companions={path.name for path in self.source.iterdir() if path.is_file()}
         self.assertTrue({"BDM Judgment Guide.md","BDM Owner-Acquisition Playbook.md","BDM Pipeline Board.md"} <= companions)
 
+    def test_named_agent_name_is_the_scaffold_identity_not_the_org_short_name(self):
+        print("ARMED: agent_name pins to the seat identity while the cover org short-name moves")
+        text=self.answers.read_text(); self.assertIn("Org short-name: ridgeline\n",text)
+        probe=self.tmp/"short-name-probe.md"; probe.write_text(text.replace("Org short-name: ridgeline\n","Org short-name: piperprobe\n",1))
+        out=self.tmp/"short-name-probe"; setup.engine.configure(self.source,probe,out,"business-development",clock=self.clock,seat_registry={})
+        rendered="\n".join(p.read_text() for p in out.rglob("*.md"))
+        agent=set(re.findall(r"<!-- BETTY-PH:agent_name -->(.*?)<!-- /BETTY-PH:agent_name -->",rendered,re.S))
+        org=set(re.findall(r"<!-- BETTY-PH:org -->(.*?)<!-- /BETTY-PH:org -->",rendered,re.S))
+        self.assertEqual(agent,{"business-development"})
+        self.assertEqual(json.loads((out/"config.json").read_text())["agent_name"],"business-development")
+        self.assertEqual(org,{"piperprobe"})
+        mapping=json.loads((ROOT/"engine/mappings/business-development.json").read_text())
+        for row in mapping["placeholders"]:
+            if row["extractor"]=="literal": self.assertNotIn("source",row,row["placeholder"])
+        managed=json.loads((out/"business-development-config.json").read_text())["configuration_engine"]["managed_surfaces"]
+        self.assertEqual({i["question_id"] for i in managed if i.get("placeholder")=="agent_name"},{"literal"})
+
 if __name__ == "__main__": unittest.main(verbosity=2)
