@@ -103,6 +103,9 @@ def load_mapping(path: Path):
             if extractor != "literal" and not isinstance(row.get("source"), str):
                 failures.append((f"mapping.config_keys.{row.get('path')}",
                                  "row requires a source (only literal rows derive from no answer)"))
+            if extractor == "literal" and "source" in row:
+                failures.append((f"mapping.config_keys.{row.get('path')}",
+                                 "literal rows derive from no answer and must not carry a source"))
             if (extractor in {"labeled_integer", "labeled_text"}
                     and (not isinstance(row.get("label"), str) or not row["label"].strip())):
                 failures.append((f"mapping.config_keys.{row.get('path')}",
@@ -131,6 +134,9 @@ def load_mapping(path: Path):
         if extractor != "literal" and not isinstance(row.get("source"), str):
             failures.append((f"mapping.{row.get('placeholder')}",
                              "row requires a source (only literal rows derive from no answer)"))
+        if extractor == "literal" and "source" in row:
+            failures.append((f"mapping.{row.get('placeholder')}",
+                             "literal rows derive from no answer and must not carry a source"))
         if (extractor in {"labeled_integer", "labeled_text"}
                 and (not isinstance(row.get("label"), str) or not row["label"].strip())):
             failures.append((f"mapping.{row.get('placeholder')}",

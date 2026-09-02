@@ -13,7 +13,7 @@
     { "label": "Renewal response window (days)", "key": "renewal_response_window_days" }
   ],
   "placeholders": [
-    {"placeholder":"agent_name","source":"cover.org_short_name","extractor":"literal","value":"leasing-coordinator"},
+    {"placeholder":"agent_name","extractor":"literal","value":"leasing-coordinator"},
     {"placeholder":"company_name","source":"cover.company_name","extractor":"identity"},
     {"placeholder":"timezone","source":"cover.timezone","extractor":"identity"},
     {"placeholder":"income_multiplier","source":"A2","extractor":"identity"},

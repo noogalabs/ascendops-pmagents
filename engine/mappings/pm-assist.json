@@ -32,11 +32,11 @@
     {"placeholder":"company_name","source":"cover.company_name","extractor":"identity"},
     {"placeholder":"org_name","source":"cover.org_short_name","extractor":"identity"},
     {"placeholder":"forward_email","source":"cover.forward_email","extractor":"identity"},
-    {"placeholder":"day_mode_start","source":"C8","extractor":"literal","value":"08:00"},
-    {"placeholder":"day_mode_end","source":"C8","extractor":"literal","value":"20:00"},
-    {"placeholder":"agent_name","source":"A2","extractor":"literal","value":"pm-assist"},
+    {"placeholder":"day_mode_start","extractor":"literal","value":"08:00"},
+    {"placeholder":"day_mode_end","extractor":"literal","value":"20:00"},
+    {"placeholder":"agent_name","extractor":"literal","value":"pm-assist"},
     {"placeholder":"org","source":"cover.org_short_name","extractor":"identity"},
-    {"placeholder":"current_timestamp","source":"C8","extractor":"literal","value":"configured-by-pmagents"}
+    {"placeholder":"current_timestamp","extractor":"literal","value":"configured-by-pmagents"}
   ],
   "config_keys": [
     {"path":"/timezone","source":"cover.timezone","extractor":"identity","value_type":"string","mode":"replace"}
