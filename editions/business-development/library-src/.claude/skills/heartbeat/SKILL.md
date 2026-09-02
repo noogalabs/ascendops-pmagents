@@ -128,8 +128,9 @@ if [[ "$HEARTBEAT_NOOP" != "true" ]]; then
   # a "human" assignee OR the "human-tasks" project):
   #   - If created >24h ago with no update: send ONE Telegram reminder
   #   - If blocking agent work: surface explicitly with blocking context
-  #   - Read /cross_seat/pointers/day_mode_start and day_mode_end from the structured config.
-  #   - If either is absent, report awaiting-maintenance-peer and defer the reminder.
+  #   - Read communications_window_start and communications_window_end from config.json.
+  #   - If the managed row for /communications_window_start is resolution held_fallback,
+  #     say awaiting maintenance peer, running fallback window, and still honor the window.
   #   - If outside the configured window: defer reminders to the next day's first heartbeat.
   # For an out-of-lane task: do not contact the install owner; raise it
   # internally instead. Project membership is discovery, not authority.

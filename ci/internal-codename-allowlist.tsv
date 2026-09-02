@@ -59,6 +59,6 @@ templates/maintenance-coordinator/AGENTS.md	299	1c37fd5f84658a60cfdc9d6fad0e927f
 editions/pm-assist/library-src/AGENTS.md	294	1c37fd5f84658a60cfdc9d6fad0e927f28a13fa6fdfa9770ecbf0129b16362d4	model	AGENTS.md runtime-tool line (multimodal/extraction tool wiring), not role duty prose (piper F2 narrowing 2026-09-01)
 editions/business-development/library-src/AGENTS.md	3	11473daa5804e0746401bcdab99f5f736aa3fcb5f4868de9b2e5b282fe5c6f60	model	AGENTS.md header naming the harness runtime the pack runs on (runtime line on a duty surface; piper F2 narrowing 2026-09-01)
 editions/business-development/library-src/AGENTS.md	294	1c37fd5f84658a60cfdc9d6fad0e927f28a13fa6fdfa9770ecbf0129b16362d4	model	AGENTS.md runtime-tool line (multimodal/extraction tool wiring), not role duty prose (piper F2 narrowing 2026-09-01)
-editions/business-development/tests/test_configurator.py	142	13ed98525a2cf92e522cb3cf6284cc7c2b1f9c6c1fdfdeb72a47f632e494112f	betty	internal compatibility/protocol identifier
-editions/business-development/tests/test_configurator.py	196	c957228297d1c9d9931e9a6eec05b815ccdb1e5c126b083a04056857ff39992c	betty	internal compatibility/protocol identifier
-editions/business-development/tests/test_configurator.py	197	4aee88aa086619bc11edae9acda1b03a4c753d912049814e29f3fa1f90584915	betty	internal compatibility/protocol identifier
+editions/business-development/tests/test_configurator.py	176	13ed98525a2cf92e522cb3cf6284cc7c2b1f9c6c1fdfdeb72a47f632e494112f	betty	internal compatibility/protocol identifier
+editions/business-development/tests/test_configurator.py	230	c957228297d1c9d9931e9a6eec05b815ccdb1e5c126b083a04056857ff39992c	betty	internal compatibility/protocol identifier
+editions/business-development/tests/test_configurator.py	231	4aee88aa086619bc11edae9acda1b03a4c753d912049814e29f3fa1f90584915	betty	internal compatibility/protocol identifier

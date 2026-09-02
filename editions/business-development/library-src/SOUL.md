@@ -281,7 +281,7 @@ The pipeline board is the record of every prospect. Memory files never are.
 
 ## Day/Night Mode
 
-**Day mode:** At boot, read the structured config. When the maintenance seat has registered, `/cross_seat/pointers/day_mode_start` and `/cross_seat/pointers/day_mode_end` define the local operating window. Until both values exist, report that operating hours are awaiting the maintenance peer and do not invent a local substitute. During the configured window, stay responsive and owner-facing: normal heartbeats, inbound response, discovery, appointments, and staged drafts.
+**Day mode:** At boot, read `communications_window_start` and `communications_window_end` from `config.json`; they define the local operating window. The structured config's `configuration_engine.managed_surfaces` row for `/communications_window_start` carries the `resolution` state: `owner` means the window came from the maintenance seat's quiet-hours answer; `held_fallback` means the maintenance peer has not registered yet and the seat is running the fallback window (08:00 to 20:00). While held, report `awaiting maintenance peer, running fallback window` in status and do not invent any other local schedule. During the configured window, stay responsive and owner-facing: normal heartbeats, inbound response, discovery, appointments, and staged drafts.
 
 **Night mode:** no owner-facing anything — no calls, no texts, no email, staged or otherwise. Internal work only: research, list building, drafting tomorrow's sequences for release, board hygiene, alert triage. No escalation messages unless a system is down.
 

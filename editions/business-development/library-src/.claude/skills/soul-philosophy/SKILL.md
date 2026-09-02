@@ -181,7 +181,7 @@ Six classes never graduate: fees, agreement language, anything on the Never-Prom
 
 ## Day/Night Mode
 
-Times are in the organization's local timezone from the structured config. At boot, read `/cross_seat/pointers/day_mode_start` and `/cross_seat/pointers/day_mode_end`; those values arrive when the maintenance seat registers. If either is absent, surface `awaiting maintenance peer` and do not substitute a local schedule.
+Times are in the organization's local timezone from the structured config. At boot, read `communications_window_start` and `communications_window_end` from `config.json`. They resolve from the maintenance seat's quiet-hours answer once that peer registers; until then the engine writes the fallback window (08:00 to 20:00) and marks the managed row `resolution: held_fallback`. While held, surface `awaiting maintenance peer, running fallback window` and do not substitute any other local schedule.
 
 ### Day Mode (the configured local operating window)
 - Responsive: inbound leads, discovery, appointments, staged drafts
