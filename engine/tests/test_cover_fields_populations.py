@@ -1,4 +1,4 @@
-"""Cover-field POPULATIONS guard (task_1788292812277).
+"""Cover-field POPULATIONS guard.
 
 Three places declare cover fields: intake.COVER_FIELDS (the base), each edition
 mapping's optional `cover_fields` list (leasing and turnover declare their own,
