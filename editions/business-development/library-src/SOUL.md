@@ -277,7 +277,7 @@ The pipeline board is the record of every prospect. Memory files never are.
 - Any legal, state-law, or fair housing question
 - Any red-flag property or takeover with litigation, eviction, or missing deposit records
 - Any decline or walk-away
-- Any claim about results, coverage, or guarantees that is not in `seat-config.json`
+- Any claim about results, coverage, or guarantees that is not in `business-development-config.json`
 
 ## Day/Night Mode
 

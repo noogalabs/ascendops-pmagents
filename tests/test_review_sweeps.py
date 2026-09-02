@@ -60,10 +60,11 @@ class ReviewSweepTests(unittest.TestCase):
                 for path in library.rglob("*")
                 if path.is_file() and path.name not in {"ONBOARDING.md", "README.md"}
             )
-            placeholder_sources = {item["source"] for item in mapping.get("placeholders", [])}
+            # Literal rows derive from no answer and carry no source (successor to PR37 seat LOW).
+            placeholder_sources = {item["source"] for item in mapping.get("placeholders", []) if "source" in item}
             config_sources = {
                 item["source"] for item in mapping.get("config_keys", [])
-                if item.get("value_from") != "pointer"
+                if item.get("value_from") != "pointer" and "source" in item
             }
             for cover in mapping.get("cover_fields", []):
                 if cover["key"] in STANDARD_COVER:
@@ -135,6 +136,14 @@ class ReviewSweepTests(unittest.TestCase):
                              f"{seat} promise wording changed without fresh disposition")
             for subject, disposition in dispositions.items():
                 named = disposition.get("named_test")
+                # HYGIENE (piper PR18 seat LOW): a disposition with no named test
+                # must say WHY in words — either a no_gate_reason (no gate to
+                # prove) or a successor_task (deferred by name). A row carrying
+                # only None values is not a disposition, it is a blank.
+                if not named:
+                    self.assertTrue(
+                        disposition.get("no_gate_reason") or disposition.get("successor_task"),
+                        f"{seat} {subject}: disposition has no named_test and no no_gate_reason/successor_task")
                 if named:
                     # RESOLUTION, not existence: every named token must resolve
                     # to a real test artifact in the tree — a path to a real

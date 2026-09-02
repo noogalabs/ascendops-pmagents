@@ -98,6 +98,63 @@ class BusinessDevelopmentEditionTests(unittest.TestCase):
         self.assertIn("speed_to_lead_minutes",str(raised.exception.failures))
         self.assertFalse((self.tmp/"rejected").exists())
 
+    def test_named_typed_fields_materialize_in_declared_file_and_survive_reconfigure(self):
+        print("ARMED: labeled answers land in the declared structured file's typed sections and replay on reconfigure")
+        out=self.tmp/"seat"
+        for _ in range(2):
+            setup.engine.configure(out if out.exists() else self.source,self.answers,out,"business-development",clock=self.clock,seat_registry={})
+            d=json.loads((out/"business-development-config.json").read_text())
+            self.assertEqual(d["people"]["bd_manager"],"Rhea Calder")
+            self.assertEqual(d["people"]["handoff_channel"],"Ridgeline owner-onboarding chat channel")
+            self.assertEqual(d["platform"]["pipeline_board_location"],"Ridgeline shared drive, BD folder, BDM Pipeline Board workbook")
+            self.assertEqual(d["platform"]["owner_intake_form_link"],"https://forms.ridgeline.example/owner-intake")
+            self.assertEqual(d["platform"]["esignature_tool"],"InkPath")
+            self.assertEqual(d["platform"]["company_side_executor"],"Sloane Karr")
+            self.assertEqual(d["agreement_terms"]["quoted_escalation_turnaround"],"by end of the next business day")
+            clocks={k:v for k,v in d["clocks"].items() if not k.startswith("_")}
+            self.assertEqual(clocks,{
+                "max_contact_attempts":6,"max_attempt_window_days":10,"cold_lead_days_no_touch":3,
+                "nurture_exhausted_touches":8,"nurture_exhausted_window_days":180,"nurture_no_touch_alert_days":30,
+                "lost_lead_reengagement_window_days":90,"unsigned_agreement_alert_hours":48,
+                "unsigned_agreement_escalate_days":5,"days_in_stage_review_flag":10,
+                "stage_max_days":{"S0":3,"S1":5,"S2":3,"S3":7,"S4":1,"S5_warning":None,"S5_escalate":None,"S6":None,
+                                  "_cite":d["clocks"]["stage_max_days"]["_cite"]},
+            })
+            self.assertEqual(d["activity_targets"]["weekly"],{"new_leads":20,"discovery_calls":12,"appointments_held":6,
+                "agreements_signed":3,"doors_added":8,"outbound_calls":75,"followup_touches":40})
+            self.assertEqual((d["activity_targets"]["daily_outbound_call_floor"],d["activity_targets"]["monthly_door_goal"],
+                              d["activity_targets"]["target_days_lead_to_close"]),(15,8,21))
+            self.assertFalse((out/"seat-config.json").exists())
+            structured=[i for i in d["configuration_engine"]["managed_surfaces"] if i.get("config_file")=="seat-config.json"]
+            self.assertEqual(len(structured),31)
+            self.assertNotIn("people",json.loads((out/"config.json").read_text()))
+
+    def test_named_prose_placeholders_carry_only_the_labeled_value(self):
+        print("ARMED: D1/D3/D4/C5/B12 placeholders render the labeled value, never the whole answer")
+        out=self.tmp/"direct"; setup.engine.configure(self.source,self.answers,out,"business-development",clock=self.clock,seat_registry={})
+        text="\n".join(p.read_text() for p in out.rglob("*.md"))
+        expected={"esignature_tool":"InkPath","pma_signer":"Sloane Karr",
+                  "owner_intake_form_link":"https://forms.ridgeline.example/owner-intake",
+                  "handoff_channel":"Ridgeline owner-onboarding chat channel",
+                  "escalation_turnaround":"by end of the next business day",
+                  "pipeline_board_location":"Ridgeline shared drive, BD folder, BDM Pipeline Board workbook"}
+        for name,value in expected.items():
+            found=set(re.findall(r"<!-- BETTY-PH:%s -->(.*?)<!-- /BETTY-PH:%s -->"%(name,name),text,re.S))
+            self.assertEqual(found,{value},name)
+
+    def test_named_missing_labeled_line_rejects_by_label(self):
+        print("ARMED: an answer without a labeled line the engine reads rejects by that label and writes nothing")
+        for line,label,expected in (("  BD manager: Rhea Calder","BD manager","labeled text line 'BD manager': not found"),
+                                    ("  Max contact attempts: 6","Max contact attempts","labeled integer line 'Max contact attempts': NN not found"),
+                                    ("  E-signature tool: InkPath","E-signature tool","labeled text line 'E-signature tool': not found")):
+            text=self.answers.read_text(); self.assertIn(line+"\n",text)
+            slug=label.replace(" ","-"); bad=self.tmp/f"missing-{slug}.md"; bad.write_text(text.replace(line+"\n","",1))
+            out=self.tmp/f"rejected-{slug}"
+            with self.assertRaises(setup.engine.IntakeRejected) as raised:
+                setup.engine.configure(self.source,bad,out,"business-development",clock=self.clock,seat_registry={})
+            self.assertIn(expected,str(raised.exception.failures))
+            self.assertFalse((out/"business-development-config.json").exists())
+
     def test_named_business_development_promise_surfaces_and_companions(self):
         print("ARMED: questionnaire promise dispositions reach shipped runtime gates")
         expected={
@@ -116,7 +173,7 @@ class BusinessDevelopmentEditionTests(unittest.TestCase):
             ],
             ".claude/skills/draft-release-gate/SKILL.md": [
                 "Classes ship **locked**",
-                "Never by accuracy alone",
+                "Never by this seat's own assessment outside that window",
             ],
             ".claude/skills/shadow-mode-calibration/SKILL.md": [
                 "Nothing is queued to auto-send when shadow mode ends",
@@ -129,5 +186,22 @@ class BusinessDevelopmentEditionTests(unittest.TestCase):
                 self.assertIn(line,text,relative)
         companions={path.name for path in self.source.iterdir() if path.is_file()}
         self.assertTrue({"BDM Judgment Guide.md","BDM Owner-Acquisition Playbook.md","BDM Pipeline Board.md"} <= companions)
+
+    def test_named_agent_name_is_the_scaffold_identity_not_the_org_short_name(self):
+        print("ARMED: agent_name pins to the seat identity while the cover org short-name moves")
+        text=self.answers.read_text(); self.assertIn("Org short-name: ridgeline\n",text)
+        probe=self.tmp/"short-name-probe.md"; probe.write_text(text.replace("Org short-name: ridgeline\n","Org short-name: piperprobe\n",1))
+        out=self.tmp/"short-name-probe"; setup.engine.configure(self.source,probe,out,"business-development",clock=self.clock,seat_registry={})
+        rendered="\n".join(p.read_text() for p in out.rglob("*.md"))
+        agent=set(re.findall(r"<!-- BETTY-PH:agent_name -->(.*?)<!-- /BETTY-PH:agent_name -->",rendered,re.S))
+        org=set(re.findall(r"<!-- BETTY-PH:org -->(.*?)<!-- /BETTY-PH:org -->",rendered,re.S))
+        self.assertEqual(agent,{"business-development"})
+        self.assertEqual(json.loads((out/"config.json").read_text())["agent_name"],"business-development")
+        self.assertEqual(org,{"piperprobe"})
+        mapping=json.loads((ROOT/"engine/mappings/business-development.json").read_text())
+        for row in mapping["placeholders"]:
+            if row["extractor"]=="literal": self.assertNotIn("source",row,row["placeholder"])
+        managed=json.loads((out/"business-development-config.json").read_text())["configuration_engine"]["managed_surfaces"]
+        self.assertEqual({i["question_id"] for i in managed if i.get("placeholder")=="agent_name"},{"literal"})
 
 if __name__ == "__main__": unittest.main(verbosity=2)

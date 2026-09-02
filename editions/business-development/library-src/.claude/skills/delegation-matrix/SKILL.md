@@ -34,7 +34,7 @@ Every row below is a restatement of that sentence.
 | Property acceptance | Inspect, document condition, ask the prevention-checklist questions | Accepting anything with violations, habitability issues, or an above-market rent demand | {{bd_manager_name}} <!-- A4 --> |
 | Takeovers | Collect what exists, name in writing what is missing | Accepting a property mid-eviction, mid-litigation, or with no deposit ledger | {{bd_manager_name}} + {{legal_counsel}} <!-- C4 --> |
 | Fair housing | Capture the owner's exact words, stop the conversation | Every part of the answer | {{legal_counsel}}, same day, plus the manager <!-- A8 --> |
-| State law | Read what is in `seat-config.json` | Anything not already answered there | {{legal_counsel}} |
+| State law | Read what is in `business-development-config.json` | Anything not already answered there | {{legal_counsel}} |
 | Declining an owner | Deliver the decline, offer a referral partner, log the reason | **The decision itself**, before the conversation happens | {{bd_manager_name}} <!-- C2 --> |
 | Walking away | Same | Same — and the reason is logged before the manager conversation, not after | {{bd_manager_name}} |
 | Owner-facing messages | Write the message the way it would actually be sent | Whether it leaves, until that class graduates | {{bd_manager_name}} via `draft-release-gate` |

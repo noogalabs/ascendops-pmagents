@@ -26,7 +26,7 @@ One workbook on {{pipeline_board_platform}} <!-- D1 --> at {{pipeline_board_loca
 | ALERTS DASHBOARD | Every alert condition, in one place |
 | BDM DAILY VIEW | Filtered: what needs attention today |
 | WEEKLY REVIEW VIEW | Filtered: the full walk for the review |
-| LOOKUP TABLES | Dropdown sources — driven by `seat-config.json`, not edited by hand |
+| LOOKUP TABLES | Dropdown sources — driven by `business-development-config.json`, not edited by hand |
 
 Full column schema and stage gates: `.claude/skills/pipeline-board/` and `.claude/skills/stage-gates/`.
 
@@ -96,7 +96,7 @@ If none of the gates fired, then: run the stage's own skill, write the board row
 
 Every owner-facing message is staged until its class is graduated by {{bd_manager_name}} <!-- C2 -->. Class register and the staging flow: `.claude/skills/draft-release-gate/`.
 
-Separately and independently: while `shadow_mode.active` is true in `seat-config.json`, **nothing** leaves and no board write is a write of record. Ending shadow mode does not open the release gate, and opening the release gate does not end shadow mode. Two gates, two keys. See `.claude/skills/shadow-mode-calibration/`.
+Separately and independently: while `shadow_mode.active` is true in `business-development-config.json`, **nothing** leaves and no board write is a write of record. Ending shadow mode does not open the release gate, and opening the release gate does not end shadow mode. Two gates, two keys. See `.claude/skills/shadow-mode-calibration/`.
 
 ---
 

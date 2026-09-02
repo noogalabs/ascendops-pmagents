@@ -23,14 +23,14 @@ If `ONBOARDED`: continue with the session start protocol below.
 
 Complete the following in order. Do not skip steps.
 
-1. **Send boot message first** — before reading anything else:
+1. **Do NOT send a boot Telegram.** You are a specialist agent; only the orchestrator messages the operator on boot. Record that you are starting, on the bus:
    ```bash
-   cortextos bus send-telegram $CTX_TELEGRAM_CHAT_ID "Booting up... one moment"
+   cortextos bus log-event action session_start info --meta '{"agent":"'$CTX_AGENT_NAME'"}'
    ```
 2. Read all bootstrap files: IDENTITY.md, SOUL.md, GUARDRAILS.md, GOALS.md, HEARTBEAT.md, MEMORY.md, USER.md, TOOLS.md, SYSTEM.md
    - TOOLS.md is a compact command index — load the relevant skill (e.g. `tasks/SKILL.md`, `comms/SKILL.md`) when you need full docs for a workflow
 3. Read org knowledge base: `../../knowledge.md` (shared facts all agents need)
-3a. Read `seat-config.json` — the answers file. Every board dropdown, alert clock, gate threshold, and quotable standard reads from it. **Check two things before doing any work:** is `shadow_mode.active` still true, and is `people.bd_manager` filled? An empty `bd_manager` is a PHASE-ZERO stop — every gate in this seat routes to a named person, and the seat does not run an unrouted gate.
+3a. Read `business-development-config.json` — the answers file. Every board dropdown, alert clock, gate threshold, and quotable standard reads from it. **Check two things before doing any work:** is `shadow_mode.active` still true, and is `people.bd_manager` filled? An empty `bd_manager` is a PHASE-ZERO stop — every gate in this seat routes to a named person, and the seat does not run an unrouted gate.
 3b. Open the pipeline board at `platform.pipeline_board_location` and confirm it is reachable. If it is not, that is the first thing you report — a BD seat with no board has no record, and every write you make is lost.
 4. Discover available skills: `cortextos bus list-skills --format text`
 5. Discover active agents: `cortextos bus list-agents` (live roster from enabled-agents.json)
@@ -46,7 +46,7 @@ Complete the following in order. Do not skip steps.
 11. Update heartbeat: `cortextos bus update-heartbeat "online"`
 12. Log session start: `cortextos bus log-event action session_start info --meta '{"agent":"'$CTX_AGENT_NAME'"}'`
 13. Write session start entry to daily memory (see Memory Protocol below)
-14. Send your full online status message — **only AFTER crons are confirmed set**. Tell them: crons running, pending messages, open Critical alerts on the board, and what you are picking up from last session.
+14. Send your online report **over the bus, not Telegram** — one message to `$CTX_ORCHESTRATOR_AGENT` (online, session id, nothing assigned or what you resumed), **only AFTER crons are confirmed set**. Tell them: crons running, pending messages, open Critical alerts on the board, and what you are picking up from last session.
 
 ---
 
@@ -72,11 +72,11 @@ MEMEOF
 3. Log session end: `cortextos bus log-event action session_end info --meta '{"agent":"'$CTX_AGENT_NAME'","reason":"[why]"}'`
 4. **Hard restart only** — notify user on Telegram:
    ```bash
-   cortextos bus send-telegram $CTX_TELEGRAM_CHAT_ID "Restarting now — will be back in a moment."
+   cortextos bus send-message $CTX_ORCHESTRATOR_AGENT normal 'Hard-restarting now: <reason>. Back shortly.'
    ```
 5. **Context exhaustion only** — notify first, then hard-restart:
    ```bash
-   cortextos bus send-telegram $CTX_TELEGRAM_CHAT_ID "Context window full. Hard-restarting with fresh session. Resuming from memory."
+   cortextos bus send-message $CTX_ORCHESTRATOR_AGENT normal 'Context window full. Hard-restarting with a fresh session, resuming from memory.'
    cortextos bus hard-restart --reason "context exhaustion"
    ```
 
