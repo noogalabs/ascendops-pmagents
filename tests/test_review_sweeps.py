@@ -135,6 +135,14 @@ class ReviewSweepTests(unittest.TestCase):
                              f"{seat} promise wording changed without fresh disposition")
             for subject, disposition in dispositions.items():
                 named = disposition.get("named_test")
+                # HYGIENE (piper PR18 seat LOW): a disposition with no named test
+                # must say WHY in words — either a no_gate_reason (no gate to
+                # prove) or a successor_task (deferred by name). A row carrying
+                # only None values is not a disposition, it is a blank.
+                if not named:
+                    self.assertTrue(
+                        disposition.get("no_gate_reason") or disposition.get("successor_task"),
+                        f"{seat} {subject}: disposition has no named_test and no no_gate_reason/successor_task")
                 if named:
                     # RESOLUTION, not existence: every named token must resolve
                     # to a real test artifact in the tree — a path to a real
