@@ -65,11 +65,17 @@
     {"path":"/activity_targets/weekly/followup_touches","source":"D7","extractor":"labeled_integer","label":"Weekly follow-up touches","value_type":"integer","minimum":1,"mode":"replace","file":"seat-config.json"},
     {"path":"/activity_targets/daily_outbound_call_floor","source":"D7","extractor":"labeled_integer","label":"Daily outbound call floor","value_type":"integer","minimum":1,"mode":"replace","file":"seat-config.json"},
     {"path":"/activity_targets/monthly_door_goal","source":"D8","extractor":"labeled_integer","label":"Monthly door goal","value_type":"integer","minimum":1,"mode":"replace","file":"seat-config.json"},
-    {"path":"/activity_targets/target_days_lead_to_close","source":"D8","extractor":"labeled_integer","label":"Target days lead to close","value_type":"integer","minimum":1,"mode":"replace","file":"seat-config.json"}
+    {"path":"/activity_targets/target_days_lead_to_close","source":"D8","extractor":"labeled_integer","label":"Target days lead to close","value_type":"integer","minimum":1,"mode":"replace","file":"seat-config.json"},
+    {"path":"/communications_window_start","value_from":"pointer","pointer_name":"day_mode_start","extractor":"window_start","fallback":"08:00-20:00","value_type":"string","mode":"create"},
+    {"path":"/communications_window_end","value_from":"pointer","pointer_name":"day_mode_end","extractor":"window_end","fallback":"08:00-20:00","value_type":"string","mode":"create"}
   ],
   "cross_seat": {
     "fill_exempt": ["quotable_standards", "protection_program_terms_verbatim", "pet_damage_coverage", "leasing_guarantee_program"],
     "never_graduate": ["fair-housing", "contract-change", "legal-advice", "fee-deviation", "red-flag-property"],
+    "pointers": [
+      {"value_name":"day_mode_start","owner_seat":"maintenance-coordinator","owner_question_id":"B8","holding_question_id":"D12","owner_value_path":"/answers/B8"},
+      {"value_name":"day_mode_end","owner_seat":"maintenance-coordinator","owner_question_id":"B8","holding_question_id":"D12","owner_value_path":"/answers/B8"}
+    ],
     "checks": [],
     "cross_seat_lane": [
       {"lane_id":"BD-14","from_seat":"business-development","to_seat":"leasing"}

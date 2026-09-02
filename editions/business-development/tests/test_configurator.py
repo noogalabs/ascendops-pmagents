@@ -53,23 +53,57 @@ class BusinessDevelopmentEditionTests(unittest.TestCase):
         self.assertNotIn("BD-4",checks)
         self.assertNotIn("BD-1-ordering",checks)
 
-    def test_named_day_mode_has_no_false_holder_and_boots_from_peer_config(self):
-        print("ARMED: day mode stays absent until the maintenance peer can supply it")
+    def test_named_day_mode_runs_fallback_window_until_maintenance_peer_resolves_b8(self):
+        """Supersedes test_named_day_mode_has_no_false_holder_and_boots_from_peer_config.
+
+        That test pinned day mode ABSENT until a maintenance peer registered (PR18 seat).
+        Dane ruling A, 2026-09-02: a seat that times prospect outreach needs a window it
+        can actually read, so BD declares day_mode_start/day_mode_end pointer rows against
+        maintenance B8 (holding D12) plus config pointer rows with window extractors and a
+        literal fallback window; the runtime reads config.json and surfaces the resolution.
+        """
+        print("ARMED: BD runs the fallback window while held and resolves both endpoints from maintenance B8 once the peer registers")
         mapping=json.loads((ROOT/"engine/mappings/business-development.json").read_text())
-        placeholders={row["placeholder"] for row in mapping["placeholders"]}
-        pointers={row["value_name"] for row in mapping["cross_seat"].get("pointers",[])}
-        self.assertTrue({"day_mode_start","day_mode_end"}.isdisjoint(placeholders))
-        self.assertTrue({"day_mode_start","day_mode_end"}.isdisjoint(pointers))
-        runtime="\n".join((self.source/path).read_text() for path in [
-            "SOUL.md",
-            ".claude/skills/soul-philosophy/SKILL.md",
-            ".claude/skills/heartbeat/SKILL.md",
-        ])
-        self.assertIn("/cross_seat/pointers/day_mode_start",runtime)
-        self.assertIn("/cross_seat/pointers/day_mode_end",runtime)
-        self.assertIn("awaiting maintenance peer",runtime)
-        self.assertNotIn("{{day_mode_start}}",runtime)
-        self.assertNotIn("{{day_mode_end}}",runtime)
+        pointers={row["value_name"]:row for row in mapping["cross_seat"]["pointers"]}
+        for name in ("day_mode_start","day_mode_end"):
+            self.assertEqual((pointers[name]["owner_seat"],pointers[name]["owner_question_id"],pointers[name]["owner_value_path"],pointers[name]["holding_question_id"]),
+                             ("maintenance-coordinator","B8","/answers/B8","D12"),name)
+        runtime="\n".join((self.source/path).read_text() for path in ["SOUL.md",".claude/skills/soul-philosophy/SKILL.md",".claude/skills/heartbeat/SKILL.md"])
+        self.assertNotIn("/cross_seat/pointers/day_mode",runtime)
+        self.assertNotIn("{{day_mode_start}}",runtime); self.assertNotIn("{{day_mode_end}}",runtime)
+        for path in ["SOUL.md",".claude/skills/soul-philosophy/SKILL.md",".claude/skills/heartbeat/SKILL.md"]:
+            text=(self.source/path).read_text()
+            self.assertIn("communications_window_start",text,path); self.assertIn("communications_window_end",text,path)
+            self.assertIn("awaiting maintenance peer, running fallback window",text,path)
+        def window(out):
+            cfg=json.loads((out/"config.json").read_text()); d=json.loads((out/"business-development-config.json").read_text())
+            rows={i["config_path"]:i for i in d["configuration_engine"]["managed_surfaces"] if str(i.get("config_path","")).startswith("/communications_window")}
+            return (cfg["communications_window_start"],cfg["communications_window_end"],
+                    rows["/communications_window_start"]["resolution"],rows["/communications_window_end"]["resolution"],
+                    sorted(d["cross_seat"].get("held",{})),{k:v["state"] for k,v in d["cross_seat"].get("pointers",{}).items()})
+        # absent peer: fallback window, held state, survives reconfigure
+        out=self.tmp/"held"
+        for _ in range(2):
+            setup.engine.configure(out if out.exists() else self.source,self.answers,out,"business-development",clock=self.clock,seat_registry={})
+            self.assertEqual(window(out),("08:00","20:00","held_fallback","held_fallback",["day_mode_end","day_mode_start"],{}))
+        # configured maintenance peer with a distinct window: both endpoints resolve from B8
+        maint_src=self.tmp/"maint-src"; shutil.copytree(ROOT/"templates/maintenance-coordinator",maint_src,symlinks=True)
+        for path in maint_src.rglob("*"):
+            if not path.is_file() or path.is_symlink(): continue
+            try: text=path.read_text()
+            except UnicodeDecodeError: continue
+            for name,value in {"agent_name":"ridge-maint","org":"ridgeline","current_timestamp":"2026-09-02T00:00:00Z","upstream_update_minute":"17"}.items():
+                text=text.replace("{{"+name+"}}",value)
+            path.write_text(text)
+        fixture=(ROOT/"editions/maintenance/fixtures/ridgeline-maintenance-answers.md").read_text()
+        self.assertIn("external communications window 08:00-20:00",fixture)
+        maint_answers=self.tmp/"maint-answers.md"; maint_answers.write_text(fixture.replace("external communications window 08:00-20:00","external communications window 09:15-19:45"))
+        maint_out=self.tmp/"maint-out"
+        setup.engine.configure(maint_src,maint_answers,maint_out,"maintenance-coordinator",clock=self.clock,seat_registry={})
+        peer=self.tmp/"resolved"
+        for _ in range(2):
+            setup.engine.configure(peer if peer.exists() else self.source,self.answers,peer,"business-development",clock=self.clock,seat_registry={"maintenance-coordinator":str(maint_out)})
+            self.assertEqual(window(peer),("09:15","19:45","owner","owner",[],{"day_mode_end":"resolved","day_mode_start":"resolved"}))
 
     def test_named_speed_to_lead_value_reaches_config_and_runtime_surfaces(self):
         print("ARMED: speed-to-lead cover value must reach config and member runtime surfaces")
