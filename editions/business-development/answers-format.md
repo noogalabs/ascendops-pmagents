@@ -9,6 +9,29 @@ audience: all agents
 status: reference
 ---
 
+# Configuration Cover Sheet
+
+Company name: ________________________________________
+Org short-name: ________________________________________
+Forward email: ________________________________________
+Timezone: ________________________________________
+Autonomy mode: ________________________________________
+Unlock window: ________________________________________
+Qualifying accuracy: ________________________________________
+Resident messaging autonomy: ________________________________________
+
+> Autonomy mode notes: `copilot` (default) ships the earned-autonomy ladder;
+> `supervised` keeps every category approval-gated permanently; `full` grants
+> day-one autonomy with fair-housing screening still human-reviewed. Resident
+> messaging autonomy is your choice: do you want your agents messaging
+> residents directly, or would you rather approve those messages first?
+> Answer yes for direct messaging under your configured mode rules; answer no
+> (or leave it blank) and every resident message routes through you first.
+> Built-in fair-housing safeguards stay on either way. A missing or unclear
+> answer keeps messages routing through you. PLAIN WARNING for existing installs: re-running setup RESETS
+> ladder progress — every earned unlock returns to locked and must be re-earned
+> under the configured window.
+
 # BDM Agent Setup Questionnaire
 
 ## BDM Agent Setup Questionnaire

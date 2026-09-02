@@ -467,7 +467,7 @@
       "companion_claim": "Companion documents in this folder: BDM Owner-Acquisition Playbook, BDM Pipeline Board, and BDM Judgment Guide (all Generic Baseline).",
       "banned_companion_claims": [],
       "promise_subject_sha256": {
-        "INTRO": "cb83a01e62501e6a8a4ce3a42c7bb814e92c736286a25e05289280a1ced2533e",
+        "INTRO": "d34dee9a26898828bc4bcd7ed60f6a5018233ebc9316b81df4bd284e9284f79f",
         "A2": "c32eecda5f4a78e8185df9f2f02abd489899ab9ed779a5191e6ea9f3d49566eb",
         "A4": "61029720dd051a0a8cbf208615632021f4a99239f06c2ff9ac34d0dec325b019",
         "A5": "8905336707f10d06a44307c9d531533cb15d8d8a537f62c4470b84a6e001ecdc",
@@ -486,7 +486,7 @@
         "D12": "06ccdb4ca0b8d2b383c5574e88f452708a0c06149bf39e47494dd4a6b1b7a00b"
       },
       "promise_ledger": {
-        "INTRO": {"no_gate_reason": "format, shipped-library truth, and legal-review disclosure"},
+        "INTRO": {"no_gate_reason": "format, shipped-library truth, and legal-review disclosure; 2026-09-02 rebase onto main: the standard Configuration Cover Sheet block (autonomy mode / unlock window / qualifying accuracy / resident messaging autonomy, PR34 wording) appended verbatim from the accounting edition; its autonomy-mode notes restate gated behavior as standing facts exactly as the accounting INTRO disposition records, no BD-specific promise wording changed", "gate_surface": "engine/autonomy.py (safety_gates, evaluate_unlock pm_approval, render)", "named_test": "engine/tests/test_autonomy.py AutonomyCasualties + AutomaticUnlockCasualties + RenderCodeConsistency + MemberChoiceCasualties + RenderCodeConsistencyChoice + IrreversibleGateByName + RendererPurity"},
         "A2": {"no_gate_reason": "question collects market-specific public ownership sources"},
         "A4": {"gate_surface": ".claude/skills/property-and-owner-gates/SKILL.md", "named_test": "test_named_business_development_promise_surfaces_and_companions"},
         "A5": {"gate_surface": ".claude/skills/fee-and-contract-gates/SKILL.md", "named_test": "test_named_business_development_promise_surfaces_and_companions"},

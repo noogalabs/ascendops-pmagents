@@ -15,6 +15,10 @@ Company name: Ridgeline Residential Management
 Org short-name: ridgeline
 Forward email: bd@ridgeline.example
 Timezone: America/Denver
+Autonomy mode: [documented] copilot
+Unlock window: [documented] last_10
+Qualifying accuracy: [documented] null
+Resident messaging autonomy: [documented] no
 
 Cover-sheet field notes, because this seat spends them differently from its siblings:
 Company name is the only one of the four that has a template placeholder in this seat.
