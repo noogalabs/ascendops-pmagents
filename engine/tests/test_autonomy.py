@@ -727,20 +727,42 @@ class FullModeCorrectionByName(unittest.TestCase):
         self.assertEqual(row["total_decisions"], 1)
         self.assertEqual(row["recent_outcomes"], [False])
 
-class IrreversibleGateByName(unittest.TestCase):
-    """Work order closure is irreversible (doctrine: a closed work order cannot be
-    reopened) — it never earns autonomy in any mode."""
+class ClosureMemberChoice(unittest.TestCase):
+    """Closure autonomy belongs to the member; omission is human-only."""
 
-    def test_work_order_closure_met_bar_never_unlocks_via_cli(self):
-        print("ARMED: work_order_closure at a met accuracy bar never auto-unlocks")
-        import subprocess, sys as _sys
-        temp = Path(tempfile.mkdtemp(prefix="irrev-"))
+    def _render(self, mode, choice):
+        temp = Path(tempfile.mkdtemp(prefix="closure-choice-"))
         self.addCleanup(shutil.rmtree, temp)
         root = temp / "seat"
         shutil.copytree(ROOT / "templates" / "maintenance-coordinator", root)
         autonomy.render(root, autonomy.parse_settings({
-            "autonomy_mode": "copilot", "unlock_window": "last_3",
-            "qualifying_accuracy": "90"}), "2026-09-01T12:00:00Z")
+            "autonomy_mode": mode, "unlock_window": "last_3",
+            "qualifying_accuracy": "90", "work_order_closure_autonomy": choice,
+        }), "2026-09-01T12:00:00Z")
+        return root
+
+    def test_closure_choice_six_cell_matrix(self):
+        print("ARMED: opt-in/opt-out x copilot/supervised/full closure matrix")
+        for mode in ("copilot", "supervised", "full"):
+            for choice, opted in (("yes", True), ("no", False)):
+                root = self._render(mode, choice)
+                state = json.loads((root / "copilot-thresholds.json").read_text())
+                row = state["categories"]["work_order_closure"]
+                self.assertEqual(state["work_order_closure_autonomy"], opted, (mode, choice))
+                self.assertEqual(row["irreversible_gate"], not opted, (mode, choice))
+                expected = "unlocked" if mode == "full" and opted else "locked"
+                self.assertEqual(row["status"], expected, (mode, choice))
+                row.update(total_decisions=3, accuracy_pct=100)
+                self.assertEqual(
+                    autonomy.evaluate_unlock(state, "work_order_closure"),
+                    mode == "copilot" and opted,
+                    (mode, choice),
+                )
+
+    def test_work_order_closure_default_stays_human_only_via_cli(self):
+        print("ARMED: omitted closure choice remains human-only through record-decision")
+        import subprocess, sys as _sys
+        root = self._render("copilot", "")
         autonomy.write_engine_sidecar(root)
         for n in range(3):
             r = subprocess.run(
@@ -752,17 +774,19 @@ class IrreversibleGateByName(unittest.TestCase):
         self.assertEqual(state["categories"]["work_order_closure"]["status"], "locked")
         self.assertTrue(state["categories"]["work_order_closure"]["irreversible_gate"])
 
-    def test_full_mode_leaves_work_order_closure_locked(self):
-        print("ARMED: full mode day-one leaves the irreversible category locked")
-        temp = Path(tempfile.mkdtemp(prefix="irrev-full-"))
-        self.addCleanup(shutil.rmtree, temp)
-        root = temp / "seat"
-        shutil.copytree(ROOT / "templates" / "maintenance-coordinator", root)
-        autonomy.render(root, autonomy.parse_settings({
-            "autonomy_mode": "full"}), "2026-09-01T12:00:00Z")
+    def test_production_record_decision_uses_persisted_closure_choice(self):
+        print("ARMED: production record-decision reads the persisted member closure choice")
+        import subprocess
+        root = self._render("copilot", "yes")
+        autonomy.write_engine_sidecar(root)
+        for _ in range(3):
+            result = subprocess.run(
+                [str(root / "record-decision.sh"), "work_order_closure", "--correct"],
+                cwd=root, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
         state = json.loads((root / "copilot-thresholds.json").read_text())
-        self.assertEqual(state["categories"]["work_order_closure"]["status"], "locked")
-        self.assertEqual(state["categories"]["lock_change"]["status"], "unlocked")
+        self.assertTrue(state["work_order_closure_autonomy"])
+        self.assertEqual(state["categories"]["work_order_closure"]["status"], "unlocked")
 
 
 class ThresholdChangeReEvaluation(unittest.TestCase):

@@ -32,7 +32,7 @@ FROZEN = {
     "emergency_dispatch": (INTERNAL, "dispatching for a true emergency; ladder by design, speed over approval"),
     "new_vendor_assignment": (INTERNAL, "assigning a vendor not yet on the approved list; ladder by design"),
     "resident_comms": (EXTERNAL_SEND, "any message to a resident (routine or diagnostic subtype); the member's messaging choice gates it"),
-    "work_order_closure": (IRREVERSIBLE, "closing a work order; a closed work order cannot be reopened, so closure never auto-unlocks"),
+    "work_order_closure": (IRREVERSIBLE, "closing a work order is irreversible; the member's explicit closure choice gates autonomy"),
     # pm-assist / leasing (GUARDRAILS "Valid categories")
     "templated_owner_update": (EXTERNAL_SEND, "an owner-facing update from an approved template; owner is an external recipient"),
     "owner_statement_delivery": (EXTERNAL_SEND, "delivering an owner statement; owner-facing send"),

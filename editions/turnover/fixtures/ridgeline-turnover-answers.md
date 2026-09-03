@@ -19,6 +19,7 @@ Autonomy mode: [documented] copilot
 Unlock window: [documented] last_10
 Qualifying accuracy: [documented] null
 Resident messaging autonomy: [documented] no
+Work order closure autonomy: [documented] no
 
 Day mode start: 08:00
 Day mode end: 18:00

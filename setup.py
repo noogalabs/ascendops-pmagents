@@ -61,12 +61,14 @@ AUTONOMY_FIELDS = (
     PromptField("cover.Unlock window", "Unlock window"),
     PromptField("cover.Qualifying accuracy", "Qualifying accuracy"),
     PromptField("cover.Resident messaging autonomy", "Resident messaging autonomy"),
+    PromptField("cover.Work order closure autonomy", "Work order closure autonomy"),
 )
 AUTONOMY_DEFAULTS = {
     "cover.Autonomy mode": "copilot",
     "cover.Unlock window": "last_10",
     "cover.Qualifying accuracy": "null",
     "cover.Resident messaging autonomy": "no",
+    "cover.Work order closure autonomy": "no",
 }
 
 

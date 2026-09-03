@@ -19,6 +19,7 @@ Autonomy mode: [documented] copilot
 Unlock window: [documented] last_10
 Qualifying accuracy: [documented] null
 Resident messaging autonomy: [documented] no
+Work order closure autonomy: [documented] no
 Prospect response SLA (minutes): 15
 Application decision SLA (business hours): 24
 Leasing approval threshold (USD): 500
