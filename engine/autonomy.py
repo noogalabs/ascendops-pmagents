@@ -51,10 +51,9 @@ INTERNAL_CATEGORIES = {
     "lock_change",
     "new_vendor_assignment",
 }
-# Irreversible actions never auto-unlock in any mode: doctrine says a closed
-# work order cannot be reopened, so autonomy over closure is hard-gated exactly
-# like the external gate. Whether members may CHOOSE closure autonomy later is
-# an owner-ledger question, not a build decision.
+# Closure is irreversible, but the member decides whether its agent may close
+# work orders. Silence stays human-only; an explicit opt-in lets closure follow
+# the configured mode just like another operational category.
 IRREVERSIBLE_CATEGORIES = {
     "work_order_closure",
 }
@@ -133,8 +132,11 @@ def parse_settings(raw_cover: dict[str, str]) -> dict[str, object]:
     # property manager. The choice is theirs; silence is not a choice.
     raw_external = raw_cover.get("external_send_autonomy", "").strip().lower()
     external_send = raw_external in {"yes", "y", "true"}
+    raw_closure = raw_cover.get("work_order_closure_autonomy", "").strip().lower()
+    closure = raw_closure in {"yes", "y", "true"}
     return {"mode": mode, "unlock_window": window, "qualifying_accuracy": accuracy,
-            "external_send_autonomy": external_send}
+            "external_send_autonomy": external_send,
+            "work_order_closure_autonomy": closure}
 
 
 def evaluate_unlock(state: dict, category: str) -> bool:
@@ -145,9 +147,8 @@ def evaluate_unlock(state: dict, category: str) -> bool:
     row = state["categories"][category]
     if state.get("autonomy_mode") != "copilot" or row.get("mode") != "copilot":
         return False
-    if category in IRREVERSIBLE_CATEGORIES:
-        # Irreversible actions (a closed work order cannot be reopened) never earn
-        # automatic unlock, in any mode.
+    if (category in IRREVERSIBLE_CATEGORIES
+            and not state.get("work_order_closure_autonomy")):
         return False
     if category in EXTERNAL_SEND_CATEGORIES and not state.get("external_send_autonomy"):
         # CHOICE-DEPENDENT, keyed on the ONE persisted fact render writes
@@ -222,8 +223,7 @@ def _doctrine(settings: dict[str, object], has_thresholds: bool, authority_marke
             "\n\nWhen a category is unlocked (earned or day-one autonomy): act directly, "
             "send a post-action note (\"[action taken]. Reply UNDO if needed.\"), and log "
             "`decision_presented` with `\"autonomous\": true`. Irreversible categories (work "
-            "order closure) are never acted on directly, regardless of any status value in the "
-            "thresholds file."
+            "order closure) follow the member's separately recorded closure choice."
         )
         if not settings.get("external_send_autonomy"):
             act_directly += (
@@ -242,6 +242,16 @@ def _doctrine(settings: dict[str, object], has_thresholds: bool, authority_marke
             "\n\nResident/external messaging: routes through the property manager — the "
             "member chose to approve resident messages first. Built-in fair-housing "
             "safeguards remain active."
+        )
+    if settings.get("work_order_closure_autonomy"):
+        choice_note += (
+            "\n\nWork order closure: the member chose agent closure autonomy. Closure "
+            "follows the configured mode; completion evidence and every other safety check still apply."
+        )
+    else:
+        choice_note += (
+            "\n\nWork order closure: human approval required. The member did not opt in, "
+            "so the agent must not close a work order in any mode."
         )
     if has_thresholds and mode == "supervised":
         threshold_note = (
@@ -283,7 +293,9 @@ def _render_thresholds(path: Path, settings: dict[str, object], configured_at: s
     mode_changed = previous_mode is not None and previous_mode != mode
     state["autonomy_mode"] = mode
     external_opt_in = bool(settings.get("external_send_autonomy"))
+    closure_opt_in = bool(settings.get("work_order_closure_autonomy"))
     state["external_send_autonomy"] = external_opt_in
+    state["work_order_closure_autonomy"] = closure_opt_in
     state["safety_gates"] = {
         # Fair-housing screening is NOT messaging: locked in every mode and
         # every choice — the member choice covers resident/external SENDS only.
@@ -291,6 +303,10 @@ def _render_thresholds(path: Path, settings: dict[str, object], configured_at: s
         "external_resident_send": (
             {"status": "member_choice", "safety_gate": False}
             if external_opt_in else
+            {"status": "locked", "safety_gate": True}),
+        "work_order_closure": (
+            {"status": "member_choice", "safety_gate": False}
+            if closure_opt_in else
             {"status": "locked", "safety_gate": True}),
     }
     for category, row in state.get("categories", {}).items():
@@ -302,7 +318,7 @@ def _render_thresholds(path: Path, settings: dict[str, object], configured_at: s
         if is_external:
             row["safety_gate"] = is_safety_gate
         if is_irreversible:
-            row["irreversible_gate"] = True
+            row["irreversible_gate"] = not closure_opt_in
         # MERGE, NOT REPLACE (owner follow-up made load-bearing): a rerun must
         # never silently revoke earned autonomy. Runtime rows (counters,
         # recent_outcomes, unlocked_at/demoted_at history) are ALWAYS
@@ -346,14 +362,14 @@ def _render_thresholds(path: Path, settings: dict[str, object], configured_at: s
                     row["status"] = "locked"
                     row["demoted_at"] = configured_at
                     row["demotion_reason"] = "threshold change"
-            if is_safety_gate or is_irreversible:
+            if is_safety_gate or (is_irreversible and not closure_opt_in):
                 row["status"] = "locked"
         elif mode == "supervised":
             row["status"] = "locked"
             row["window"] = None
             row["qualifying_accuracy"] = None
         else:
-            gated = is_safety_gate or is_irreversible
+            gated = is_safety_gate or (is_irreversible and not closure_opt_in)
             row["status"] = "locked" if gated else "unlocked"
             row["window"] = None
             row["qualifying_accuracy"] = None
@@ -471,7 +487,8 @@ def settings_from_state(state: dict) -> dict[str, object]:
     # opted-in seat's doctrine to opted-out on its first earned unlock.
     # Absent = False (fail-closed), matching parse_settings.
     return {"mode": mode, "unlock_window": window, "qualifying_accuracy": accuracy,
-            "external_send_autonomy": bool(state.get("external_send_autonomy", False))}
+            "external_send_autonomy": bool(state.get("external_send_autonomy", False)),
+            "work_order_closure_autonomy": bool(state.get("work_order_closure_autonomy", False))}
 
 
 def record_decision(root: Path, category: str, correct: bool,
@@ -534,6 +551,7 @@ def _record_decision_locked(root: Path, thresholds: Path, category: str,
     # opted-in member (caught by the opted-in mirror casualty).
     eval_state = {"autonomy_mode": state.get("autonomy_mode"),
                   "external_send_autonomy": bool(state.get("external_send_autonomy", False)),
+                  "work_order_closure_autonomy": bool(state.get("work_order_closure_autonomy", False)),
                   "categories": {category: {**row, "total_decisions": len(outcomes)}}}
     unlocked_now = bool(correct) and evaluate_unlock(eval_state, category) and not was_unlocked
     if unlocked_now:
@@ -546,4 +564,3 @@ def _record_decision_locked(root: Path, thresholds: Path, category: str,
             "total_decisions": row["total_decisions"],
             "accuracy_pct": row["accuracy_pct"], "status": row["status"],
             "unlocked_now": unlocked_now}
-

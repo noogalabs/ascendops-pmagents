@@ -19,6 +19,9 @@ Autonomy mode: ________________________________________
 Unlock window: ________________________________________
 Qualifying accuracy: ________________________________________
 Resident messaging autonomy: ________________________________________
+Work order closure autonomy: ________________________________________
+
+> Work order closure autonomy is your company choice: answer yes only if the agent may close a completed work order under the configured mode; answer no (the default) for human approval before every closure.
 
 > Autonomy mode notes: `copilot` (default) ships the earned-autonomy ladder;
 > `supervised` keeps every category approval-gated permanently; `full` grants

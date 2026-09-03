@@ -145,6 +145,7 @@ def cover_fields_for_mapping(mapping):
         ("Unlock window", "unlock_window"),
         ("Qualifying accuracy", "qualifying_accuracy"),
         ("Resident messaging autonomy", "external_send_autonomy"),
+        ("Work order closure autonomy", "work_order_closure_autonomy"),
     ):
         fields.setdefault(label, key)
     return fields

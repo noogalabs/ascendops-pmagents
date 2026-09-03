@@ -40,13 +40,13 @@
         "D1": "66c1351355f4a1838c8118d2b3c15f8af364f1420cac1d5677d72ec4feeb16f7",
         "D8": "96e9997d7886cb793d0b690b54f9546e0c594637adc3262359d5d1dc81296bd4",
         "D9": "d1e42d3121932539c864a7fa53fc540a7e75dceaa69ca4ae062f6ccd1db0aa08",
-        "INTRO": "b205ab4436707e5938a0245b1edb0b00ca2523763fb77200e500f6421f3da4d1"
+        "INTRO": "19863fcc644e9268b3b370f263612b91a8cd1e6760b8857e1575c0c8bdcfc114"
       },
       "promise_ledger": {
         "INTRO": {
-          "no_gate_reason": "format instructions, provenance behavior, and legal-review disclosure; the autonomy-mode notes (2026-09-01) restate gated behavior \u2014 automatic unlock-by-accuracy, the member resident-messaging choice with fail-closed silence, irreversible and screening gates \u2014 stated as standing facts, whose gates are the engine autonomy casualties",
+          "no_gate_reason": "format instructions, provenance behavior, and legal-review disclosure; the autonomy-mode notes (2026-09-01) restate gated behavior \u2014 automatic unlock-by-accuracy, the member resident-messaging choice with fail-closed silence, member closure choice, fail-closed closure gate, and screening gate \u2014 stated as standing facts, whose gates are the engine autonomy casualties",
           "gate_surface": "engine/autonomy.py (safety_gates, evaluate_unlock pm_approval, render)",
-          "named_test": "engine/tests/test_autonomy.py AutonomyCasualties + AutomaticUnlockCasualties + RenderCodeConsistency + MemberChoiceCasualties + RenderCodeConsistencyChoice + IrreversibleGateByName + RendererPurity"
+          "named_test": "engine/tests/test_autonomy.py AutonomyCasualties + AutomaticUnlockCasualties + RenderCodeConsistency + MemberChoiceCasualties + RenderCodeConsistencyChoice + ClosureMemberChoice + RendererPurity"
         },
         "A2": {
           "no_gate_reason": "question collects the jurisdiction-specific entry rule"
@@ -113,13 +113,13 @@
         "D5": "fe37cc18ee6e64ca2f8de011e534bd1b1039ae23a30e8c80561df8b4566c9e7c",
         "D7": "00d43b0594b7161584d716c6bd0184799ee617a0e5481d6c864c7a5969d6fafb",
         "D9": "29c9d172372844a0d9b065ced468178dac2d3dbf056ed3c375d97ab04b6c6cc3",
-        "INTRO": "067c75177e2cfd4995c9847e1b35ae41308c3c44a21b4e4a07835f55caea0b55"
+        "INTRO": "4e38b397be868babf181e9812dbf0e43e0e62523c067e72ff23452925f87d732"
       },
       "promise_ledger": {
         "INTRO": {
-          "no_gate_reason": "format instructions, provenance behavior, and legal-review disclosure; the autonomy-mode notes (2026-09-01) restate gated behavior \u2014 automatic unlock-by-accuracy, the member resident-messaging choice with fail-closed silence, irreversible and screening gates \u2014 stated as standing facts, whose gates are the engine autonomy casualties",
+          "no_gate_reason": "format instructions, provenance behavior, and legal-review disclosure; the autonomy-mode notes (2026-09-01) restate gated behavior \u2014 automatic unlock-by-accuracy, the member resident-messaging choice with fail-closed silence, member closure choice, fail-closed closure gate, and screening gate \u2014 stated as standing facts, whose gates are the engine autonomy casualties",
           "gate_surface": "engine/autonomy.py (safety_gates, evaluate_unlock pm_approval, render)",
-          "named_test": "engine/tests/test_autonomy.py AutonomyCasualties + AutomaticUnlockCasualties + RenderCodeConsistency + MemberChoiceCasualties + RenderCodeConsistencyChoice + IrreversibleGateByName + RendererPurity"
+          "named_test": "engine/tests/test_autonomy.py AutonomyCasualties + AutomaticUnlockCasualties + RenderCodeConsistency + MemberChoiceCasualties + RenderCodeConsistencyChoice + ClosureMemberChoice + RendererPurity"
         },
         "A1": {
           "no_gate_reason": "question collects portfolio scale"
@@ -216,13 +216,13 @@
         "D4": "38b78a6d0549b691e98bd3779e883d473598f80e0cf8f0c23239d948f14992fe",
         "D5": "4a07e0cd53e24c6697b44b36100476fcdef378cb55be6672a911e84d61852c2c",
         "D7": "8d2a9e4e816c42de69ef6676e94d8609371666a42964a92a25356dab48eafd2d",
-        "INTRO": "85c602cdb2482745d8fc41107a8297dc8074697386669345f9195bc180790953"
+        "INTRO": "b185d4ab1c82cc45f9dbc6cd0ca034354563a66b1b1b946c9db0e9fdc3f3e88a"
       },
       "promise_ledger": {
         "INTRO": {
-          "no_gate_reason": "format instructions, provenance behavior, and legal-review disclosure; the autonomy-mode notes (2026-09-01) restate gated behavior \u2014 automatic unlock-by-accuracy, the member resident-messaging choice with fail-closed silence, irreversible and screening gates \u2014 stated as standing facts, whose gates are the engine autonomy casualties",
+          "no_gate_reason": "format instructions, provenance behavior, and legal-review disclosure; the autonomy-mode notes (2026-09-01) restate gated behavior \u2014 automatic unlock-by-accuracy, the member resident-messaging choice with fail-closed silence, member closure choice, fail-closed closure gate, and screening gate \u2014 stated as standing facts, whose gates are the engine autonomy casualties",
           "gate_surface": "engine/autonomy.py (safety_gates, evaluate_unlock pm_approval, render)",
-          "named_test": "engine/tests/test_autonomy.py AutonomyCasualties + AutomaticUnlockCasualties + RenderCodeConsistency + MemberChoiceCasualties + RenderCodeConsistencyChoice + IrreversibleGateByName + RendererPurity"
+          "named_test": "engine/tests/test_autonomy.py AutonomyCasualties + AutomaticUnlockCasualties + RenderCodeConsistency + MemberChoiceCasualties + RenderCodeConsistencyChoice + ClosureMemberChoice + RendererPurity"
         },
         "A1": {
           "gate_surface": ".claude/skills/applicant-screening/SKILL.md",
@@ -302,7 +302,7 @@
         "PM Decision Log Template"
       ],
       "promise_subject_sha256": {
-        "INTRO": "d6ca4d3852becc497e3051164b4fc2837482b0e12790240b767b485934e97c1a",
+        "INTRO": "017b3ae610a32574ed548c7557d3415adaa0da6cdb894ff678e1ffc4523da554",
         "A1": "c71116e6c25ca1bd22035989aaa4adfe51c6ded6ca0822d3f4c991daa60d2edf",
         "A4": "58141e33c41ea20987874f6a0204fd03f9f729f7d20ba6e3554167a80a4320e7",
         "A5": "df822a2185168151b824a31744777ea9f4620ecd2bdc793dd07231d5e903e600",
@@ -321,9 +321,9 @@
       },
       "promise_ledger": {
         "INTRO": {
-          "no_gate_reason": "format instructions, provenance behavior, and legal-review disclosure; the autonomy-mode notes (2026-09-01) restate gated behavior \u2014 automatic unlock-by-accuracy, the member resident-messaging choice with fail-closed silence, irreversible and screening gates \u2014 stated as standing facts, whose gates are the engine autonomy casualties",
+          "no_gate_reason": "format instructions, provenance behavior, and legal-review disclosure; the autonomy-mode notes (2026-09-01) restate gated behavior \u2014 automatic unlock-by-accuracy, the member resident-messaging choice with fail-closed silence, member closure choice, fail-closed closure gate, and screening gate \u2014 stated as standing facts, whose gates are the engine autonomy casualties",
           "gate_surface": "engine/autonomy.py (safety_gates, evaluate_unlock pm_approval, render)",
-          "named_test": "engine/tests/test_autonomy.py AutonomyCasualties + AutomaticUnlockCasualties + RenderCodeConsistency + MemberChoiceCasualties + RenderCodeConsistencyChoice + IrreversibleGateByName + RendererPurity"
+          "named_test": "engine/tests/test_autonomy.py AutonomyCasualties + AutomaticUnlockCasualties + RenderCodeConsistency + MemberChoiceCasualties + RenderCodeConsistencyChoice + ClosureMemberChoice + RendererPurity"
         },
         "A1": {
           "gate_surface": "engine/intake.py::_validate_accounting_scope",
@@ -398,7 +398,7 @@
         "Remote Maintenance Coordinator KPI Addendum A"
       ],
       "promise_subject_sha256": {
-        "INTRO": "f76fe0e27218280d04cb2fa56113cefa9aa56e6a2ecc4dce134eed822d90958d",
+        "INTRO": "842129cfc3d7c3ddca666b273d7b1a1c0f9e8b1e0cb7f83023cbba7126d000b7",
         "A1": "aba05b16ee332d5a3d7a062d795272ac05b13b494f9a62359c3c722d933c859f",
         "A5": "16c0e31586266bb212124e8423dd2294fd44a9c4a142605435b26fb75c56cc4c",
         "B1": "ac11464218515f2fc38839bdba2e6d09e964040f9a816539a9e2d29604579385",
@@ -414,9 +414,9 @@
       },
       "promise_ledger": {
         "INTRO": {
-          "no_gate_reason": "format instructions, provenance behavior, and legal-review disclosure; the autonomy-mode notes (2026-09-01) restate gated behavior \u2014 automatic unlock-by-accuracy, the member resident-messaging choice with fail-closed silence, irreversible and screening gates \u2014 stated as standing facts, whose gates are the engine autonomy casualties",
+          "no_gate_reason": "format instructions, provenance behavior, and legal-review disclosure; the autonomy-mode notes (2026-09-01) restate gated behavior \u2014 automatic unlock-by-accuracy, the member resident-messaging choice with fail-closed silence, member closure choice, fail-closed closure gate, and screening gate \u2014 stated as standing facts, whose gates are the engine autonomy casualties",
           "gate_surface": "engine/autonomy.py (safety_gates, evaluate_unlock pm_approval, render)",
-          "named_test": "engine/tests/test_autonomy.py AutonomyCasualties + AutomaticUnlockCasualties + RenderCodeConsistency + MemberChoiceCasualties + RenderCodeConsistencyChoice + IrreversibleGateByName + RendererPurity"
+          "named_test": "engine/tests/test_autonomy.py AutonomyCasualties + AutomaticUnlockCasualties + RenderCodeConsistency + MemberChoiceCasualties + RenderCodeConsistencyChoice + ClosureMemberChoice + RendererPurity"
         },
         "A1": {
           "no_gate_reason": "question collects the jurisdiction-specific disposition deadline"
@@ -467,7 +467,7 @@
       "companion_claim": "Companion documents in this folder: BDM Owner-Acquisition Playbook, BDM Pipeline Board, and BDM Judgment Guide (all Generic Baseline).",
       "banned_companion_claims": [],
       "promise_subject_sha256": {
-        "INTRO": "d34dee9a26898828bc4bcd7ed60f6a5018233ebc9316b81df4bd284e9284f79f",
+        "INTRO": "e25046e1b048b0522fe96bdf13823543e5bb49287e473535c60cdbf33f2dbe9a",
         "A2": "c32eecda5f4a78e8185df9f2f02abd489899ab9ed779a5191e6ea9f3d49566eb",
         "A4": "61029720dd051a0a8cbf208615632021f4a99239f06c2ff9ac34d0dec325b019",
         "A5": "8905336707f10d06a44307c9d531533cb15d8d8a537f62c4470b84a6e001ecdc",
@@ -486,7 +486,7 @@
         "D12": "06ccdb4ca0b8d2b383c5574e88f452708a0c06149bf39e47494dd4a6b1b7a00b"
       },
       "promise_ledger": {
-        "INTRO": {"no_gate_reason": "format, shipped-library truth, and legal-review disclosure; 2026-09-02 rebase onto main: the standard Configuration Cover Sheet block (autonomy mode / unlock window / qualifying accuracy / resident messaging autonomy, PR34 wording) appended verbatim from the accounting edition; its autonomy-mode notes restate gated behavior as standing facts exactly as the accounting INTRO disposition records, no BD-specific promise wording changed", "gate_surface": "engine/autonomy.py (safety_gates, evaluate_unlock pm_approval, render)", "named_test": "engine/tests/test_autonomy.py AutonomyCasualties + AutomaticUnlockCasualties + RenderCodeConsistency + MemberChoiceCasualties + RenderCodeConsistencyChoice + IrreversibleGateByName + RendererPurity"},
+        "INTRO": {"no_gate_reason": "format, shipped-library truth, and legal-review disclosure; 2026-09-02 rebase onto main: the standard Configuration Cover Sheet block (autonomy mode / unlock window / qualifying accuracy / resident messaging autonomy, PR34 wording) appended verbatim from the accounting edition; its autonomy-mode notes restate gated behavior as standing facts exactly as the accounting INTRO disposition records, no BD-specific promise wording changed", "gate_surface": "engine/autonomy.py (safety_gates, evaluate_unlock pm_approval, render)", "named_test": "engine/tests/test_autonomy.py AutonomyCasualties + AutomaticUnlockCasualties + RenderCodeConsistency + MemberChoiceCasualties + RenderCodeConsistencyChoice + ClosureMemberChoice + RendererPurity"},
         "A2": {"no_gate_reason": "question collects market-specific public ownership sources"},
         "A4": {"gate_surface": ".claude/skills/property-and-owner-gates/SKILL.md", "named_test": "test_named_business_development_promise_surfaces_and_companions"},
         "A5": {"gate_surface": ".claude/skills/fee-and-contract-gates/SKILL.md", "named_test": "test_named_business_development_promise_surfaces_and_companions"},
