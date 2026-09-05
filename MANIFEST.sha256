@@ -17,6 +17,7 @@ aa1c4936eb7e04567e42049c55ad8d2a720ebf68120e90a2b0d3d6d64280da8a  docs/rejection
 dda6eb446d5baaa90b72c4779a4107b264edc75d8e2c976179ce64e832ec14d0  editions/accounting/library-src/.claude/skills/ap-vendor-payments/SKILL.md
 858e57e2a6534f53146d2812aa7d3b9b6bdf9f792243d10cf3c825260421a2b4  editions/accounting/library-src/.claude/skills/approvals/SKILL.md
 a35db4923fddab40ae0ffac38cd7fce6c9ed676bdc6c6cf7a593b2efd36ed868  editions/accounting/library-src/.claude/skills/ar-rent-posting/SKILL.md
+e3c4f497c1d41f96bdd62d6e65148fff0200ed9401bb2e99659e754e072eb8d1  editions/accounting/library-src/.claude/skills/autonomy-mode-switch/SKILL.md
 f1341d8d5bde0eed0a9915c1dd32453e50ce3ba15ebeaaba133af2ce01cf77bf  editions/accounting/library-src/.claude/skills/onboarding/SKILL.md
 ad44f4b2b796e1a22eecb541ded5ae229cfac1fd67b788fe96ba10a66d3c1724  editions/accounting/library-src/.claude/skills/owner-draws/SKILL.md
 f2f087206883908ee69d15fa54277ddd8157c1d8d76d75d2743fdeb0c7c89f36  editions/accounting/library-src/.claude/skills/owner-statement-drafting/SKILL.md
@@ -54,6 +55,7 @@ eb4d564a7cd9f299acb0d59007ab94d121b559e143e8723203900c54654b1afe  editions/busin
 e109ffd903b589fd665d2892f688739ce85171bfaa0a614a4b871873db677bc4  editions/business-development/library-src/.claude/skills/agent-management/SKILL.md
 684f732b62a258f1d298b2cac18e40131a23f7e69d5bdfb222a236da98f2a418  editions/business-development/library-src/.claude/skills/approvals/SKILL.md
 acccc6bde2700244a9000d9df9b8cf9041ec214c6cb7130682be4733e3496a3b  editions/business-development/library-src/.claude/skills/auto-skill/SKILL.md
+e3c4f497c1d41f96bdd62d6e65148fff0200ed9401bb2e99659e754e072eb8d1  editions/business-development/library-src/.claude/skills/autonomy-mode-switch/SKILL.md
 f35a6d0e135a5ee7124b83921d3786c8d1ee3f19c3c5caf0874a554a97d753a5  editions/business-development/library-src/.claude/skills/bus-reference/SKILL.md
 9ad53f5b081ef5c10811a9734cbbe65cdbc18e47ad56ef0a7f2287c3ff31dd25  editions/business-development/library-src/.claude/skills/comms/SKILL.md
 208c8c4054d9ce182d1f7c174c9e964a3986f87c5c8e7f6af3c6dc13ba1fe7f6  editions/business-development/library-src/.claude/skills/cron-management/SKILL.md
@@ -124,6 +126,7 @@ f584dc6016495c4bba58c167ddf10d9e934518185056f2024f99cd140ad22ebe  editions/leasi
 c8be497b9911bcdc8058ce0ed0ec8123683c13cb16a35d15f2092ae7c27a0900  editions/leasing/answers-format.md
 09e1dac1d7e30d2c9a0db281bc71db74c85d5c6087ccf0e4b36595a3c7a620ff  editions/leasing/fixtures/ridgeline-leasing-answers.md
 a8150b87d46085ef1bd6b77fc8bb32380ae338c4f33d7a3786932b50a6d90457  editions/leasing/library-src/.claude/skills/applicant-screening/SKILL.md
+e3c4f497c1d41f96bdd62d6e65148fff0200ed9401bb2e99659e754e072eb8d1  editions/leasing/library-src/.claude/skills/autonomy-mode-switch/SKILL.md
 3ad7809dba946f8809de8dbf9dc016e70924fd204315dde620c7343417ddd5b0  editions/leasing/library-src/.claude/skills/fair-housing-guard/SKILL.md
 ed93888ccae273e10643abbe5c49bc92dcd9fe140a300a4dda1bafd269669b00  editions/leasing/library-src/.claude/skills/lease-abstraction/SKILL.md
 9a76a6b9382a6a08edb9c9430e00535bab2fdd7ae3a239f9d133cca250c6c753  editions/leasing/library-src/.claude/skills/onboarding/SKILL.md
@@ -173,6 +176,7 @@ e109ffd903b589fd665d2892f688739ce85171bfaa0a614a4b871873db677bc4  editions/pm-as
 580669a236c0765ad0d06f0564798f1a7ff70b75b72989922bb441c4dbfc9572  editions/pm-assist/library-src/.claude/skills/approval-queue/SKILL.md
 abf4de145305ecdf03f1d6409784d0ce304c8aee9e0316c5780c3d51bea8bd6f  editions/pm-assist/library-src/.claude/skills/approvals/SKILL.md
 acccc6bde2700244a9000d9df9b8cf9041ec214c6cb7130682be4733e3496a3b  editions/pm-assist/library-src/.claude/skills/auto-skill/SKILL.md
+e3c4f497c1d41f96bdd62d6e65148fff0200ed9401bb2e99659e754e072eb8d1  editions/pm-assist/library-src/.claude/skills/autonomy-mode-switch/SKILL.md
 4e5178d0d4eacb64d5dcf06b6323fb01b89526f6c4206d18724b02e896892d24  editions/pm-assist/library-src/.claude/skills/broker-escalation/SKILL.md
 f35a6d0e135a5ee7124b83921d3786c8d1ee3f19c3c5caf0874a554a97d753a5  editions/pm-assist/library-src/.claude/skills/bus-reference/SKILL.md
 0bc0c755899e1850d46232888409c2f971d015864a7c624976d177714a54dfd8  editions/pm-assist/library-src/.claude/skills/comms/SKILL.md
@@ -237,6 +241,7 @@ cc34f5ba7b8780872b0c199c58ddf193eb61d58259f8cd1dc0cae7cb1da6cd80  editions/pm-as
 d9e1fd8f2a5cb67eae95c0d96a2f40e5ec0844d8c34d8bc97c4e5f3a1519797d  editions/turnover/VALIDATION-REPORT.md
 af55b40bb8446583027a0b58c43603c028857ce4136b4b63455e3d822d802472  editions/turnover/answers-format.md
 8592a50192e1041f358bd46db88acbf51975f69f606a45ca0ef8fb61ca74ab53  editions/turnover/fixtures/ridgeline-turnover-answers.md
+e3c4f497c1d41f96bdd62d6e65148fff0200ed9401bb2e99659e754e072eb8d1  editions/turnover/library-src/.claude/skills/autonomy-mode-switch/SKILL.md
 c2f9c00df58dea13c8891efbfdcef452e62f03426a7e1907d539bfc8fb25e3ce  editions/turnover/library-src/.claude/skills/inspection-media-to-findings/SKILL.md
 a47085749c63338af2883fbaf57987573370377eeb6ed186cde80048deb71b72  editions/turnover/library-src/.claude/skills/make-ready-pipeline/SKILL.md
 e11092e71ee43b4a070380877eac2a5dc3e969ee7dc240bf8bac3502c6ffbef8  editions/turnover/library-src/.claude/skills/make-ready-pipeline/make_ready.py
@@ -344,6 +349,7 @@ eb4d564a7cd9f299acb0d59007ab94d121b559e143e8723203900c54654b1afe  templates/main
 e109ffd903b589fd665d2892f688739ce85171bfaa0a614a4b871873db677bc4  templates/maintenance-coordinator/.claude/skills/agent-management/SKILL.md
 2bbeeda1b0477516142c3619bdf2e72dfd8980b5a41ba27776e49f9cef156d66  templates/maintenance-coordinator/.claude/skills/approvals/SKILL.md
 acccc6bde2700244a9000d9df9b8cf9041ec214c6cb7130682be4733e3496a3b  templates/maintenance-coordinator/.claude/skills/auto-skill/SKILL.md
+e3c4f497c1d41f96bdd62d6e65148fff0200ed9401bb2e99659e754e072eb8d1  templates/maintenance-coordinator/.claude/skills/autonomy-mode-switch/SKILL.md
 f61dcad019d3eaaf9947aea6ffb375f2f16b4363201e8d17d6fc7f8af68fc4f3  templates/maintenance-coordinator/.claude/skills/autoresearch/SKILL.md
 f35a6d0e135a5ee7124b83921d3786c8d1ee3f19c3c5caf0874a554a97d753a5  templates/maintenance-coordinator/.claude/skills/bus-reference/SKILL.md
 b3a3adb49919d7ada9baa04bfda503e3b7674b33435b7302e5c31d654191e4d2  templates/maintenance-coordinator/.claude/skills/closeout-verification/SKILL.md
@@ -399,5 +405,6 @@ e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  templates/main
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  templates/maintenance-coordinator/skills/drafts/.gitkeep
 84fb7f00e5191dd44833b53c219e617673ba30b2c8a72f53cd04d213cbe3c253  tests/leak-guard.test.sh
 711a4d6cb9a2445e2af8e6be713f4c7db8b09605e2e48f334f167f2d13a1021b  tests/test_manifest_generation.py
+ce95b68af532fd8bd011da31fa4d207272bf73aec630e41020c7f1e9438ecb3e  tests/test_mode_switch.py
 cc319c1362204841bc2cbf8ec21e1ffd45036da64c96c782b77a302b0adcc921  tests/test_review_sweeps.py
 a86039ecf8900d115365fd5dd3fc4d79a962c1a91d3056a38f4be9d24e96a480  tests/test_zero_touch_setup.py
