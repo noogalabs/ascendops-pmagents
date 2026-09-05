@@ -336,8 +336,7 @@ def _render_thresholds(path: Path, settings: dict[str, object], configured_at: s
             row["qualifying_accuracy"] = settings["qualifying_accuracy"]
             if mode_changed or row.get("status") not in ("locked", "unlocked"):
                 row["status"] = "locked"
-            elif (not mode_changed
-                    and row.get("status") == "unlocked"
+            elif (row.get("status") == "unlocked"
                     and (old_window != settings["unlock_window"]
                          or old_accuracy != settings["qualifying_accuracy"])):
                 # THRESHOLD CHANGE RE-EVALUATES: an unlocked row must still

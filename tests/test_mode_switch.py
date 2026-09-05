@@ -99,8 +99,13 @@ class ModeSwitchCliTests(unittest.TestCase):
         self.assertEqual(state["autonomy_mode"], "full")
         self.assertEqual(row["status"], "unlocked")
         self.assertIsNone(row["window"])
-        row.update(total_decisions=3, correct=3, recent_outcomes=[True, True, True],
-                   accuracy_pct=100.0, unlocked_at="2026-09-05T12:30:00Z")
+        # Carry a prior copilot threshold shape through full mode so the
+        # threshold-change branch cannot mask the mode_changed re-lock. With
+        # that one clause removed, this earned unlock survives the downgrade.
+        row.update(window="last_10", qualifying_accuracy=None,
+                   total_decisions=3, correct=3,
+                   recent_outcomes=[True, True, True], accuracy_pct=100.0,
+                   unlocked_at="2026-09-05T12:30:00Z")
         (self.seat / "copilot-thresholds.json").write_text(json.dumps(state, indent=2) + "\n")
 
         result = self.run_cli("copilot")
