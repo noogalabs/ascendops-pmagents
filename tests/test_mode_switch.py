@@ -15,14 +15,17 @@ sys.path.insert(0, str(ROOT / "engine"))
 import autonomy  # noqa: E402
 
 
-SKILL_SOURCES = (
-    ROOT / "templates" / "maintenance-coordinator",
-    ROOT / "editions" / "pm-assist" / "library-src",
-    ROOT / "editions" / "leasing" / "library-src",
-    ROOT / "editions" / "turnover" / "library-src",
-    ROOT / "editions" / "accounting" / "library-src",
-    ROOT / "editions" / "business-development" / "library-src",
-)
+def skill_sources(root: Path = ROOT) -> tuple[Path, ...]:
+    """Derive every edition's shipped source; maintenance uses its template."""
+    editions = sorted(
+        path for path in (root / "editions").iterdir()
+        if path.is_dir() and (path / "library-src").is_dir()
+    )
+    return tuple(
+        root / "templates" / "maintenance-coordinator"
+        if edition.name == "maintenance" else edition / "library-src"
+        for edition in editions
+    )
 
 
 class ModeSwitchCliTests(unittest.TestCase):
@@ -93,8 +96,16 @@ class ModeSwitchCliTests(unittest.TestCase):
         self.assertEqual(first.returncode, 0, first.stderr)
         state = self.state()
         row = state["categories"]["lock_change"]
-        row.update(total_decisions=3, correct=3, recent_outcomes=[True, True, True],
-                   accuracy_pct=100.0, unlocked_at="2026-09-05T12:30:00Z")
+        self.assertEqual(state["autonomy_mode"], "full")
+        self.assertEqual(row["status"], "unlocked")
+        self.assertIsNone(row["window"])
+        # Carry a prior copilot threshold shape through full mode so the
+        # threshold-change branch cannot mask the mode_changed re-lock. With
+        # that one clause removed, this earned unlock survives the downgrade.
+        row.update(window="last_10", qualifying_accuracy=None,
+                   total_decisions=3, correct=3,
+                   recent_outcomes=[True, True, True], accuracy_pct=100.0,
+                   unlocked_at="2026-09-05T12:30:00Z")
         (self.seat / "copilot-thresholds.json").write_text(json.dumps(state, indent=2) + "\n")
 
         result = self.run_cli("copilot")
@@ -138,7 +149,65 @@ class ModeSwitchCliTests(unittest.TestCase):
             for path in self.seat.rglob("*") if path.is_file()
         }
         self.assertEqual(after, before)
-        self.assertEqual(list(self.temp.glob(".maintenance.mode-candidate-*")), [])
+        self.assertEqual(list(self.temp.glob(".maintenance.mode-scratch-*")), [])
+
+    def test_live_memory_and_task_writes_survive_between_render_and_commit(self):
+        print("ARMED: live runtime writes after mode rendering survive the scoped commit")
+        memory = self.seat / "memory" / "2026-09-05.md"
+        task = self.seat / "tasks" / "open.json"
+        memory.parent.mkdir()
+        task.parent.mkdir()
+        memory.write_text("before\n")
+        task.write_text('{"state":"before"}\n')
+        real_render = autonomy.render
+
+        def render_then_live_write(candidate, settings, timestamp):
+            real_render(candidate, settings, timestamp)
+            memory.write_text("late memory write\n")
+            task.write_text('{"state":"late task write"}\n')
+
+        with mock.patch.object(autonomy, "render", side_effect=render_then_live_write):
+            summary = autonomy.set_mode(self.seat, "full")
+        self.assertEqual(summary["autonomy_mode"], "full")
+        self.assertEqual(memory.read_text(), "late memory write\n")
+        self.assertEqual(task.read_text(), '{"state":"late task write"}\n')
+
+    def test_scoped_commit_places_enforcement_before_doctrine_in_both_directions(self):
+        print("ARMED: interrupted upgrades and downgrades never put doctrine ahead of enforcement")
+
+        def mode_from_doctrine():
+            text = (self.seat / "GUARDRAILS.md").read_text()
+            return next(mode for mode in autonomy.MODES
+                        if f"### Configured mode: {mode}" in text)
+
+        for starting_mode, target_mode in (("copilot", "full"), ("full", "copilot")):
+            with self.subTest(starting_mode=starting_mode, target_mode=target_mode):
+                if mode_from_doctrine() != starting_mode:
+                    self.assertEqual(self.run_cli(starting_mode).returncode, 0)
+                real_atomic_write = autonomy.transaction.atomic_write_text
+                observed = {}
+
+                def stop_after_first_write(path, text):
+                    real_atomic_write(path, text)
+                    if path.parent.resolve() == self.seat.resolve() and not observed:
+                        observed["threshold_mode"] = self.state()["autonomy_mode"]
+                        observed["doctrine_mode"] = mode_from_doctrine()
+                        raise RuntimeError("injected process-death boundary")
+
+                with mock.patch.object(autonomy.transaction, "atomic_write_text",
+                                       side_effect=stop_after_first_write):
+                    with self.assertRaisesRegex(RuntimeError, "process-death boundary"):
+                        autonomy.set_mode(self.seat, target_mode)
+                self.assertEqual(observed, {
+                    "threshold_mode": target_mode,
+                    "doctrine_mode": starting_mode,
+                })
+                # This is the process-death state: enforcement has moved and
+                # doctrine has not. Restore a coherent fixture for the next
+                # direction through the production entry.
+                self.assertEqual(self.run_cli(starting_mode).returncode, 0)
+                self.assertEqual(self.state()["autonomy_mode"], starting_mode)
+                self.assertEqual(mode_from_doctrine(), starting_mode)
 
     def test_no_threshold_edition_switches_from_engine_doctrine_fail_closed(self):
         print("ARMED: editions without threshold ledgers preserve explicit choices from engine doctrine")
@@ -159,19 +228,38 @@ class ModeSwitchCliTests(unittest.TestCase):
 
 
 class ShippedSkillTests(unittest.TestCase):
-    def test_every_edition_ships_identical_owner_word_mode_switch_skill(self):
-        print("ARMED: every edition ships one owner-word-only autonomy switch skill")
+    def assert_all_sources_ship_skill(self, root: Path = ROOT) -> list[str]:
         bodies = []
-        for source in SKILL_SOURCES:
+        for source in skill_sources(root):
             path = source / ".claude" / "skills" / "autonomy-mode-switch" / "SKILL.md"
             self.assertTrue(path.is_file(), source)
-            text = path.read_text()
-            bodies.append(text)
+            bodies.append(path.read_text())
+        return bodies
+
+    def test_every_edition_ships_identical_owner_word_mode_switch_skill(self):
+        print("ARMED: every edition ships one owner-word-only autonomy switch skill")
+        bodies = self.assert_all_sources_ship_skill()
+        self.assertEqual(len(bodies), len(list((ROOT / "editions").glob("*/library-src"))))
+        for text in bodies:
             self.assertIn("only when the owner explicitly instructs", text)
             self.assertIn("--set-mode", text)
             self.assertIn("autonomy-mode-audit.jsonl", text)
             self.assertIn("Never patch", text)
         self.assertTrue(all(body == bodies[0] for body in bodies[1:]))
+
+    def test_a_new_edition_without_the_mode_switch_skill_fails_the_census(self):
+        print("ARMED: a seventh edition cannot ship without the owner-word mode switch skill")
+        root = self.temp_root = Path(tempfile.mkdtemp(prefix="pmagents-skill-census-"))
+        try:
+            for name in ("maintenance", "seventh-edition"):
+                (root / "editions" / name / "library-src").mkdir(parents=True)
+            shipped = root / "templates" / "maintenance-coordinator" / ".claude" / "skills" / "autonomy-mode-switch"
+            shipped.mkdir(parents=True)
+            shipped.joinpath("SKILL.md").write_text("owner-word skill\n")
+            with self.assertRaisesRegex(AssertionError, "seventh-edition"):
+                self.assert_all_sources_ship_skill(root)
+        finally:
+            shutil.rmtree(root)
 
 
 if __name__ == "__main__":

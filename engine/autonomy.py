@@ -569,22 +569,61 @@ def set_mode(root: Path, mode: str, *, external_send_autonomy: bool | None = Non
             "work_order_closure_autonomy": bool(settings["work_order_closure_autonomy"]),
             "changed_at": timestamp,
         }
-        candidate = root.parent / f".{root.name}.mode-candidate-{os.getpid()}"
+        # TODO: give pre-commit scratch leftovers a stable census/cleanup path;
+        # the pid suffix prevents collision but a different process will not
+        # discover an orphan left before the scoped file commit.
+        candidate = root.parent / f".{root.name}.mode-scratch-{os.getpid()}"
         if candidate.exists():
             raise transaction.TransactionError(
                 f"mode-switch candidate already exists: {candidate}"
             )
         try:
-            shutil.copytree(root, candidate, symlinks=True)
+            candidate.mkdir()
+            for name in ("GUARDRAILS.md", "copilot-thresholds.json"):
+                source = root / name
+                if source.is_file():
+                    shutil.copy2(source, candidate / name)
             render(candidate, settings, timestamp)
-            audit = candidate / "logs" / "autonomy-mode-audit.jsonl"
+            rendered = {
+                name: (candidate / name).read_text(encoding="utf-8")
+                for name in ("GUARDRAILS.md", "copilot-thresholds.json", "record-decision.sh")
+                if (candidate / name).is_file()
+            }
+            audit_name = "logs/autonomy-mode-audit.jsonl"
+            audit = root / audit_name
             existing = audit.read_text(encoding="utf-8") if audit.is_file() else ""
-            transaction.atomic_write_text(
-                audit, existing + json.dumps(summary, sort_keys=True) + "\n"
+            rendered[audit_name] = existing + json.dumps(summary, sort_keys=True) + "\n"
+            # Enforcement lands before doctrine, so process death can never
+            # leave a newly permissive promise ahead of the state that gates it.
+            # The audit is an account of a completed switch and therefore last.
+            write_order = (
+                "copilot-thresholds.json", "record-decision.sh",
+                "GUARDRAILS.md", audit_name,
             )
-            transaction.replace_directory_transactional(
-                candidate, root, already_locked=True
-            )
+            writes = {name: rendered[name] for name in write_order if name in rendered}
+            originals = {
+                name: ((root / name).read_bytes(), (root / name).stat().st_mode)
+                if (root / name).is_file() else None
+                for name in writes
+            }
+            applied = []
+            try:
+                for name, text in writes.items():
+                    target = root / name
+                    transaction.atomic_write_text(target, text)
+                    applied.append(name)
+                    if name == "record-decision.sh":
+                        os.chmod(target, (candidate / name).stat().st_mode)
+            except BaseException:
+                for name in reversed(applied):
+                    target = root / name
+                    original = originals[name]
+                    if original is None:
+                        target.unlink(missing_ok=True)
+                    else:
+                        transaction.atomic_write_bytes(target, original[0])
+                        os.chmod(target, original[1])
+                raise
         finally:
             if candidate.exists():
                 shutil.rmtree(candidate)

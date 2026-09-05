@@ -106,10 +106,15 @@ def _durable_replace(src: Path, dst: Path) -> None:
 
 def atomic_write_text(path: Path, text: str) -> None:
     """Durably replace one UTF-8 text file through the transaction rename chokepoint."""
+    atomic_write_bytes(path, text.encode("utf-8"))
+
+
+def atomic_write_bytes(path: Path, content: bytes) -> None:
+    """Durably replace one file without changing its byte representation."""
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.name}.atomic-tmp-{os.getpid()}")
-    with temporary.open("w", encoding="utf-8") as handle:
-        handle.write(text)
+    with temporary.open("wb") as handle:
+        handle.write(content)
         handle.flush()
         os.fsync(handle.fileno())
     _durable_replace(temporary, path)
