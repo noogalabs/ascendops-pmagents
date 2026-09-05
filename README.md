@@ -91,3 +91,22 @@ reconfigured through the same flow rather than overwritten as new installs.
 On success, setup prints the configured agent directory and the next review
 step. On rejection, it shows the engine's exact row plus a plain-language fix;
 unknown rows remain visible for support. See [the renderer census](docs/rejection-renderer.md).
+
+## Change one agent's autonomy mode
+
+Copilot remains the default. On the owner's explicit instruction, change one
+configured agent without rerunning setup:
+
+```sh
+python3 setup.py --set-mode /path/to/agent copilot
+python3 setup.py --set-mode /path/to/agent supervised
+python3 setup.py --set-mode /path/to/agent full
+```
+
+The command uses the same fail-closed autonomy renderer as setup, preserves
+protected files and earned history, re-locks earned unlocks on a downgrade,
+and prints the resulting mode plus both opt-ins. It also appends an audit row
+under the configured agent's `logs/` directory. To change an opt-in in the
+same operation, add `--external-send-autonomy yes|no` or
+`--work-order-closure-autonomy yes|no`; omitted opt-ins keep their current
+values. The command never changes the agent's memory or tasks.

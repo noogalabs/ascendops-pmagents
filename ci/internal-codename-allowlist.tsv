@@ -24,8 +24,8 @@ engine/tests/test_extension_applier.py	39	4ad86f6d78b8f871fec668aaa65a96df28817a
 engine/tests/test_placeholders.py	61	9669af7a3519ffbf374461a2d3c457d86310f0dcd0bba668188214da2cf7bbcb	betty	internal compatibility/protocol identifier
 engine/tests/test_placeholders.py	104	429c5f7664d6e879f5e3a217e5862e288d1c94805d2ae16bd957a10ce9994e90	betty	internal compatibility/protocol identifier
 engine/transaction.py	1	bc187757ae2139157ff25cb3bde8d19a76547f867f1f0d3b2c1ce1e7e58e4bd0	betty	internal compatibility/protocol identifier
-engine/autonomy.py	22	ca4c17ed862cd1dca22187628c0f7b36b091de3c02a31ff612d8303a57d6e2f2	betty	internal compatibility/protocol identifier
-engine/autonomy.py	443	a0ac6c01c5f3153bd9572010d0979a898a0b2a10dd68fb3491f74922e5d130d5	betty	internal compatibility/protocol identifier
+engine/autonomy.py	24	ca4c17ed862cd1dca22187628c0f7b36b091de3c02a31ff612d8303a57d6e2f2	betty	internal compatibility/protocol identifier
+engine/autonomy.py	445	a0ac6c01c5f3153bd9572010d0979a898a0b2a10dd68fb3491f74922e5d130d5	betty	internal compatibility/protocol identifier
 editions/leasing/answers-format.md	249	d72f781d1aad8a0ba019a0a82b74ed647266f531bceaf76af292ca864edaf858	platform	setup-answer example list of PM systems (config/placeholder site, owner ruling 2026-09-01)
 editions/leasing/fixtures/ridgeline-leasing-answers.md	299	d72f781d1aad8a0ba019a0a82b74ed647266f531bceaf76af292ca864edaf858	platform	setup-answer example list of PM systems (config/placeholder site, owner ruling 2026-09-01)
 editions/leasing/library-src/ONBOARDING.md	91	5823741bc35b0dab46ff0689a4c0a8be4410ea9aed320e885e9b8389e10291ed	platform	setup-answer example list of PM systems (config/placeholder site, owner ruling 2026-09-01)

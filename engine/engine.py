@@ -486,11 +486,10 @@ def configure(source: Path, answers: Path, output: Path, seat: str,
             raise IntakeRejected(exc.failures) from exc
         shutil.rmtree(staging_root)
         result = transaction.replace_directory_transactional(staged, output, already_locked=True)
-        if (output / "copilot-thresholds.json").is_file():
-            # The machine-local engine-path sidecar is keyed to the FINAL
-            # destination name — written only after the staging rename, or the
-            # wrapper resolves a name that no longer exists.
-            autonomy.write_engine_sidecar(output)
+        # Every installed edition ships the owner-word mode-switch skill. Its
+        # runtime command resolves this repository through the machine-local
+        # sidecar, including editions without a threshold ledger.
+        autonomy.write_engine_sidecar(output)
         if result.cleanup_warning:
             print(f"WARNING {result.cleanup_warning}", file=sys.stderr)
       except Exception:

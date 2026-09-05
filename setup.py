@@ -469,7 +469,43 @@ def run_setup(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Guided AscendOps PMAgents setup")
-    parser.parse_args()
+    parser.add_argument(
+        "--set-mode", nargs=2, metavar=("AGENT_DIR", "MODE"),
+        help="change one configured agent to copilot, supervised, or full",
+    )
+    parser.add_argument(
+        "--external-send-autonomy", choices=("yes", "no"),
+        help="explicitly opt external/resident sends in or out; omission preserves the current choice",
+    )
+    parser.add_argument(
+        "--work-order-closure-autonomy", choices=("yes", "no"),
+        help="explicitly opt work-order closure in or out; omission preserves the current choice",
+    )
+    args = parser.parse_args()
+    if args.set_mode:
+        agent_dir, mode = args.set_mode
+        try:
+            summary = engine.autonomy.set_mode(
+                Path(agent_dir).expanduser(), mode,
+                external_send_autonomy=(
+                    args.external_send_autonomy == "yes"
+                    if args.external_send_autonomy is not None else None
+                ),
+                work_order_closure_autonomy=(
+                    args.work_order_closure_autonomy == "yes"
+                    if args.work_order_closure_autonomy is not None else None
+                ),
+            )
+        except engine.transaction.TransactionError as exc:
+            print(f"SETUP ERROR: {exc}", file=sys.stderr)
+            return 3
+        except (OSError, UnicodeError, ValueError) as exc:
+            print(f"SETUP ERROR: {exc}", file=sys.stderr)
+            return 2
+        print(json.dumps(summary, sort_keys=True))
+        return 0
+    if args.external_send_autonomy is not None or args.work_order_closure_autonomy is not None:
+        parser.error("autonomy opt-in flags require --set-mode")
     return run_setup()
 
 
