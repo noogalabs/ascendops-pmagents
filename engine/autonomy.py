@@ -336,7 +336,8 @@ def _render_thresholds(path: Path, settings: dict[str, object], configured_at: s
             row["qualifying_accuracy"] = settings["qualifying_accuracy"]
             if mode_changed or row.get("status") not in ("locked", "unlocked"):
                 row["status"] = "locked"
-            elif (row.get("status") == "unlocked"
+            elif (not mode_changed
+                    and row.get("status") == "unlocked"
                     and (old_window != settings["unlock_window"]
                          or old_accuracy != settings["qualifying_accuracy"])):
                 # THRESHOLD CHANGE RE-EVALUATES: an unlocked row must still
@@ -569,6 +570,9 @@ def set_mode(root: Path, mode: str, *, external_send_autonomy: bool | None = Non
             "work_order_closure_autonomy": bool(settings["work_order_closure_autonomy"]),
             "changed_at": timestamp,
         }
+        # TODO: give pre-journal crash leftovers a stable census/cleanup path;
+        # the pid suffix prevents collision but a different process will not
+        # discover an orphan left between copytree and transaction journaling.
         candidate = root.parent / f".{root.name}.mode-candidate-{os.getpid()}"
         if candidate.exists():
             raise transaction.TransactionError(

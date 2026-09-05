@@ -15,14 +15,17 @@ sys.path.insert(0, str(ROOT / "engine"))
 import autonomy  # noqa: E402
 
 
-SKILL_SOURCES = (
-    ROOT / "templates" / "maintenance-coordinator",
-    ROOT / "editions" / "pm-assist" / "library-src",
-    ROOT / "editions" / "leasing" / "library-src",
-    ROOT / "editions" / "turnover" / "library-src",
-    ROOT / "editions" / "accounting" / "library-src",
-    ROOT / "editions" / "business-development" / "library-src",
-)
+def skill_sources(root: Path = ROOT) -> tuple[Path, ...]:
+    """Derive every edition's shipped source; maintenance uses its template."""
+    editions = sorted(
+        path for path in (root / "editions").iterdir()
+        if path.is_dir() and (path / "library-src").is_dir()
+    )
+    return tuple(
+        root / "templates" / "maintenance-coordinator"
+        if edition.name == "maintenance" else edition / "library-src"
+        for edition in editions
+    )
 
 
 class ModeSwitchCliTests(unittest.TestCase):
@@ -93,6 +96,9 @@ class ModeSwitchCliTests(unittest.TestCase):
         self.assertEqual(first.returncode, 0, first.stderr)
         state = self.state()
         row = state["categories"]["lock_change"]
+        self.assertEqual(state["autonomy_mode"], "full")
+        self.assertEqual(row["status"], "unlocked")
+        self.assertIsNone(row["window"])
         row.update(total_decisions=3, correct=3, recent_outcomes=[True, True, True],
                    accuracy_pct=100.0, unlocked_at="2026-09-05T12:30:00Z")
         (self.seat / "copilot-thresholds.json").write_text(json.dumps(state, indent=2) + "\n")
@@ -159,19 +165,38 @@ class ModeSwitchCliTests(unittest.TestCase):
 
 
 class ShippedSkillTests(unittest.TestCase):
-    def test_every_edition_ships_identical_owner_word_mode_switch_skill(self):
-        print("ARMED: every edition ships one owner-word-only autonomy switch skill")
+    def assert_all_sources_ship_skill(self, root: Path = ROOT) -> list[str]:
         bodies = []
-        for source in SKILL_SOURCES:
+        for source in skill_sources(root):
             path = source / ".claude" / "skills" / "autonomy-mode-switch" / "SKILL.md"
             self.assertTrue(path.is_file(), source)
-            text = path.read_text()
-            bodies.append(text)
+            bodies.append(path.read_text())
+        return bodies
+
+    def test_every_edition_ships_identical_owner_word_mode_switch_skill(self):
+        print("ARMED: every edition ships one owner-word-only autonomy switch skill")
+        bodies = self.assert_all_sources_ship_skill()
+        self.assertEqual(len(bodies), len(list((ROOT / "editions").glob("*/library-src"))))
+        for text in bodies:
             self.assertIn("only when the owner explicitly instructs", text)
             self.assertIn("--set-mode", text)
             self.assertIn("autonomy-mode-audit.jsonl", text)
             self.assertIn("Never patch", text)
         self.assertTrue(all(body == bodies[0] for body in bodies[1:]))
+
+    def test_a_new_edition_without_the_mode_switch_skill_fails_the_census(self):
+        print("ARMED: a seventh edition cannot ship without the owner-word mode switch skill")
+        root = self.temp_root = Path(tempfile.mkdtemp(prefix="pmagents-skill-census-"))
+        try:
+            for name in ("maintenance", "seventh-edition"):
+                (root / "editions" / name / "library-src").mkdir(parents=True)
+            shipped = root / "templates" / "maintenance-coordinator" / ".claude" / "skills" / "autonomy-mode-switch"
+            shipped.mkdir(parents=True)
+            shipped.joinpath("SKILL.md").write_text("owner-word skill\n")
+            with self.assertRaisesRegex(AssertionError, "seventh-edition"):
+                self.assert_all_sources_ship_skill(root)
+        finally:
+            shutil.rmtree(root)
 
 
 if __name__ == "__main__":
