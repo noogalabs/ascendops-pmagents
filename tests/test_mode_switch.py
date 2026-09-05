@@ -144,7 +144,28 @@ class ModeSwitchCliTests(unittest.TestCase):
             for path in self.seat.rglob("*") if path.is_file()
         }
         self.assertEqual(after, before)
-        self.assertEqual(list(self.temp.glob(".maintenance.mode-candidate-*")), [])
+        self.assertEqual(list(self.temp.glob(".maintenance.mode-scratch-*")), [])
+
+    def test_live_memory_and_task_writes_survive_between_render_and_commit(self):
+        print("ARMED: live runtime writes after mode rendering survive the scoped commit")
+        memory = self.seat / "memory" / "2026-09-05.md"
+        task = self.seat / "tasks" / "open.json"
+        memory.parent.mkdir()
+        task.parent.mkdir()
+        memory.write_text("before\n")
+        task.write_text('{"state":"before"}\n')
+        real_render = autonomy.render
+
+        def render_then_live_write(candidate, settings, timestamp):
+            real_render(candidate, settings, timestamp)
+            memory.write_text("late memory write\n")
+            task.write_text('{"state":"late task write"}\n')
+
+        with mock.patch.object(autonomy, "render", side_effect=render_then_live_write):
+            summary = autonomy.set_mode(self.seat, "full")
+        self.assertEqual(summary["autonomy_mode"], "full")
+        self.assertEqual(memory.read_text(), "late memory write\n")
+        self.assertEqual(task.read_text(), '{"state":"late task write"}\n')
 
     def test_no_threshold_edition_switches_from_engine_doctrine_fail_closed(self):
         print("ARMED: editions without threshold ledgers preserve explicit choices from engine doctrine")

@@ -570,25 +570,53 @@ def set_mode(root: Path, mode: str, *, external_send_autonomy: bool | None = Non
             "work_order_closure_autonomy": bool(settings["work_order_closure_autonomy"]),
             "changed_at": timestamp,
         }
-        # TODO: give pre-journal crash leftovers a stable census/cleanup path;
+        # TODO: give pre-commit scratch leftovers a stable census/cleanup path;
         # the pid suffix prevents collision but a different process will not
-        # discover an orphan left between copytree and transaction journaling.
-        candidate = root.parent / f".{root.name}.mode-candidate-{os.getpid()}"
+        # discover an orphan left before the scoped file commit.
+        candidate = root.parent / f".{root.name}.mode-scratch-{os.getpid()}"
         if candidate.exists():
             raise transaction.TransactionError(
                 f"mode-switch candidate already exists: {candidate}"
             )
         try:
-            shutil.copytree(root, candidate, symlinks=True)
+            candidate.mkdir()
+            for name in ("GUARDRAILS.md", "copilot-thresholds.json"):
+                source = root / name
+                if source.is_file():
+                    shutil.copy2(source, candidate / name)
             render(candidate, settings, timestamp)
-            audit = candidate / "logs" / "autonomy-mode-audit.jsonl"
+            writes = {
+                name: (candidate / name).read_text(encoding="utf-8")
+                for name in ("GUARDRAILS.md", "copilot-thresholds.json", "record-decision.sh")
+                if (candidate / name).is_file()
+            }
+            audit_name = "logs/autonomy-mode-audit.jsonl"
+            audit = root / audit_name
             existing = audit.read_text(encoding="utf-8") if audit.is_file() else ""
-            transaction.atomic_write_text(
-                audit, existing + json.dumps(summary, sort_keys=True) + "\n"
-            )
-            transaction.replace_directory_transactional(
-                candidate, root, already_locked=True
-            )
+            writes[audit_name] = existing + json.dumps(summary, sort_keys=True) + "\n"
+            originals = {
+                name: ((root / name).read_bytes(), (root / name).stat().st_mode)
+                if (root / name).is_file() else None
+                for name in writes
+            }
+            applied = []
+            try:
+                for name, text in writes.items():
+                    target = root / name
+                    transaction.atomic_write_text(target, text)
+                    applied.append(name)
+                    if name == "record-decision.sh":
+                        os.chmod(target, (candidate / name).stat().st_mode)
+            except BaseException:
+                for name in reversed(applied):
+                    target = root / name
+                    original = originals[name]
+                    if original is None:
+                        target.unlink(missing_ok=True)
+                    else:
+                        transaction.atomic_write_text(target, original[0].decode("utf-8"))
+                        os.chmod(target, original[1])
+                raise
         finally:
             if candidate.exists():
                 shutil.rmtree(candidate)
