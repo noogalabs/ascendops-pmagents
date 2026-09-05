@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import datetime
 import json
+import os
 import re
+import shutil
 from pathlib import Path
 
 import transaction
@@ -489,6 +491,104 @@ def settings_from_state(state: dict) -> dict[str, object]:
     return {"mode": mode, "unlock_window": window, "qualifying_accuracy": accuracy,
             "external_send_autonomy": bool(state.get("external_send_autonomy", False)),
             "work_order_closure_autonomy": bool(state.get("work_order_closure_autonomy", False))}
+
+
+def settings_from_root(root: Path) -> dict[str, object]:
+    """Read the installed seat's current autonomy settings fail-closed.
+
+    Seats with a threshold ledger use that structured source of truth. Seats
+    without one persist the same choices in the engine-owned doctrine block;
+    exact engine phrases are read here so an unknown or hand-edited shape is
+    refused instead of guessed.
+    """
+    thresholds = root / "copilot-thresholds.json"
+    if thresholds.is_file():
+        try:
+            state = json.loads(thresholds.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            raise ValueError("copilot-thresholds.json is unreadable") from exc
+        return settings_from_state(state)
+
+    guardrails = root / "GUARDRAILS.md"
+    if not guardrails.is_file():
+        raise FileNotFoundError(str(guardrails))
+    text = guardrails.read_text(encoding="utf-8")
+    blocks = list(BLOCK.finditer(text))
+    if len(blocks) != 1:
+        raise ValueError("GUARDRAILS.md must contain exactly one configured autonomy block")
+    block = blocks[0].group(0)
+    mode_match = re.search(r"^### Configured mode: (copilot|supervised|full)$", block, re.M)
+    if not mode_match:
+        raise ValueError("configured autonomy block does not name a valid mode")
+    direct = "the member chose direct messaging" in block
+    routed = "the member chose to approve resident messages first" in block
+    closure = "the member chose agent closure autonomy" in block
+    human_closure = "Work order closure: human approval required" in block
+    if direct == routed or closure == human_closure:
+        raise ValueError("configured autonomy block does not carry unambiguous opt-ins")
+    return {
+        "mode": mode_match.group(1),
+        "unlock_window": DEFAULT_UNLOCK_WINDOW,
+        "qualifying_accuracy": DEFAULT_QUALIFYING_ACCURACY,
+        "external_send_autonomy": direct,
+        "work_order_closure_autonomy": closure,
+    }
+
+
+def set_mode(root: Path, mode: str, *, external_send_autonomy: bool | None = None,
+             work_order_closure_autonomy: bool | None = None,
+             changed_at: str | None = None) -> dict[str, object]:
+    """Change one installed seat's autonomy through the engine renderer.
+
+    The destination lock and crash-recoverable directory replacement are
+    shared with setup. Member memory and tasks remain byte-identical. Omitted
+    opt-ins retain their persisted values; only explicit flags change them.
+    """
+    root = root.resolve()
+    if not root.is_dir():
+        raise FileNotFoundError(str(root))
+    if mode not in MODES:
+        raise ValueError("mode must be exactly one of: copilot, supervised, full")
+    timestamp = changed_at or datetime.datetime.now(datetime.timezone.utc).replace(
+        microsecond=0).isoformat().replace("+00:00", "Z")
+    with transaction.DestinationLock(root):
+        transaction.recover_directory_transaction(root)
+        current = settings_from_root(root)
+        previous_mode = current["mode"]
+        settings = dict(current)
+        settings["mode"] = mode
+        if external_send_autonomy is not None:
+            settings["external_send_autonomy"] = external_send_autonomy
+        if work_order_closure_autonomy is not None:
+            settings["work_order_closure_autonomy"] = work_order_closure_autonomy
+        summary = {
+            "agent_dir": str(root),
+            "previous_mode": previous_mode,
+            "autonomy_mode": mode,
+            "external_send_autonomy": bool(settings["external_send_autonomy"]),
+            "work_order_closure_autonomy": bool(settings["work_order_closure_autonomy"]),
+            "changed_at": timestamp,
+        }
+        candidate = root.parent / f".{root.name}.mode-candidate-{os.getpid()}"
+        if candidate.exists():
+            raise transaction.TransactionError(
+                f"mode-switch candidate already exists: {candidate}"
+            )
+        try:
+            shutil.copytree(root, candidate, symlinks=True)
+            render(candidate, settings, timestamp)
+            audit = candidate / "logs" / "autonomy-mode-audit.jsonl"
+            existing = audit.read_text(encoding="utf-8") if audit.is_file() else ""
+            transaction.atomic_write_text(
+                audit, existing + json.dumps(summary, sort_keys=True) + "\n"
+            )
+            transaction.replace_directory_transactional(
+                candidate, root, already_locked=True
+            )
+        finally:
+            if candidate.exists():
+                shutil.rmtree(candidate)
+        return summary
 
 
 def record_decision(root: Path, category: str, correct: bool,

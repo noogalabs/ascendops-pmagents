@@ -1,8 +1,8 @@
 {
   "schema_version": 2,
   "pinned_configuration_date": "2026-08-25",
-  "file_count": 69,
-  "tree_manifest_sha256": "0e3642c685336956f74254c41f15961ec9b3f140987ce8d54403768402a762f3",
+  "file_count": 70,
+  "tree_manifest_sha256": "7526c1b5196af17824807f702acb805b46cfa1ff5374f11821007d225684ada6",
   "runs": [
     "e2-maintenance-v2-1",
     "e2-maintenance-v2-2"

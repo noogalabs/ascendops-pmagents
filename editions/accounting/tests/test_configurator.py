@@ -131,10 +131,10 @@ class AccountingConfiguratorTests(unittest.TestCase):
             self.assertNotIn(stale, onboarding)
 
     def test_named_accounting_onboarding_skill_is_verify_only_and_skill_census_is_exact(self):
-        print("ARMED: all nine accounting skills are dispositioned and onboarding never re-interviews")
+        print("ARMED: all ten accounting skills are dispositioned and onboarding never re-interviews")
         skills = SOURCE / ".claude" / "skills"
         self.assertEqual({path.parent.name for path in skills.glob("*/SKILL.md")}, {
-            "ap-vendor-payments", "approvals", "ar-rent-posting", "onboarding", "owner-draws",
+            "ap-vendor-payments", "approvals", "ar-rent-posting", "autonomy-mode-switch", "onboarding", "owner-draws",
             "owner-statement-drafting", "security-deposit-accounting", "trust-compliance",
             "trust-reconciliation",
         })

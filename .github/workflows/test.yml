@@ -23,6 +23,8 @@ jobs:
         run: python3 -m unittest discover -s engine/tests -p 'test_*.py'
       - name: Guided zero-touch setup suite
         run: python3 -m unittest -v tests.test_zero_touch_setup
+      - name: Runtime autonomy mode switch suite
+        run: python3 -m unittest -v tests.test_mode_switch
       - name: Manifest generator custody suite
         run: python3 -m unittest -v tests.test_manifest_generation
       - name: Edition review sweeps
