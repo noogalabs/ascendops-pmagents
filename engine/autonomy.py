@@ -584,7 +584,7 @@ def set_mode(root: Path, mode: str, *, external_send_autonomy: bool | None = Non
                 if source.is_file():
                     shutil.copy2(source, candidate / name)
             render(candidate, settings, timestamp)
-            writes = {
+            rendered = {
                 name: (candidate / name).read_text(encoding="utf-8")
                 for name in ("GUARDRAILS.md", "copilot-thresholds.json", "record-decision.sh")
                 if (candidate / name).is_file()
@@ -592,7 +592,15 @@ def set_mode(root: Path, mode: str, *, external_send_autonomy: bool | None = Non
             audit_name = "logs/autonomy-mode-audit.jsonl"
             audit = root / audit_name
             existing = audit.read_text(encoding="utf-8") if audit.is_file() else ""
-            writes[audit_name] = existing + json.dumps(summary, sort_keys=True) + "\n"
+            rendered[audit_name] = existing + json.dumps(summary, sort_keys=True) + "\n"
+            # Enforcement lands before doctrine, so process death can never
+            # leave a newly permissive promise ahead of the state that gates it.
+            # The audit is an account of a completed switch and therefore last.
+            write_order = (
+                "copilot-thresholds.json", "record-decision.sh",
+                "GUARDRAILS.md", audit_name,
+            )
+            writes = {name: rendered[name] for name in write_order if name in rendered}
             originals = {
                 name: ((root / name).read_bytes(), (root / name).stat().st_mode)
                 if (root / name).is_file() else None
@@ -613,7 +621,7 @@ def set_mode(root: Path, mode: str, *, external_send_autonomy: bool | None = Non
                     if original is None:
                         target.unlink(missing_ok=True)
                     else:
-                        transaction.atomic_write_text(target, original[0].decode("utf-8"))
+                        transaction.atomic_write_bytes(target, original[0])
                         os.chmod(target, original[1])
                 raise
         finally:

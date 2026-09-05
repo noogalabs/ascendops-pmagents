@@ -172,6 +172,43 @@ class ModeSwitchCliTests(unittest.TestCase):
         self.assertEqual(memory.read_text(), "late memory write\n")
         self.assertEqual(task.read_text(), '{"state":"late task write"}\n')
 
+    def test_scoped_commit_places_enforcement_before_doctrine_in_both_directions(self):
+        print("ARMED: interrupted upgrades and downgrades never put doctrine ahead of enforcement")
+
+        def mode_from_doctrine():
+            text = (self.seat / "GUARDRAILS.md").read_text()
+            return next(mode for mode in autonomy.MODES
+                        if f"### Configured mode: {mode}" in text)
+
+        for starting_mode, target_mode in (("copilot", "full"), ("full", "copilot")):
+            with self.subTest(starting_mode=starting_mode, target_mode=target_mode):
+                if mode_from_doctrine() != starting_mode:
+                    self.assertEqual(self.run_cli(starting_mode).returncode, 0)
+                real_atomic_write = autonomy.transaction.atomic_write_text
+                observed = {}
+
+                def stop_after_first_write(path, text):
+                    real_atomic_write(path, text)
+                    if path.parent.resolve() == self.seat.resolve() and not observed:
+                        observed["threshold_mode"] = self.state()["autonomy_mode"]
+                        observed["doctrine_mode"] = mode_from_doctrine()
+                        raise RuntimeError("injected process-death boundary")
+
+                with mock.patch.object(autonomy.transaction, "atomic_write_text",
+                                       side_effect=stop_after_first_write):
+                    with self.assertRaisesRegex(RuntimeError, "process-death boundary"):
+                        autonomy.set_mode(self.seat, target_mode)
+                self.assertEqual(observed, {
+                    "threshold_mode": target_mode,
+                    "doctrine_mode": starting_mode,
+                })
+                # This is the process-death state: enforcement has moved and
+                # doctrine has not. Restore a coherent fixture for the next
+                # direction through the production entry.
+                self.assertEqual(self.run_cli(starting_mode).returncode, 0)
+                self.assertEqual(self.state()["autonomy_mode"], starting_mode)
+                self.assertEqual(mode_from_doctrine(), starting_mode)
+
     def test_no_threshold_edition_switches_from_engine_doctrine_fail_closed(self):
         print("ARMED: editions without threshold ledgers preserve explicit choices from engine doctrine")
         root = self.temp / "leasing"
